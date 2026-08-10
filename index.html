@@ -497,6 +497,46 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
 .m6{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m6' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='rgb(92,112,240)'/><stop offset='1' stop-color='rgb(29,24,68)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m6)'/><g fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='6'><path d='M-10 92 Q60 52 120 92 T250 92'/><path d='M-10 142 Q60 102 120 142 T250 142'/><path d='M-10 192 Q60 152 120 192 T250 192'/></g></svg>") center/cover}
 .m7{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m7' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(150,42,72)'/><stop offset='1' stop-color='rgb(28,10,24)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m7)'/><g fill='rgb(22,8,18)'><rect x='20' y='150' width='30' height='90'/><rect x='58' y='120' width='34' height='120'/><rect x='100' y='160' width='28' height='80'/><rect x='136' y='128' width='36' height='112'/><rect x='180' y='164' width='30' height='76'/></g></svg>") center/cover}
 .m8{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m8' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(42,56,82)'/><stop offset='1' stop-color='rgb(10,16,28)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m8)'/><circle cx='120' cy='120' r='28' fill='rgb(120,140,255)' opacity='0.4'/><g stroke='rgba(140,160,255,0.35)' stroke-width='2' fill='none'><path d='M0 152 H240'/><path d='M0 184 H240'/><path d='M0 216 H240'/><path d='M120 152 L18 240'/><path d='M120 152 L222 240'/><path d='M120 152 L70 240'/><path d='M120 152 L170 240'/></g></svg>") center/cover}
+
+/* ===== layer-based editor (M6) ===== */
+.le-canvas{border-radius:15px;overflow:hidden;position:relative;aspect-ratio:16/11;margin:8px 18px 0}
+.le-layer{position:absolute;z-index:3}
+.le-logo{top:9px;left:9px;background:rgba(255,255,255,.92);color:#111;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:900}
+.le-user{top:11px;right:11px;color:#fff;font-size:10px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.le-sub{left:50%;bottom:34px;transform:translateX(-50%);color:#fff;font-weight:800;font-size:12.5px;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.8);max-width:84%;line-height:1.15}
+.le-sub.sel{outline:1.5px dashed rgba(255,255,255,.95);outline-offset:5px;border-radius:3px}
+.le-sub .hd{position:absolute;top:-8px;right:-8px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:2px solid #fff}
+.le-cta{left:50%;bottom:12px;transform:translateX(-50%);color:#fff;font-size:8.5px;font-weight:900;letter-spacing:.1em;opacity:.92;text-shadow:0 1px 4px rgba(0,0,0,.6);white-space:nowrap}
+.le-play{display:flex;align-items:center;gap:11px;padding:7px 18px 4px}
+.le-play .pl{width:30px;height:30px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
+.le-play .pl .ic{width:15px;height:15px;fill:currentColor;stroke:currentColor;margin-left:2px}
+.le-tm{font-size:11px;font-weight:800;color:var(--text-3)}
+.le-tm b{color:var(--text)}
+.le-play .exp{margin-left:auto;color:var(--text-3)}
+.le-tl{background:var(--surface-2);border-top:1px solid var(--border);padding:8px 0 6px;position:relative}
+.le-ruler{display:flex;justify-content:space-between;padding:0 18px 6px;font-size:9px;color:var(--text-3);font-weight:700}
+.le-ph{position:absolute;top:2px;bottom:6px;left:37%;width:2px;background:var(--accent);z-index:6}
+.le-ph::before{content:"";position:absolute;top:-2px;left:-4px;width:10px;height:8px;border-radius:2px;background:var(--accent)}
+.le-track{display:flex;align-items:center;gap:8px;padding:3px 18px}
+.le-tlabel{width:18px;flex:none;color:var(--text-3);display:grid;place-items:center}
+.le-tlabel .ic{width:14px;height:14px}
+.le-tbody{flex:1;height:32px;position:relative}
+.le-thumbs{display:flex;gap:2px;height:100%}
+.le-thumbs>span{flex:1;border-radius:4px}
+.le-seg{position:absolute;top:0;height:32px;border-radius:7px;border:1px solid var(--accent-line);background:var(--accent-weak);display:flex;align-items:center;padding:0 10px;font-size:9.5px;font-weight:800;color:var(--accent);overflow:hidden;white-space:nowrap}
+.le-seg.sel{background:var(--accent);color:#fff;border-color:#fff}
+.le-seg .g{position:absolute;top:7px;bottom:7px;width:3px;border-radius:2px;background:currentColor;opacity:.55}
+.le-seg .g.l{left:3px}.le-seg .g.r{right:3px}
+.le-add{margin:5px 18px 0;border:1px dashed var(--border);border-radius:9px;padding:7px;text-align:center;font-size:11.5px;font-weight:800;color:var(--text-2);display:flex;gap:6px;align-items:center;justify-content:center}
+.le-props{margin:8px 18px 0;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:9px 12px}
+.le-props .ph{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;margin-bottom:4px}
+.le-props .trange{font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-weak);border-radius:999px;padding:2px 9px}
+.le-props .prow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0}
+.le-props .prow .lb{font-size:12px;font-weight:600;color:var(--text-2)}
+.le-tools{display:flex;gap:12px;padding:8px 18px 10px;overflow:hidden}
+.le-tool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9px;font-weight:700;color:var(--text-2)}
+.le-tool .cir{width:36px;height:36px;border-radius:11px;background:var(--panel);display:grid;place-items:center;color:var(--text-2)}
+.le-tool.on{color:var(--accent)}.le-tool.on .cir{background:var(--grad);color:#fff}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -706,29 +746,47 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
           <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
           <div class="pbody">
             <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="title" style="font-size:17px">Editor</span><button class="btn btn-hot btn-sm"><svg class="ic ic-sm"><use href="#i-down"/></svg>Export</button></div>
-            <div class="sectpad" style="padding-bottom:4px"><div class="previewbox m6" style="aspect-ratio:4/5;max-height:168px;margin:0 auto;justify-content:space-between;align-items:stretch;padding:11px"><div style="display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2"><span class="logo-chip" style="position:static">LOGO</span><span style="font-size:10px;font-weight:800;color:#fff;opacity:.9">@yourpage</span></div><div style="position:relative;z-index:2"><div class="impact" style="font-size:15px">Your subtitle here</div><div style="font-size:9px;font-weight:800;color:#fff;opacity:.85;margin-top:5px;letter-spacing:.08em">▶ FOLLOW FOR MORE</div></div></div></div>
-            <div class="sheet">
-              <div class="grabber"></div>
-              <div class="sheet-tabs"><span class="sheet-tab on"><svg class="ic ic-sm"><use href="#i-type"/></svg>Text</span><span class="sheet-tab"><svg class="ic ic-sm"><use href="#i-palette"/></svg>Style</span><span class="sheet-tab"><svg class="ic ic-sm"><use href="#i-image"/></svg>Overlay</span><span class="sheet-tab"><svg class="ic ic-sm"><use href="#i-eye"/></svg>Ending</span></div>
-              <div class="pscroll sectpad" style="padding-top:0">
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-type"/></svg>Subtitle text</span><span class="minival">Your subtitle here</span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-type"/></svg>Font</span><span class="seg"><span class="on">Clean</span><span>Bold</span><span>Serif</span></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-type"/></svg>Size</span><span class="seg"><span>S</span><span class="on">M</span><span>L</span></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-palette"/></svg>Color</span><span class="swrow"><span class="sw on" style="background:#fff"></span><span class="sw" style="background:#FBBF24"></span><span class="sw" style="background:#7B61FF"></span><span class="sw" style="background:#F43F5E"></span></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-move"/></svg>Position</span><span class="seg"><span>Top</span><span class="on">Center</span><span>Bottom</span></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-type"/></svg>Stroke</span><span class="toggle"></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-palette"/></svg>Background</span><span class="toggle off"></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-user"/></svg>Username</span><span class="minival">@yourpage</span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-image"/></svg>Logo</span><button class="btn btn-ghost btn-sm">Upload</button></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-type"/></svg>CTA</span><span class="minival">Follow for more</span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-eye"/></svg>Watermark</span><span class="toggle off"></span></div>
-                <div class="frow"><span class="lbl"><svg class="ic ic-sm"><use href="#i-image"/></svg>Ending screen</span><span class="toggle"></span></div>
-                <div class="frow" style="border-bottom:0"><span class="lbl"><svg class="ic ic-sm"><use href="#i-grid"/></svg>Aspect ratio</span><span class="seg"><span class="on">9:16</span><span>1:1</span><span>16:9</span></span></div>
+            <div class="le-canvas m2">
+              <span class="le-layer le-logo">LOGO</span>
+              <span class="le-layer le-user">@yourpage</span>
+              <div class="le-layer le-sub sel">i cried… she's literally a victim<span class="hd"></span></div>
+              <span class="le-layer le-cta">▶ FOLLOW FOR MORE</span>
+            </div>
+            <div class="le-play"><span class="pl"><svg class="ic"><use href="#i-play"/></svg></span><span class="le-tm"><b>00:03</b> / 01:18</span><span class="exp"><svg class="ic ic-sm"><use href="#i-move"/></svg></span></div>
+            <div class="le-tl">
+              <div class="le-ph"></div>
+              <div class="le-ruler"><span>0:00</span><span>0:02</span><span>0:04</span><span>0:06</span></div>
+              <div class="le-track">
+                <span class="le-tlabel"><svg class="ic"><use href="#i-lock"/></svg></span>
+                <div class="le-tbody"><div class="le-thumbs"><span class="m2"></span><span class="m6"></span><span class="m8"></span><span class="m1"></span><span class="m4"></span><span class="m2"></span></div></div>
               </div>
+              <div class="le-track">
+                <span class="le-tlabel"><svg class="ic"><use href="#i-type"/></svg></span>
+                <div class="le-tbody">
+                  <div class="le-seg" style="left:2%;width:26%">Sub 1<span class="g l"></span><span class="g r"></span></div>
+                  <div class="le-seg sel" style="left:32%;width:34%"><span class="g l"></span>i cried…<span class="g r"></span></div>
+                  <div class="le-seg" style="left:70%;width:28%">Sub 3<span class="g l"></span><span class="g r"></span></div>
+                </div>
+              </div>
+              <div class="le-add"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Add text layer</div>
+            </div>
+            <div class="le-props">
+              <div class="ph">Subtitle 2 <span class="trange">0:02 – 0:05</span></div>
+              <div class="prow"><span class="lb">Text</span><span class="minival">i cried… she's literally a victim</span></div>
+              <div class="prow"><span class="lb">Font</span><span class="seg"><span class="on">Clean</span><span>Bold</span><span>Serif</span></span></div>
+              <div class="prow" style="padding-bottom:0"><span class="lb">Color</span><span class="swrow"><span class="sw on" style="background:#fff"></span><span class="sw" style="background:#FBBF24"></span><span class="sw" style="background:#7B61FF"></span><span class="sw" style="background:#F43F5E"></span></span></div>
+            </div>
+            <div class="le-tools">
+              <span class="le-tool on"><span class="cir"><svg class="ic"><use href="#i-type"/></svg></span>Subtitle</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-image"/></svg></span>Logo</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-user"/></svg></span>Username</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-type"/></svg></span>CTA</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-eye"/></svg></span>Ending</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-palette"/></svg></span>Style</span>
             </div>
           </div>
         </div></div>
-        <div class="caption"><span class="id">M6</span><b>Editor</b> — subtitle, logo, fonts, colors, overlays (CapCut-style controls)</div>
+        <div class="caption"><span class="id">M6</span><b>Layer Editor</b> — timeline + <b>timed subtitle track</b> (multiple lines at different timestamps) · logo · username · CTA layers</div>
       </div>
 
       <!-- Export -->
