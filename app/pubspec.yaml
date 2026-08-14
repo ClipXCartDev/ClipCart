@@ -19,8 +19,7 @@ dependencies:
   video_player: ^2.9.2          # preview playback + time-synced subtitle overlay
   file_picker: ^8.1.4           # custom font (.ttf/.otf) + base clip picking
   path_provider: ^2.1.5         # app dirs for fonts/exports
-  ffmpeg_kit_flutter_new: ^1.6.1 # on-device MP4 export (drawtext/overlay) — community fork
-  pro_video_editor: ^2.11.2     # richer visual editor engine (layers/trim/transitions)
+  ffmpeg_kit_flutter_new: ^4.6.2 # on-device MP4 export (drawtext/overlay) — fixes Windows build
 
 dev_dependencies:
   flutter_lints: ^4.0.0
