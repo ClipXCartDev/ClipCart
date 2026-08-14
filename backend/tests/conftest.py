@@ -1,4 +1,4 @@
-"""Test fixtures: isolated sqlite DB + FastAPI TestClient with dependency overrides."""
+"""Test fixtures: isolated sqlite DB + TestClient + direct session for role setup."""
 from __future__ import annotations
 
 import pytest
@@ -6,30 +6,45 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.api.deps import get_db as _deps_get_db  # noqa: F401  (same callable)
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 
 
 @pytest.fixture()
-def client(tmp_path):
-    db_file = tmp_path / "test.db"
+def _engine(tmp_path):
     engine = create_engine(
-        f"sqlite:///{db_file}", connect_args={"check_same_thread": False}
+        f"sqlite:///{tmp_path / 'test.db'}", connect_args={"check_same_thread": False}
     )
-    TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     Base.metadata.create_all(bind=engine)
+    yield engine
+    engine.dispose()
 
+
+@pytest.fixture()
+def session_factory(_engine):
+    return sessionmaker(bind=_engine, autoflush=False, autocommit=False)
+
+
+@pytest.fixture()
+def db(session_factory):
+    s = session_factory()
+    try:
+        yield s
+    finally:
+        s.close()
+
+
+@pytest.fixture()
+def client(session_factory):
     def override_get_db():
-        db = TestingSession()
+        s = session_factory()
         try:
-            yield db
+            yield s
         finally:
-            db.close()
+            s.close()
 
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
-    engine.dispose()
