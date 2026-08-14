@@ -1,9 +1,25 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+
 import '../core/api_client.dart';
+import '../core/config.dart';
 import '../models/clip.dart';
 
 class CreatorService {
   CreatorService(this.api);
   final ApiClient api;
+
+  /// Uploads a base clip to storage (R2/local) via a presigned PUT; returns its key.
+  Future<String> uploadBaseClip(String filePath, String filename) async {
+    final r = await api.dio.post('/creator/upload-url', data: {'filename': filename, 'content_type': 'video/mp4'});
+    final url = AppConfig.absolute(r.data['url'] as String);
+    final key = r.data['key'] as String;
+    final bytes = await File(filePath).readAsBytes();
+    await Dio().put(url, data: Stream.fromIterable([bytes]),
+        options: Options(contentType: 'video/mp4', headers: {Headers.contentLengthHeader: bytes.length}));
+    return key;
+  }
 
   Future<List<Clip>> myUploads() async {
     final r = await api.dio.get('/creator/clips');

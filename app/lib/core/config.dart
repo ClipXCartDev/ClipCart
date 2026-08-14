@@ -11,4 +11,8 @@ class AppConfig {
     'GOOGLE_SERVER_CLIENT_ID',
     defaultValue: '',
   );
+
+  /// Signed storage URLs may be relative (local dev) or absolute (R2). Make absolute.
+  static String absolute(String url) =>
+      url.startsWith('http') ? url : '${apiBaseUrl.replaceAll('/api/v1', '')}$url';
 }

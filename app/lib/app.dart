@@ -51,7 +51,10 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(path: '/clip/:slug', builder: (c, s) => ClipPlayerScreen(slug: s.pathParameters['slug']!)),
         GoRoute(
           path: '/editor',
-          builder: (c, s) => EditorScreen(title: s.extra is Clip ? (s.extra as Clip).title : null),
+          builder: (c, s) {
+            final clip = s.extra is Clip ? s.extra as Clip : null;
+            return EditorScreen(clip: clip, title: clip?.title);
+          },
         ),
         GoRoute(path: '/plans', builder: (_, __) => const PlansScreen()),
         GoRoute(path: '/creator', builder: (_, __) => const CreatorDashboard()),

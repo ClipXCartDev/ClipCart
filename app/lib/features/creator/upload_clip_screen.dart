@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -23,6 +24,23 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
   String _access = 'free';
   final Set<String> _layers = {'subtitle', 'logo'};
   bool _busy = false;
+  bool _uploading = false;
+  String? _baseKey;
+
+  Future<void> _pickBase() async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.video);
+    if (res == null || res.files.single.path == null) return;
+    setState(() => _uploading = true);
+    try {
+      final key = await context.read<CreatorService>().uploadBaseClip(res.files.single.path!, res.files.single.name);
+      setState(() => _baseKey = key);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded ✓')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -47,6 +65,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
         'tags': _tags.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
         'layers': _layers.toList(),
         'access': _access,
+        'base_clip_path': _baseKey,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitted for review 🎬')));
@@ -66,10 +85,22 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.withOpacity(0.4), style: BorderStyle.solid)),
-            child: const Column(children: [Icon(Icons.upload_file, color: Color(0xFFFF4D6D), size: 26), SizedBox(height: 8), Text('Base clip upload wires to Cloudflare R2 (S6).', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12))]),
+          InkWell(
+            onTap: _uploading ? null : _pickBase,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _baseKey != null ? const Color(0xFF12B76A) : Colors.grey.withOpacity(0.4)),
+              ),
+              child: _uploading
+                  ? const Center(child: Padding(padding: EdgeInsets.all(6), child: CircularProgressIndicator()))
+                  : Column(children: [
+                      Icon(_baseKey != null ? Icons.check_circle : Icons.upload_file, color: _baseKey != null ? const Color(0xFF12B76A) : const Color(0xFFFF4D6D), size: 26),
+                      const SizedBox(height: 8),
+                      Text(_baseKey != null ? 'Base clip uploaded ✓' : 'Tap to upload base clip (MP4)', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    ]),
+            ),
           ),
           const SizedBox(height: 14),
           TextField(controller: _title, decoration: const InputDecoration(labelText: 'Title')),

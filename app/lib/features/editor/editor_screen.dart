@@ -1,19 +1,22 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../models/clip.dart';
 import '../../models/editor_state.dart';
+import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
 import '../../widgets/primary_button.dart';
 import 'subtitle_editor_sheet.dart';
 
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key, this.initialClipPath, this.title});
-  final String? initialClipPath;
+  const EditorScreen({super.key, this.clip, this.title});
+  final Clip? clip;
   final String? title;
 
   @override
@@ -34,7 +37,18 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Future<void> _init() async {
     _defaultFont = await context.read<FontService>().ensureDefaultFont();
-    if (widget.initialClipPath != null) await _load(widget.initialClipPath!);
+    if (widget.clip != null) {
+      try {
+        final path = await context.read<CatalogService>().downloadClipFile(widget.clip!.id);
+        await _load(path);
+      } catch (e) {
+        final gated = e is DioException && e.response?.statusCode == 402;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(gated ? 'Subscribe to use Pro clips' : 'Could not load clip — pick a video')));
+        }
+      }
+    }
     if (mounted) setState(() {});
   }
 
