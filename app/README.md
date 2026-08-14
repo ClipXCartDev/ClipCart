@@ -5,11 +5,26 @@ Sprint S5 (in progress): Sunset Coral theme · auth flow · discover gallery · 
 ## Run
 ```bash
 cd app
+flutter create .          # generate android/ios/web platform folders (first time)
 flutter pub get
-# point at your backend (Android emulator default is 10.0.2.2):
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
+# put a Roboto.ttf in assets/fonts/ (see that folder's README)
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1   # emulator
+# real device: use your PC's LAN IP, e.g. http://192.168.1.7:8000/api/v1
 ```
-Backend must be running (`cd backend && uvicorn app.main:app --reload`).
+Backend must be running (`cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000`).
+
+### Android build config (apply after `flutter create .`)
+Verified building an APK needs these (already set in the committed `android/` config):
+- `android/app/build.gradle.kts` → `minSdk = 24`, `compileSdk = 36`
+- `android/gradle.properties` → add `kotlin.incremental=false` (avoids a Windows cache-lock error)
+- `android/build.gradle.kts` → in the first `subprojects {}` block, force plugins to SDK 36:
+  ```kotlin
+  afterEvaluate {
+      val androidExt = project.extensions.findByName("android")
+      if (androidExt != null) { androidExt.withGroovyBuilder { "compileSdkVersion"(36) } }
+  }
+  ```
+Uses `ffmpeg_kit_flutter_new` 4.6.2 (downloads FFmpeg libs at build time — keep internet on for the first build).
 
 ## Structure
 ```
