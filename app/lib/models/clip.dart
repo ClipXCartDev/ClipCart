@@ -12,6 +12,8 @@ class Clip {
     required this.durationSec,
     required this.downloads,
     required this.layers,
+    this.status,
+    this.reviewNote,
   });
 
   final String id;
@@ -26,6 +28,8 @@ class Clip {
   final int? durationSec;
   final int downloads;
   final List<String> layers;
+  final String? status; // pending | approved | rejected | changes (creator view)
+  final String? reviewNote;
 
   bool get isPro => access == 'pro';
 
@@ -47,5 +51,7 @@ class Clip {
         durationSec: j['duration_sec'] as int?,
         downloads: (j['downloads'] ?? 0) as int,
         layers: ((j['layers'] ?? []) as List).map((e) => e.toString()).toList(),
+        status: j['status'] as String?,
+        reviewNote: j['review_note'] as String?,
       );
 }

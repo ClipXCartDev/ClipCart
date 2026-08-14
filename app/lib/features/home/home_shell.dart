@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/auth_controller.dart';
+import '../exports/exports_screen.dart';
+import '../saved/saved_screen.dart';
+import '../search/search_screen.dart';
 import 'discover_screen.dart';
 
 class HomeShell extends StatefulWidget {
@@ -15,12 +19,12 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = [
-      const DiscoverScreen(),
-      const _ComingSoon('Search'),
-      const _ComingSoon('Saved'),
-      const _ComingSoon('Exports'),
-      const _AccountTab(),
+    const tabs = [
+      DiscoverScreen(),
+      SearchScreen(),
+      SavedScreen(),
+      ExportsScreen(),
+      _AccountTab(),
     ];
     return Scaffold(
       body: IndexedStack(index: _index, children: tabs),
@@ -37,16 +41,6 @@ class _HomeShellState extends State<HomeShell> {
       ),
     );
   }
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon(this.title);
-  final String title;
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))),
-        body: const Center(child: Text('Coming soon', style: TextStyle(color: Colors.grey))),
-      );
 }
 
 class _AccountTab extends StatelessWidget {
@@ -82,8 +76,9 @@ class _AccountTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const ListTile(leading: Icon(Icons.star_border), title: Text('Subscription')),
-          const ListTile(leading: Icon(Icons.credit_card), title: Text('Payment history')),
+          ListTile(leading: const Icon(Icons.star_border), title: const Text('Plans & subscription'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/plans')),
+          if (user?.isEditor == true)
+            ListTile(leading: const Icon(Icons.video_camera_back_outlined), title: const Text('Creator studio'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/creator')),
           const ListTile(leading: Icon(Icons.phone_android), title: Text('Devices')),
           const Divider(),
           ListTile(

@@ -7,6 +7,9 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/splash_screen.dart';
+import 'features/billing/plans_screen.dart';
+import 'features/creator/creator_dashboard.dart';
+import 'features/creator/upload_clip_screen.dart';
 import 'features/editor/editor_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/player/clip_player_screen.dart';
@@ -50,6 +53,9 @@ class _ClipCartAppState extends State<ClipCartApp> {
           path: '/editor',
           builder: (c, s) => EditorScreen(title: s.extra is Clip ? (s.extra as Clip).title : null),
         ),
+        GoRoute(path: '/plans', builder: (_, __) => const PlansScreen()),
+        GoRoute(path: '/creator', builder: (_, __) => const CreatorDashboard()),
+        GoRoute(path: '/creator/upload', builder: (_, __) => const UploadClipScreen()),
       ],
     );
   }
