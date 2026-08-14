@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -9,12 +11,15 @@ class CatalogService {
   CatalogService(this.api);
   final ApiClient api;
 
-  /// Access-gated: fetches a signed URL then downloads the base clip to a temp file.
+  /// Access-gated download of the base clip, cached on disk so repeat opens are instant.
   Future<String> downloadClipFile(String clipId) async {
-    final r = await api.dio.post('/clips/$clipId/download-url');
-    final url = RuntimeConfig.absolute(r.data['url'] as String);
     final dir = await getTemporaryDirectory();
     final path = '${dir.path}/base_$clipId.mp4';
+    final f = File(path);
+    if (await f.exists() && await f.length() > 0) return path; // cached -> instant load
+
+    final r = await api.dio.post('/clips/$clipId/download-url');
+    final url = RuntimeConfig.absolute(r.data['url'] as String);
     await Dio().download(url, path); // plain Dio: signed URL needs no auth header
     return path;
   }

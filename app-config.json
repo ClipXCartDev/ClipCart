@@ -1,5 +1,6 @@
 {
   "api_base_url": "http://38.9.96.250/api/v1",
+  "google_server_client_id": "",
   "support_email": "clipxcart@gmail.com",
   "min_app_version": "1.0.0",
   "maintenance": false,

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import '../core/config.dart';
+import '../core/runtime_config.dart';
 import '../core/token_store.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -40,9 +40,11 @@ class AuthController extends ChangeNotifier {
 
   Future<String?> googleSignIn() async {
     try {
+      final serverClientId = RuntimeConfig.get<String>('google_server_client_id', '');
+      if (serverClientId.isEmpty) return 'Google login not configured yet';
       final gsi = GoogleSignIn(
         scopes: const ['email', 'profile'],
-        serverClientId: AppConfig.googleServerClientId.isEmpty ? null : AppConfig.googleServerClientId,
+        serverClientId: serverClientId,
       );
       final account = await gsi.signIn();
       if (account == null) return 'Cancelled';

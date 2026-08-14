@@ -32,7 +32,7 @@ class ExportService {
         ':textfile=${textFile.path}'
         ':fontcolor=0x${_rgb(s.color)}'
         ':fontsize=${s.fontSize.round()}'
-        ':x=(w-text_w)/2:y=h-text_h-120'
+        ':x=(w*${s.dx.toStringAsFixed(4)}-text_w/2):y=(h*${s.dy.toStringAsFixed(4)}-text_h/2)'
         ':box=1:boxcolor=black@0.5:boxborderw=14'
         ':enable=between(t\\,${s.start.toStringAsFixed(2)}\\,${s.end.toStringAsFixed(2)})',
       );
@@ -47,7 +47,9 @@ class ExportService {
 
     if (project.logoPath != null) {
       parts.addAll(['-i', '"${project.logoPath}"']);
-      final fc = StringBuffer('[0:v][1:v]overlay=W-w-24:24');
+      final lx = project.logoDx.toStringAsFixed(4);
+      final ly = project.logoDy.toStringAsFixed(4);
+      final fc = StringBuffer('[1:v]scale=160:-1[lg];[0:v][lg]overlay=W*$lx-w/2:H*$ly-h/2');
       if (drawChain.isNotEmpty) {
         fc..write('[ov];[ov]')..write(drawChain);
       }
