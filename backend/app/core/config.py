@@ -32,5 +32,15 @@ class Settings(BaseSettings):
     # Editor payouts (decisions §11.4) — rate per download (business placeholder).
     PAYOUT_RATE_PER_DOWNLOAD: float = 0.02
 
+    # Storage — clip/video assets. "local" (dev/tests) or "r2" (Cloudflare R2).
+    STORAGE_PROVIDER: str = "local"
+    STORAGE_DIR: str = "./storage"
+    STORAGE_URL_SECRET: str = "change-me-storage-secret"
+    PRESIGN_EXPIRE_SECONDS: int = 3600
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET: str = "clipcart"
+
 
 settings = Settings()

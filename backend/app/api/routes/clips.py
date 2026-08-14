@@ -13,6 +13,7 @@ from app.models import Category, Clip, ClipStatus, Download, Favorite, User
 from app.schemas.catalog import CategoryOut, ClipListOut, ClipOut, DownloadOut
 from app.services.billing import assert_can_export
 from app.services.catalog import SORTS, browse_query, clip_to_out
+from app.services.storage import storage
 
 router = APIRouter(tags=["catalog"])
 
@@ -99,6 +100,24 @@ def record_download(
     clip.downloads += 1
     db.commit()
     return {"recorded": True, "downloads": clip.downloads}
+
+
+@router.post("/clips/{clip_id}/download-url")
+def download_url(
+    clip_id: uuid.UUID,
+    resolution: str = "1080p",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Access-gated presigned GET URL for the base clip + records the export."""
+    clip = _approved_clip(db, clip_id)
+    assert_can_export(db, user, clip)
+    if not clip.base_clip_path:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Clip has no uploaded file")
+    db.add(Download(user_id=user.id, clip_id=clip_id, resolution=resolution))
+    clip.downloads += 1
+    db.commit()
+    return {"url": storage.presign_download(clip.base_clip_path), "downloads": clip.downloads}
 
 
 @router.get("/me/downloads", response_model=list[DownloadOut])

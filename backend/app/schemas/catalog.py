@@ -87,3 +87,8 @@ class DownloadOut(BaseModel):
     clip_title: str
     resolution: str
     created_at: datetime
+
+
+class UploadUrlIn(BaseModel):
+    filename: str = Field(min_length=1, max_length=120)
+    content_type: str | None = None
