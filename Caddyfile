@@ -1,18 +1,28 @@
-# ClipCart — reverse proxy + static hosting.
-# HTTP on :80 (no domain yet). When you point a domain at 38.9.96.250, replace
-# `:80` with `your-domain.com` and Caddy will get automatic HTTPS.
-:80 {
+# ClipCart — reverse proxy + static hosting, with automatic HTTPS.
+# 38.9.96.250.nip.io resolves to the server IP, so Caddy can get a free Let's Encrypt
+# cert (no domain purchase needed). The raw IP is still served over plain HTTP.
+(app) {
 	encode gzip
 
-	# API + health -> FastAPI container (path preserved, app is mounted at /api/v1)
+	# API + health -> FastAPI (path preserved; app is mounted at /api/v1)
 	@api path /api/* /health
 	handle @api {
 		reverse_proxy api:8000
 	}
 
-	# Everything else -> static files (design deck at /, /admin/, /web/)
+	# Everything else -> static files (/, /admin/, /web/, /downloads/)
 	handle {
 		root * /srv
 		file_server
 	}
+}
+
+# HTTPS (auto Let's Encrypt) via the nip.io hostname
+38.9.96.250.nip.io {
+	import app
+}
+
+# Plain HTTP by raw IP (fallback / existing clients)
+http://38.9.96.250 {
+	import app
 }
