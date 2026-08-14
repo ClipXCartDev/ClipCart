@@ -36,7 +36,11 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _init() async {
-    _defaultFont = await context.read<FontService>().ensureDefaultFont();
+    try {
+      _defaultFont = await context.read<FontService>().ensureDefaultFont();
+    } catch (_) {
+      _defaultFont = ''; // font asset missing — don't hang; subtitles can use uploaded fonts
+    }
     if (widget.clip != null) {
       try {
         final path = await context.read<CatalogService>().downloadClipFile(widget.clip!.id);
