@@ -663,6 +663,40 @@ body{background:var(--bg)}
 .brandmark,.wm-badge,.bnav .fab{box-shadow:none}
 .hotcard{box-shadow:none;border:1px solid var(--border)}
 .floatstrip .fs,.memerow .mm{box-shadow:var(--shadow)}
+
+/* ===== Instagram-Reels-style full-screen template feed (M3) ===== */
+.reel-feed{position:absolute;inset:0;overflow:hidden;font-family:var(--display);color:#fff}
+.reel-bg{position:absolute;inset:0}
+.reel-gt{position:absolute;top:0;left:0;right:0;height:150px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);z-index:2}
+.reel-gb{position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(0deg,rgba(0,0,0,.82),transparent);z-index:2}
+.reel-status{position:absolute;top:0;left:0;right:0;z-index:7;color:#fff}
+.reel-top{position:absolute;top:46px;left:0;right:0;display:flex;align-items:center;justify-content:center;padding:8px 16px;z-index:7}
+.reel-tabs{display:flex;gap:20px;font-weight:800;font-size:14px;color:rgba(255,255,255,.6)}
+.reel-tabs .on{color:#fff}
+.reel-top .rsearch-ic{position:absolute;right:14px;color:#fff}
+.reel-rail{position:absolute;right:12px;bottom:184px;display:flex;flex-direction:column;gap:18px;align-items:center;z-index:5}
+.reel-av{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;border:2px solid #fff}
+.reel-rail .act{display:flex;flex-direction:column;align-items:center;gap:3px;color:#fff;cursor:pointer}
+.reel-rail .act .ico{width:47px;height:47px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);display:grid;place-items:center}
+.reel-rail .act .ico .ic{width:23px;height:23px}
+.reel-rail .act.liked .ico{background:rgba(225,29,72,.9);border-color:transparent}
+.reel-rail .act.liked .ico .ic{fill:#fff;stroke:#fff}
+.reel-rail .act .lbl{font-size:11px;font-weight:700}
+.reel-disc{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3a3a3a,#111);border:3px solid rgba(255,255,255,.55);display:grid;place-items:center;color:#fff;animation:rspin 5s linear infinite}
+.reel-disc .ic{width:18px;height:18px}
+@keyframes rspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.reel-disc{animation:none}}
+.reel-info{position:absolute;left:16px;right:78px;bottom:158px;z-index:5}
+.reel-handle{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}
+.reel-title{font-size:13px;opacity:.96;margin-top:5px;line-height:1.35}
+.reel-tags{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.reel-tags span{font-size:11px;font-weight:700;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:6px;backdrop-filter:blur(4px)}
+.reel-use{position:absolute;left:16px;right:78px;bottom:114px;z-index:5;background:var(--accent);color:#fff;border:0;border-radius:11px;padding:13px;font:800 14.5px var(--display);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.reel-use .ic{width:17px;height:17px}
+.reel-bottom{position:absolute;left:14px;right:14px;bottom:16px;display:flex;gap:10px;align-items:center;z-index:7}
+.reel-search{flex:1;height:46px;border-radius:13px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(10px);display:flex;align-items:center;gap:9px;padding:0 14px;color:rgba(255,255,255,.85);font-size:13.5px;font-weight:600}
+.reel-grid{width:46px;height:46px;flex:none;border-radius:13px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(10px);display:grid;place-items:center;color:#fff}
+.reel-peek{position:absolute;left:0;right:0;bottom:74px;text-align:center;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;z-index:4}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -707,6 +741,9 @@ body{background:var(--bg)}
   <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
   <symbol id="i-google" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3h3.9c2.3-2.1 3.6-5.2 3.6-8.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1C3.3 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C18 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l4 3.1c.9-2.9 3.6-5 6.7-5z"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.4-9C1.1 9 2.6 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.4 0 4.9 4 3.4 7-2.4 4.4-9.4 9-9.4 9z"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -778,34 +815,33 @@ body{background:var(--bg)}
       <!-- Discover / Home -->
       <div class="figure">
         <div class="phone"><div class="screen"><div class="island"></div>
-          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
-          <div class="pbody">
-            <div class="appbar"><span class="title">Discover</span><div style="display:flex;gap:6px"><span class="iconbtn filled"><svg class="ic"><use href="#i-search"/></svg></span><span class="iconbtn filled"><svg class="ic"><use href="#i-bell"/></svg><span class="dot"></span></span></div></div>
-            <div class="pscroll">
-              <div class="hotcard m1"><span class="stkbig">🔥</span><div class="z"><span class="badge" style="background:rgba(255,255,255,.22);color:#fff">Trending now</span><div class="impact" style="font-size:24px;margin-top:8px;text-align:left">EDITOR'S<br>PICKS</div></div></div>
-              <div class="rowh"><span class="t">Free for you</span><span class="s">See all</span></div>
-              <div class="hscroll">
-                <div class="mini"><div class="meme m4"><span class="badgewrap badge badge-free">Free</span><div class="impact">Monday Mood</div></div></div>
-                <div class="mini"><div class="meme m3"><span class="badgewrap badge badge-free">Free</span><div class="impact">Comedy</div></div></div>
-                <div class="mini"><div class="meme m2"><span class="badgewrap badge badge-free">Free</span><div class="impact">Reaction</div></div></div>
-              </div>
-              <div class="rowh"><span class="t">Newly added</span><span class="s">See all</span></div>
-              <div class="hscroll">
-                <div class="mini"><div class="meme m1"><span class="badgewrap badge badge-premium">Pro</span><div class="impact">Cinematic</div></div></div>
-                <div class="mini"><div class="meme m6"><span class="badgewrap badge badge-free">Free</span><div class="impact">Night Vibes</div></div></div>
-                <div class="mini"><div class="meme m5"><span class="badgewrap badge badge-premium">Pro</span><div class="impact">Deal Alert</div></div></div>
-              </div>
-              <div class="rowh"><span class="t">Trending</span><span class="s">See all</span></div>
-              <div class="hscroll" style="padding-bottom:14px">
-                <div class="mini"><div class="meme m5"><span class="badgewrap badge badge-premium">Pro</span><div class="impact">Big Deal</div></div></div>
-                <div class="mini"><div class="meme m6"><span class="badgewrap badge badge-premium">Pro</span><div class="impact">Late Night</div></div></div>
-                <div class="mini"><div class="meme m1"><span class="badgewrap badge badge-premium">Pro</span><div class="impact">Winning</div></div></div>
-              </div>
+          <div class="reel-feed">
+            <div class="reel-bg m2"></div>
+            <div class="reel-gt"></div>
+            <div class="reel-gb"></div>
+            <div class="statusbar reel-status"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+            <div class="reel-top"><div class="reel-tabs"><span>Following</span><span class="on">For you</span><span>Trending</span></div><span class="rsearch-ic"><svg class="ic"><use href="#i-bell"/></svg></span></div>
+            <div class="reel-rail">
+              <div class="reel-av">M</div>
+              <div class="act liked"><span class="ico"><svg class="ic"><use href="#i-heart"/></svg></span><span class="lbl">12.4k</span></div>
+              <div class="act"><span class="ico"><svg class="ic"><use href="#i-bookmark"/></svg></span><span class="lbl">Save</span></div>
+              <div class="act"><span class="ico"><svg class="ic"><use href="#i-share"/></svg></span><span class="lbl">Share</span></div>
+              <div class="reel-disc"><svg class="ic"><use href="#i-music"/></svg></div>
             </div>
-            <div class="bnav"><a class="on"><svg class="ic"><use href="#i-fire"/></svg>Discover</a><a><svg class="ic"><use href="#i-grid"/></svg>Library</a><span class="fab"><svg class="ic"><use href="#i-magic"/></svg></span><a><svg class="ic"><use href="#i-down"/></svg>Exports</a><a><svg class="ic"><use href="#i-user"/></svg>Me</a></div>
+            <div class="reel-info">
+              <div class="reel-handle">@maria.k <span class="badge badge-premium">PRO</span></div>
+              <div class="reel-title">Cinematic movie-edit template — add your own subtitles &amp; logo</div>
+              <div class="reel-tags"><span>#reels</span><span>#cinematic</span><span>0:12</span><span>4K</span></div>
+            </div>
+            <button class="reel-use"><svg class="ic"><use href="#i-magic"/></svg>Use this template</button>
+            <div class="reel-peek">▲ Swipe up for next</div>
+            <div class="reel-bottom">
+              <div class="reel-search"><svg class="ic ic-sm"><use href="#i-search"/></svg>Search templates…</div>
+              <span class="reel-grid"><svg class="ic"><use href="#i-grid"/></svg></span>
+            </div>
           </div>
         </div></div>
-        <div class="caption"><span class="id">M3</span><b>Discover</b> — trending + Free-for-you feed, create FAB</div>
+        <div class="caption"><span class="id">M3</span><b>Discover</b> — Instagram-Reels-style full-screen feed (swipe ↑ next), action rail, bottom search</div>
       </div>
 
       <!-- Library -->
