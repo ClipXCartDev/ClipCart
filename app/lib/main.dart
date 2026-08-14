@@ -6,6 +6,7 @@ import 'core/api_client.dart';
 import 'core/token_store.dart';
 import 'services/auth_service.dart';
 import 'services/catalog_service.dart';
+import 'services/font_service.dart';
 import 'state/auth_controller.dart';
 
 void main() {
@@ -20,6 +21,7 @@ void main() {
     providers: [
       Provider<ApiClient>.value(value: api),
       Provider<CatalogService>.value(value: catalog),
+      ChangeNotifierProvider<FontService>(create: (_) => FontService()),
       ChangeNotifierProvider<AuthController>.value(value: authController),
     ],
     child: const ClipCartApp(),

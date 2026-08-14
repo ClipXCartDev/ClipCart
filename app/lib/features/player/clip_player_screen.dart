@@ -78,7 +78,7 @@ class _ClipPlayerScreenState extends State<ClipPlayerScreen> {
                           PrimaryButton(
                             label: 'Use template',
                             icon: Icons.auto_awesome,
-                            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Editor — coming in the next sprint'))),
+                            onPressed: () => context.push('/editor', extra: clip),
                           ),
                         ],
                       ),

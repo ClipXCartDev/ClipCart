@@ -28,6 +28,15 @@ lib/
 - Auth-gated routing (splash → onboarding/login → home).
 - Discover gallery (GET /clips) → tap → full-screen clip player (GET /clips/{slug}).
 
+## Editor (S5)
+Full layer editor wired into the clip player ("Use template" → `/editor`):
+- **Multi-timed subtitles** — different lines at different timestamps (RangeSlider start–end), each with its own font/color/size, shown on a timeline track.
+- **Custom font upload** — pick `.ttf/.otf` at runtime; registered for live preview (FontLoader) and used by FFmpeg export (`drawtext fontfile=`).
+- **Logo overlay** + live time-synced preview (`video_player`).
+- **On-device MP4 export** via `ffmpeg_kit_flutter_new` (`drawtext enable='between(t,start,end)'` per line + `overlay`), saved to app docs.
+
+> ⚠️ Add a default font: place `Roboto.ttf` in `assets/fonts/` (see that folder's README).
+> `pro_video_editor` is included for richer visual editing (trim/transitions/filters) and can replace the custom timeline later.
+
 ## Next
-- Editor (layer/timeline) + on-device export (ffmpeg_kit_flutter_new + pro_video_editor).
-- Search/filters, Saved, Exports, Plans/checkout, Creator mode.
+- Search/filters, Saved, Exports, Plans/checkout screens · Creator mode (upload/author) · S6 Web · S7 Admin.

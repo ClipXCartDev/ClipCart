@@ -7,8 +7,10 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/splash_screen.dart';
+import 'features/editor/editor_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/player/clip_player_screen.dart';
+import 'models/clip.dart';
 import 'state/auth_controller.dart';
 
 class ClipCartApp extends StatefulWidget {
@@ -44,6 +46,10 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
         GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
         GoRoute(path: '/clip/:slug', builder: (c, s) => ClipPlayerScreen(slug: s.pathParameters['slug']!)),
+        GoRoute(
+          path: '/editor',
+          builder: (c, s) => EditorScreen(title: s.extra is Clip ? (s.extra as Clip).title : null),
+        ),
       ],
     );
   }
