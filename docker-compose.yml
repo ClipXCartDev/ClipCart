@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-clipcart}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-clipcart}
@@ -15,6 +16,7 @@ services:
 
   api:
     build: ./backend
+    restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-clipcart}:${POSTGRES_PASSWORD:-clipcart}@db:5432/${POSTGRES_DB:-clipcart}
@@ -26,6 +28,7 @@ services:
 
   caddy:
     image: caddy:2-alpine
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
