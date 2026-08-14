@@ -54,7 +54,6 @@ tr:last-child td{border-bottom:0}
     <div class="logo">C</div>
     <h1>ClipCart Admin</h1>
     <div class="sub">Sign in with an admin account</div>
-    <input id="api" placeholder="API base URL" value="http://localhost:8000/api/v1">
     <input id="email" placeholder="Email" type="email">
     <input id="pass" placeholder="Password" type="password">
     <button class="btn" style="width:100%" onclick="doLogin()">Log in</button>
@@ -74,6 +73,9 @@ tr:last-child td{border-bottom:0}
 <script>
 const NAV = [['dashboard','Dashboard'],['approvals','Approvals'],['clips','Clips'],['plans','Plans'],['payouts','Payouts'],['users','Users']];
 let API='', TOKEN='';
+// API base auto-detected: same origin when served over http(s), else localhost. ?api= overrides.
+const DEFAULT_API = (new URLSearchParams(location.search).get('api'))
+  || (location.protocol.indexOf('http')===0 ? location.origin+'/api/v1' : 'http://localhost:8000/api/v1');
 
 function h(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 async function api(path,method='GET',body){
@@ -83,7 +85,7 @@ async function api(path,method='GET',body){
 }
 
 async function doLogin(){
-  API=document.getElementById('api').value.replace(/\/$/,'');
+  API=DEFAULT_API.replace(/\/$/,'');
   const email=document.getElementById('email').value, password=document.getElementById('pass').value;
   const err=document.getElementById('loginErr'); err.textContent='';
   try{
@@ -197,10 +199,8 @@ function table(cols,rows){
     rows.map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
 }
 
-// default API base = same origin when served over http(s), else localhost
+// restore session if present
 (function(){
-  var def = location.protocol.indexOf('http')===0 ? location.origin+'/api/v1' : 'http://localhost:8000/api/v1';
-  document.getElementById('api').value = def;
   const s=localStorage.getItem('cc_admin');if(s){try{const o=JSON.parse(s);API=o.API;TOKEN=o.TOKEN;enter();}catch(e){}}
 })();
 </script>
