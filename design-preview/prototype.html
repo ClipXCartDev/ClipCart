@@ -1,0 +1,1877 @@
+<style>
+:root{
+  --bg:#F4F2FB; --bg-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#FAF9FF; --panel:#F0EEF9;
+  --border:#E7E4F2; --border-2:#EEECF6; --hair:rgba(20,10,40,.06);
+  --text:#140B2E; --text-2:#5C5470; --text-3:#9A93AD;
+  --accent:#7B61FF; --accent-press:#6249E0; --accent-weak:rgba(123,97,255,.10); --accent-line:rgba(123,97,255,.22);
+  --pink:#FF4D8D; --cyan:#12C7E0; --lime:#84CC16; --amber:#FBBF24; --coral:#FF7849; --violet2:#9B5CFF;
+  --premium:#E4C05C; --premium-weak:rgba(228,192,92,.18);
+  --success:#20C997; --success-weak:rgba(32,201,151,.14); --warning:#F59E0B; --danger:#F43F5E; --danger-weak:rgba(244,63,94,.12); --info:#3B9EFF;
+  --grad:linear-gradient(135deg,#7B61FF,#FF4D8D);
+  --grad-2:linear-gradient(135deg,#9B5CFF,#12C7E0);
+  --grad-hot:linear-gradient(135deg,#FF7849,#FF4D8D);
+  --grad-soft:linear-gradient(135deg,rgba(123,97,255,.16),rgba(255,77,141,.12));
+  --mesh:
+    radial-gradient(600px 400px at 6% 0%,rgba(123,97,255,.18),transparent 60%),
+    radial-gradient(560px 380px at 98% 4%,rgba(255,77,141,.16),transparent 58%),
+    radial-gradient(500px 360px at 60% 100%,rgba(18,199,224,.12),transparent 60%);
+  --shadow-sm:0 1px 2px rgba(20,11,46,.06);
+  --shadow:0 3px 10px rgba(20,11,46,.06),0 14px 34px -10px rgba(20,11,46,.14);
+  --shadow-lg:0 34px 80px -30px rgba(20,11,46,.5);
+  --glow:0 10px 26px rgba(123,97,255,.4);
+  --glow-pink:0 10px 26px rgba(255,77,141,.4);
+  --bezel:linear-gradient(160deg,#2a2733,#0c0a12); --island:#060409; --frameline:rgba(255,255,255,.1);
+  --display:'Arial Black','Segoe UI',system-ui,sans-serif;
+  --impact:Impact,'Haettenschweiler','Arial Narrow Bold','Arial Black',sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A0713; --bg-2:#100B1E; --surface:#160F27; --surface-2:#1A1230; --panel:#211838;
+  --border:#2C2148; --border-2:#241a3d; --hair:rgba(255,255,255,.06);
+  --text:#F5F1FF; --text-2:#B0A6C8; --text-3:#6E6488;
+  --accent-weak:rgba(123,97,255,.22); --accent-line:rgba(123,97,255,.4); --premium-weak:rgba(228,192,92,.15); --success-weak:rgba(32,201,151,.18); --danger-weak:rgba(244,63,94,.2);
+  --grad-soft:linear-gradient(135deg,rgba(123,97,255,.3),rgba(255,77,141,.18));
+  --mesh:
+    radial-gradient(680px 460px at 4% -2%,rgba(123,97,255,.34),transparent 60%),
+    radial-gradient(620px 420px at 100% 2%,rgba(255,77,141,.26),transparent 56%),
+    radial-gradient(560px 400px at 62% 102%,rgba(18,199,224,.2),transparent 60%);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow:0 3px 12px rgba(0,0,0,.5),0 18px 44px -12px rgba(0,0,0,.7);
+  --shadow-lg:0 40px 90px -30px rgba(0,0,0,.9);
+  --bezel:linear-gradient(160deg,#2c2740,#000); --frameline:rgba(255,255,255,.08);
+}}
+:root[data-theme="dark"]{
+  --bg:#0A0713; --bg-2:#100B1E; --surface:#160F27; --surface-2:#1A1230; --panel:#211838;
+  --border:#2C2148; --border-2:#241a3d; --hair:rgba(255,255,255,.06);
+  --text:#F5F1FF; --text-2:#B0A6C8; --text-3:#6E6488;
+  --accent-weak:rgba(123,97,255,.22); --accent-line:rgba(123,97,255,.4); --premium-weak:rgba(228,192,92,.15); --success-weak:rgba(32,201,151,.18); --danger-weak:rgba(244,63,94,.2);
+  --grad-soft:linear-gradient(135deg,rgba(123,97,255,.3),rgba(255,77,141,.18));
+  --mesh:
+    radial-gradient(680px 460px at 4% -2%,rgba(123,97,255,.34),transparent 60%),
+    radial-gradient(620px 420px at 100% 2%,rgba(255,77,141,.26),transparent 56%),
+    radial-gradient(560px 400px at 62% 102%,rgba(18,199,224,.2),transparent 60%);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  --shadow:0 3px 12px rgba(0,0,0,.5),0 18px 44px -12px rgba(0,0,0,.7);
+  --shadow-lg:0 40px 90px -30px rgba(0,0,0,.9);
+  --bezel:linear-gradient(160deg,#2c2740,#000); --frameline:rgba(255,255,255,.08);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important}}
+body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.5;letter-spacing:-.006em}
+.ic{width:20px;height:20px;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:16px;height:16px}
+.mono{font-variant-numeric:tabular-nums}
+.wrap{max-width:1300px;margin:0 auto;padding:40px 24px 120px}
+.impact{font-family:var(--impact);text-transform:uppercase;color:#fff;-webkit-text-stroke:1.4px #000;paint-order:stroke fill;text-shadow:2px 2px 0 rgba(0,0,0,.55);letter-spacing:.4px;line-height:.92;font-weight:400}
+
+/* ===== masthead — bold ===== */
+.masthead{position:relative;border-radius:30px;overflow:hidden;padding:38px 36px;background:linear-gradient(120deg,#120a26,#241147 55%,#3a1240);color:#fff;box-shadow:var(--shadow-lg)}
+.masthead::before{content:"";position:absolute;inset:0;background:radial-gradient(500px 300px at 10% -10%,rgba(123,97,255,.6),transparent 60%),radial-gradient(460px 280px at 96% 0%,rgba(255,77,141,.5),transparent 58%),radial-gradient(420px 300px at 70% 120%,rgba(18,199,224,.4),transparent 60%)}
+.masthead>*{position:relative;z-index:2}
+.mh-top{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:15px}
+.brandmark{width:54px;height:54px;border-radius:17px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:var(--glow-pink);position:relative;transform:rotate(-6deg)}
+.brandmark .ic{stroke-width:2.2;width:28px;height:28px}
+.brand h1{font-family:var(--display);font-size:34px;letter-spacing:-.03em;margin:0;line-height:1}
+.brand .tagbig{font-size:13px;color:rgba(255,255,255,.8);margin-top:6px;font-weight:600}
+.pill-live{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);padding:7px 13px;border-radius:999px}
+.pill-live .blip{width:7px;height:7px;border-radius:50%;background:#84CC16;box-shadow:0 0 0 0 rgba(132,204,22,.7);animation:blip 1.6s infinite}
+@keyframes blip{0%{box-shadow:0 0 0 0 rgba(132,204,22,.6)}70%{box-shadow:0 0 0 7px rgba(132,204,22,0)}100%{box-shadow:0 0 0 0 rgba(132,204,22,0)}}
+.mh-tagline{margin-top:26px;font-family:var(--display);font-size:40px;line-height:1.02;letter-spacing:-.03em;max-width:20ch}
+.mh-tagline em{font-style:normal;background:linear-gradient(120deg,#FFD86B,#FF4D8D 60%,#12C7E0);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mh-sub{margin-top:14px;color:rgba(255,255,255,.82);font-size:15px;max-width:56ch;line-height:1.6}
+.mh-stickers{position:absolute;inset:0;z-index:1;pointer-events:none}
+.stk{position:absolute;font-size:40px;filter:drop-shadow(0 8px 14px rgba(0,0,0,.4));animation:float 6s ease-in-out infinite}
+.stk:nth-child(2){animation-delay:-2s}.stk:nth-child(3){animation-delay:-4s}.stk:nth-child(4){animation-delay:-1s}
+@keyframes float{0%,100%{transform:translateY(0) rotate(var(--r,0deg))}50%{transform:translateY(-12px) rotate(var(--r,0deg))}}
+.themebtn{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;border-radius:999px;padding:11px 18px;font-size:13px;font-weight:800;cursor:pointer;display:flex;gap:8px;align-items:center;backdrop-filter:blur(6px)}
+.themebtn:hover{background:rgba(255,255,255,.18)}.themebtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px 20px;margin:22px 2px 6px;font-size:12.5px;color:var(--text-2);align-items:center}
+.legend b{color:var(--text)}
+.chipdot{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-weight:700;box-shadow:var(--shadow-sm)}
+.chipdot i{width:12px;height:12px;border-radius:4px;display:block}
+
+/* ===== platform ===== */
+.platform{margin-top:58px}
+.platform-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.platform-head h2{font-family:var(--display);font-size:26px;letter-spacing:-.02em;margin:0}
+.platform-head .count{font-size:11.5px;color:var(--text-2);font-weight:800;padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface)}
+.platform-sub{color:var(--text-2);font-size:14.5px;margin:0 0 30px;max-width:76ch}
+.rail{display:flex;flex-wrap:wrap;gap:48px 38px}
+.figure{display:flex;flex-direction:column;gap:14px}
+.caption{font-size:12.5px;color:var(--text-2);max-width:330px}
+.caption b{color:var(--text);font-weight:800}
+.caption .id{color:#fff;font-weight:800;font-size:11px;letter-spacing:.04em;background:var(--grad);border-radius:7px;padding:2px 8px;margin-right:7px}
+
+/* ===== phone ===== */
+.phone{width:330px;background:var(--bezel);border-radius:48px;padding:12px;box-shadow:var(--shadow-lg),0 0 0 1px var(--frameline),inset 0 1px 1px rgba(255,255,255,.16)}
+.phone .screen{position:relative;width:100%;height:686px;background:var(--bg-2);border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:108px;height:28px;background:var(--island);border-radius:999px;z-index:40}
+.statusbar{height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:15px 24px 0;font-size:13px;font-weight:800}
+.statusbar .r{display:flex;gap:6px;align-items:center}.statusbar .r .ic{width:16px;height:16px;stroke-width:2.4}
+.pbody{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.pscroll{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+
+/* ===== atoms ===== */
+.wordmark{display:flex;align-items:center;gap:10px;font-family:var(--display);letter-spacing:-.02em;font-size:19px}
+.wm-badge{width:30px;height:30px;border-radius:10px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:var(--glow-pink);transform:rotate(-6deg)}
+.wm-badge .ic{width:17px;height:17px;stroke-width:2.4}
+.appbar{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;gap:10px}
+.appbar .title{font-family:var(--display);font-size:20px;letter-spacing:-.02em}
+.iconbtn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--text-2);position:relative;border:1px solid transparent}
+.iconbtn.filled{background:var(--surface);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.dot{position:absolute;top:6px;right:7px;width:8px;height:8px;border-radius:50%;background:var(--pink);border:2px solid var(--surface)}
+.h-title{font-family:var(--display);font-size:22px;letter-spacing:-.02em}
+.muted{color:var(--text-2)}.tiny{font-size:11.5px}.t3{color:var(--text-3)}
+
+.btn{border:0;border-radius:15px;font:inherit;font-weight:800;font-size:14.5px;padding:14px 18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;position:relative}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:var(--glow)}
+.btn-primary::after{content:"";position:absolute;inset:0;border-radius:15px;box-shadow:inset 0 1px 1px rgba(255,255,255,.45)}
+.btn-hot{background:var(--grad-hot);color:#fff;box-shadow:var(--glow-pink)}
+.btn-dark{background:#0c0912;color:#fff}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:9px 15px;font-size:13px;border-radius:12px;width:auto}
+.btn-lg{padding:16px;font-size:15px}
+
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:800;color:var(--text-2);margin-bottom:7px}
+.input{height:50px;border:1px solid var(--border);background:var(--surface);border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--text-3);font-size:14px;box-shadow:var(--shadow-sm)}
+.input.focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-weak)}.input .val{color:var(--text);font-weight:500}
+
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:9px 15px;font-size:12.5px;font-weight:800;color:var(--text-2);white-space:nowrap;box-shadow:var(--shadow-sm);display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--text);border-color:var(--text);color:var(--bg-2)}
+.chip.hot{background:var(--grad-hot);border-color:transparent;color:#fff;box-shadow:var(--glow-pink)}
+.chip.soft{background:var(--accent-weak);border-color:transparent;color:var(--accent);box-shadow:none}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 10px;font-size:10.5px;font-weight:900;letter-spacing:.02em;text-transform:uppercase}
+.badge .ic{width:12px;height:12px;stroke-width:2.6}
+.badge-premium{background:linear-gradient(135deg,#FFE082,#E0A016);color:#3a2c05}
+.badge-free{background:linear-gradient(135deg,#A3E635,#22C55E);color:#08300f}
+.badge-active{background:var(--success-weak);color:#0c7a5b}
+:root[data-theme="dark"] .badge-active{color:#3ee6b0}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .badge-active{color:#3ee6b0}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow-sm)}
+.sectpad{padding:0 18px}
+
+/* ===== MEME CARD ===== */
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:14px 18px 18px}
+.mcard{border-radius:18px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);transition:transform .16s,box-shadow .16s;cursor:pointer}
+.mcard:hover{transform:translateY(-4px) rotate(-.5deg);box-shadow:var(--shadow-lg)}
+.mcard.pressed{transform:scale(.96)}
+.meme{aspect-ratio:1/1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 8px;text-align:center;overflow:hidden}
+.meme .subj{font-size:44px;line-height:1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.3));z-index:1}
+.meme .impact{font-size:15px;z-index:2;max-width:100%}
+.meme .badgewrap{position:absolute;top:8px;left:8px;z-index:4}
+.meme .play{position:absolute;top:8px;right:8px;z-index:4;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.24);backdrop-filter:blur(4px);display:grid;place-items:center}
+.meme .play .ic{fill:#fff;stroke:#fff;width:12px;height:12px;margin-left:1px}
+.meme .dur{position:absolute;bottom:8px;right:8px;z-index:4;background:rgba(0,0,0,.55);color:#fff;border-radius:7px;padding:2px 7px;font-size:9.5px;font-weight:800}
+.meme .lock{position:absolute;inset:0;z-index:5;background:rgba(8,4,16,.5);backdrop-filter:blur(2px);display:grid;place-items:center;color:#fff}
+.mmeta{padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+.mmeta .nm{font-size:12.5px;font-weight:800}.mmeta .tcat{font-size:9.5px;font-weight:900;color:var(--accent);background:var(--accent-weak);padding:3px 8px;border-radius:999px;text-transform:uppercase}
+.m1{background:linear-gradient(150deg,#7B61FF,#FF4D8D)}.m2{background:linear-gradient(150deg,#12C7E0,#7B61FF)}
+.m3{background:linear-gradient(150deg,#FBBF24,#FF7849)}.m4{background:linear-gradient(150deg,#84CC16,#12C7E0)}
+.m5{background:linear-gradient(150deg,#FF4D8D,#FF7849)}.m6{background:linear-gradient(150deg,#3B9EFF,#9B5CFF)}
+.m7{background:linear-gradient(150deg,#F43F5E,#7B2ff7)}.m8{background:linear-gradient(150deg,#0f2027,#414345)}
+
+/* discover feed */
+.hotcard{margin:0 18px;border-radius:22px;overflow:hidden;position:relative;height:150px;display:flex;align-items:flex-end;padding:16px;color:#fff;box-shadow:var(--shadow)}
+.hotcard::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent,rgba(0,0,0,.4))}
+.hotcard .stkbig{position:absolute;top:-6px;right:8px;font-size:76px;filter:drop-shadow(0 8px 14px rgba(0,0,0,.4))}
+.hotcard .z{position:relative;z-index:2}
+.rowh{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px}
+.rowh .t{font-family:var(--display);font-size:16px;letter-spacing:-.01em}
+.rowh .s{font-size:12px;font-weight:800;color:var(--accent)}
+.hscroll{display:flex;gap:12px;overflow:hidden;padding:2px 18px 4px}
+.hscroll .mini{width:120px;flex:none;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);border:1px solid var(--border)}
+.hscroll .mini .meme{aspect-ratio:4/5}
+
+.bnav{height:70px;flex:none;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-around;padding-bottom:6px;position:relative}
+.bnav a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;font-weight:800;color:var(--text-3)}
+.bnav a.on{color:var(--accent)}.bnav a .ic{width:23px;height:23px}
+.bnav .fab{width:54px;height:54px;border-radius:18px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:var(--glow);margin-top:-22px;transform:rotate(-4deg)}
+.bnav .fab .ic{width:26px;height:26px;stroke-width:2.4}
+
+/* editor */
+.frow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--border-2)}
+.frow .lbl{display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:800}
+.frow .lbl .ic{color:var(--accent)}
+.seg{display:flex;background:var(--panel);border-radius:11px;padding:3px;gap:2px}
+.seg span{font-size:12px;font-weight:800;padding:6px 11px;border-radius:8px;color:var(--text-2)}
+.seg span.on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow-sm)}
+.swrow{display:flex;gap:8px}.sw{width:24px;height:24px;border-radius:8px;border:2px solid transparent;box-shadow:inset 0 0 0 1px var(--hair)}.sw.on{border-color:var(--text)}
+.toggle{width:44px;height:26px;border-radius:999px;background:var(--success);position:relative}
+.toggle::after{content:"";position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle.off{background:var(--border)}.toggle.off::after{left:2px;right:auto}
+.minival{font-size:13px;color:var(--text-3);font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sheet{background:var(--surface);border-radius:26px 26px 0 0;box-shadow:0 -14px 36px -14px rgba(0,0,0,.3);border-top:1px solid var(--border);position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.grabber{width:40px;height:5px;border-radius:99px;background:var(--border);margin:11px auto 2px}
+.sheet-tabs{display:flex;gap:7px;padding:8px 18px;overflow:hidden}
+.sheet-tab{font-size:12px;font-weight:800;padding:9px 14px;border-radius:12px;color:var(--text-2);background:var(--panel);display:inline-flex;gap:6px;align-items:center}
+.sheet-tab.on{background:var(--grad);color:#fff;box-shadow:var(--glow)}
+
+.previewbox{border-radius:20px;overflow:hidden;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;color:#fff;text-align:center;box-shadow:0 16px 34px -14px rgba(0,0,0,.45);padding:16px 12px}
+.previewbox .subj{font-size:60px;line-height:1;filter:drop-shadow(0 8px 12px rgba(0,0,0,.35))}
+.logo-chip{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.92);color:#111;border-radius:9px;padding:4px 9px;font-size:10px;font-weight:900;z-index:3}
+.bar{height:10px;border-radius:999px;background:var(--panel);overflow:hidden}.bar>i{display:block;height:100%;border-radius:999px;background:var(--grad)}
+
+.lrow{display:flex;align-items:center;gap:13px;padding:14px 0;border-bottom:1px solid var(--border-2)}.lrow:last-child{border-bottom:0}
+.licon{width:42px;height:42px;border-radius:13px;background:var(--panel);display:grid;place-items:center;color:var(--text-2);flex:none}
+.lrow .g{flex:1;min-width:0}.lrow .g .t{font-size:14px;font-weight:800}.lrow .g .s{font-size:11.5px;color:var(--text-3);margin-top:1px}
+.plan-badge{background:var(--grad);border-radius:22px;padding:20px;color:#fff;box-shadow:var(--glow);position:relative;overflow:hidden}
+.plan-badge::before{content:"😎";position:absolute;top:-14px;right:-6px;font-size:80px;opacity:.25}
+.notif-unread{background:var(--accent-weak);margin:0 -18px;padding:14px 18px}
+
+.footnote{margin-top:70px;padding:26px 30px;border-radius:22px;background:linear-gradient(120deg,#160f27,#2a1348);color:rgba(255,255,255,.85);font-size:13px;text-align:center;line-height:1.75}
+.footnote b{color:#fff}
+@media (max-width:520px){.wrap{padding:24px 12px 70px}.masthead{padding:26px 20px}.mh-tagline{font-size:30px}}
+
+/* ===== web (landing/pricing taste) ===== */
+.browser{width:920px;max-width:100%;border-radius:20px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-lg)}
+.browserbar{height:48px;display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--border)}
+.tl{display:flex;gap:7px}.tl i{width:11px;height:11px;border-radius:50%;display:block}
+.urlbar{flex:1;max-width:380px;height:30px;border-radius:9px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12px;color:var(--text-3)}
+.bbody{height:600px;overflow:hidden;background:var(--bg-2);position:relative}
+.wnav{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;border-bottom:1px solid var(--border);background:var(--surface);position:relative;z-index:5}
+.wnav .links{display:flex;gap:22px;align-items:center;font-size:13.5px;font-weight:800;color:var(--text-2)}
+.whero{padding:44px 40px 20px;text-align:center;position:relative;overflow:hidden}
+.whero::before{content:"";position:absolute;inset:0;background:var(--mesh)}
+.whero>*{position:relative;z-index:1}
+.whero .kick{display:inline-flex;gap:8px;align-items:center;font-size:11.5px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding:7px 14px;border:1px solid var(--accent-line);border-radius:999px;background:var(--surface);margin-bottom:18px}
+.whero h3{font-family:var(--display);font-size:50px;line-height:1;letter-spacing:-.035em;margin:0 auto 14px;max-width:16ch}
+.whero h3 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.whero p{color:var(--text-2);font-size:15.5px;max-width:52ch;margin:0 auto 22px;line-height:1.6}
+.wcta{display:flex;gap:12px;justify-content:center}.wcta .btn{width:auto;padding:15px 26px}
+.memerow{display:flex;gap:15px;justify-content:center;align-items:flex-end;padding:14px 40px 40px}
+.memerow .mm{width:120px;height:150px;border-radius:18px;overflow:hidden;box-shadow:var(--shadow-lg);flex:none}
+.memerow .mm:nth-child(1){transform:translateY(8px) rotate(-5deg)}
+.memerow .mm:nth-child(3){transform:translateY(-16px) scale(1.08)}
+.memerow .mm:nth-child(5){transform:translateY(8px) rotate(5deg)}
+.section-h{text-align:center;padding:30px 0 4px}
+.section-h .kick{font-size:11.5px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.section-h h3{font-family:var(--display);font-size:30px;letter-spacing:-.025em;margin:9px 0 0}
+.pricewrap{padding:24px 44px 16px;display:flex;gap:20px;justify-content:center;align-items:stretch}
+.plan{flex:1;max-width:290px;border:1px solid var(--border);border-radius:22px;padding:26px;background:var(--surface);display:flex;flex-direction:column;box-shadow:var(--shadow-sm)}
+.plan.free{border-color:var(--lime)}
+.plan.feat{border-color:var(--accent);box-shadow:0 18px 44px -14px rgba(123,97,255,.55);position:relative}
+.plan.feat::before{content:"🔥 POPULAR";position:absolute;top:-12px;left:24px;background:var(--grad-hot);color:#fff;font-size:10px;font-weight:900;letter-spacing:.08em;padding:6px 12px;border-radius:999px;box-shadow:var(--glow-pink)}
+.plan .pn{font-size:13px;font-weight:900;color:var(--text-2);text-transform:uppercase;letter-spacing:.07em}
+.plan .amt{font-family:var(--display);font-size:38px;letter-spacing:-.03em;margin:10px 0 2px}
+.plan .amt span{font-size:14px;font-weight:700;color:var(--text-3)}
+.plan ul{list-style:none;padding:0;margin:18px 0 22px;display:flex;flex-direction:column;gap:11px}
+.plan li{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--text-2)}.plan li .ic{color:var(--success);width:18px;height:18px;flex:none}
+.plan .btn{margin-top:auto}.ph{color:var(--text-3);font-weight:800;font-style:italic}
+
+/* web auth / account / tables / checkout */
+.wauth{display:grid;place-items:center;height:100%;padding:26px}.wauthcard{width:404px;max-width:100%}
+.wpage{padding:28px 40px;height:100%;overflow:hidden}
+.wgrid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);padding:11px 14px;border-bottom:1px solid var(--border)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--border-2);color:var(--text-2)}
+.tbl td b{color:var(--text);font-weight:700}.tbl tr:last-child td{border-bottom:0}
+.pill{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
+.pill.ok{background:var(--success-weak);color:#0c7a5b}.pill.warn{background:rgba(245,158,11,.16);color:#a5741d}.pill.info{background:rgba(59,158,255,.16);color:#2b6fd0}
+:root[data-theme="dark"] .pill.ok{color:#3ee6b0}:root[data-theme="dark"] .pill.info{color:#7bb4ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.ok{color:#3ee6b0}:root:not([data-theme="light"]) .pill.info{color:#7bb4ff}}
+.cowrap{padding:34px;display:grid;place-items:center;height:100%}.cocard{width:432px;max-width:100%}
+.cohead{padding:22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.cobody{padding:22px}
+.sumrow{display:flex;justify-content:space-between;font-size:14px;padding:9px 0;color:var(--text-2)}
+.sumrow.total{border-top:1px solid var(--border);margin-top:8px;padding-top:14px;font-weight:800;color:var(--text);font-size:17px}
+.waiting{display:flex;align-items:center;gap:11px;margin-top:16px;padding:13px 15px;border-radius:14px;background:var(--panel);font-size:12.5px;color:var(--text-2)}
+.spin{width:17px;height:17px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--accent);animation:sp 1s linear infinite;flex:none}
+.binance{width:24px;height:24px;border-radius:7px;background:#F0B90B;display:grid;place-items:center;color:#181A20;font-weight:900;font-size:13px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.successmark{width:78px;height:78px;border-radius:50%;background:var(--success-weak);display:grid;place-items:center;margin:0 auto 16px;font-size:38px}
+.av{width:32px;height:32px;border-radius:10px;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+
+/* admin */
+.admin{display:flex;height:100%}
+.side{width:220px;flex:none;background:var(--surface);border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:3px}
+.side .brandrow{padding:8px 10px 18px}
+.side a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;font-size:13px;font-weight:800;color:var(--text-2)}
+.side a .ic{width:18px;height:18px;color:var(--text-3)}
+.side a.on{background:var(--accent-weak);color:var(--accent)}.side a.on .ic{color:var(--accent)}
+.side .grow{flex:1}
+.content{flex:1;overflow:hidden;padding:24px 26px;background:var(--bg-2)}
+.chead{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.chead h4{font-family:var(--display);font-size:21px;letter-spacing:-.02em;margin:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat{border:1px solid var(--border);border-radius:18px;padding:16px 17px;background:var(--surface);box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.stat .k{font-size:11px;font-weight:900;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:7px}
+.stat .v{font-family:var(--display);font-size:26px;letter-spacing:-.02em;margin-top:9px}
+.stat .d{font-size:11.5px;font-weight:800;margin-top:4px}.stat .up{color:var(--success)}
+.stat .emoji{position:absolute;right:10px;bottom:6px;font-size:30px;opacity:.25}
+.panelbox{border:1px solid var(--border);border-radius:18px;background:var(--surface);overflow:hidden;box-shadow:var(--shadow-sm)}
+.panelbox .ph2{padding:14px 16px;border-bottom:1px solid var(--border);font-weight:800;font-size:13.5px;color:var(--text);display:flex;justify-content:space-between;align-items:center}
+.tmini{width:44px;height:44px;border-radius:11px;flex:none;overflow:hidden;box-shadow:var(--shadow-sm)}
+.tmini .meme{aspect-ratio:1/1;padding:3px}.tmini .meme .subj{font-size:20px}.tmini .meme .impact{font-size:6px}
+.earn{font-family:var(--display);background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rolebadge{font-size:10px;font-weight:900;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.03em}
+.role-admin{background:var(--accent-weak);color:var(--accent)}
+.role-editor{background:rgba(59,158,255,.16);color:#2b6fd0}
+:root[data-theme="dark"] .role-editor{color:#7bb4ff}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .role-editor{color:#7bb4ff}}
+.earncard{background:linear-gradient(135deg,#160f27,#3a1240);color:#fff;border-radius:20px;padding:20px;position:relative;overflow:hidden;box-shadow:var(--glow)}
+.earncard::before{content:"💰";position:absolute;top:-12px;right:-2px;font-size:74px;opacity:.22}
+.upbox{border:1.5px dashed var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text-3);font-size:12px;font-weight:700;text-align:center;background:var(--surface-2)}
+.cfgrow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border-2)}
+.cfgrow:last-child{border-bottom:0}
+
+/* =========================================================
+   MATURE ENTERTAINMENT RE-THEME (overrides everything above)
+   ========================================================= */
+:root{
+  --bg:#F4F3F8; --bg-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#FAFAFC; --panel:#EFEEF5;
+  --border:#E5E4EE; --border-2:#EDECF3; --hair:rgba(18,16,38,.06);
+  --text:#141122; --text-2:#565367; --text-3:#948FA6;
+  --accent:#7B61FF; --accent-2:#A78BFA; --accent-press:#6249E0; --accent-weak:rgba(123,97,255,.10); --accent-line:rgba(123,97,255,.20);
+  --pink:#7B61FF; --cyan:#5B8DEF; --lime:#22B07D;
+  --premium:#E9B949; --premium-2:#C9971F; --premium-weak:rgba(233,185,73,.16);
+  --success:#22B07D; --success-weak:rgba(34,176,125,.13); --warning:#E0A93B; --danger:#E5484D; --danger-weak:rgba(229,72,77,.12); --info:#5B8DEF;
+  --grad:linear-gradient(135deg,#7B61FF,#5A57F0);
+  --grad-2:linear-gradient(135deg,#7B61FF,#A78BFA);
+  --grad-hot:linear-gradient(135deg,#7B61FF,#5A57F0);
+  --grad-soft:linear-gradient(135deg,rgba(123,97,255,.12),rgba(90,87,240,.08));
+  --mesh:radial-gradient(720px 460px at 6% -4%,rgba(123,97,255,.10),transparent 60%),radial-gradient(620px 420px at 100% 0%,rgba(90,87,240,.07),transparent 58%);
+  --glow:0 8px 22px rgba(123,97,255,.26); --glow-pink:0 8px 22px rgba(123,97,255,.26);
+  --display:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+  --impact:'Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0A0912; --bg-2:#0F0D1A; --surface:#151321; --surface-2:#191627; --panel:#1E1B2C;
+  --border:#2A2740; --border-2:#232035; --hair:rgba(255,255,255,.06);
+  --text:#F2F0FA; --text-2:#A7A1BC; --text-3:#6B6584;
+  --accent-weak:rgba(123,97,255,.20); --accent-line:rgba(123,97,255,.34); --premium-weak:rgba(233,185,73,.14); --success-weak:rgba(34,176,125,.18); --danger-weak:rgba(229,72,77,.2);
+  --grad-soft:linear-gradient(135deg,rgba(123,97,255,.22),rgba(90,87,240,.12));
+  --mesh:radial-gradient(780px 480px at 4% -2%,rgba(123,97,255,.22),transparent 60%),radial-gradient(660px 440px at 100% 2%,rgba(90,87,240,.13),transparent 56%);
+}}
+:root[data-theme="dark"]{
+  --bg:#0A0912; --bg-2:#0F0D1A; --surface:#151321; --surface-2:#191627; --panel:#1E1B2C;
+  --border:#2A2740; --border-2:#232035; --hair:rgba(255,255,255,.06);
+  --text:#F2F0FA; --text-2:#A7A1BC; --text-3:#6B6584;
+  --accent-weak:rgba(123,97,255,.20); --accent-line:rgba(123,97,255,.34); --premium-weak:rgba(233,185,73,.14); --success-weak:rgba(34,176,125,.18); --danger-weak:rgba(229,72,77,.2);
+  --grad-soft:linear-gradient(135deg,rgba(123,97,255,.22),rgba(90,87,240,.12));
+  --mesh:radial-gradient(780px 480px at 4% -2%,rgba(123,97,255,.22),transparent 60%),radial-gradient(660px 440px at 100% 2%,rgba(90,87,240,.13),transparent 56%);
+}
+
+/* refined display type, no meme font */
+.brand h1,.platform-head h2,.h-title,.chead h4,.stat .v,.whero h3,.hero h3,.plan .amt,.appbar .title,.wordmark,.mh-tagline{font-family:var(--display);font-weight:800;letter-spacing:-.022em}
+
+/* remove all playful noise */
+.mh-stickers{display:none}
+.subj{display:none}
+.hotcard .stkbig{display:none}
+.plan-badge::before,.earncard::before{display:none}
+.brandmark,.wm-badge{transform:none}
+.mcard:hover{transform:translateY(-4px)}
+.masthead .stk{display:none}
+
+/* clip posters — cinematic, not meme */
+.impact{font-family:var(--display);-webkit-text-stroke:0;paint-order:normal;text-shadow:0 1px 10px rgba(0,0,0,.45);text-transform:uppercase;letter-spacing:.03em;font-weight:800;opacity:.97}
+.meme{justify-content:flex-end}
+.meme::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.42)),radial-gradient(140px 100px at 50% 34%,rgba(255,255,255,.10),transparent 62%);z-index:0}
+.meme>*{position:relative;z-index:1}
+.meme .play{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28)}
+.previewbox .impact{font-family:var(--display)}
+
+/* cinematic duotone poster gradients */
+.m1{background:linear-gradient(150deg,#4B3A86,#1C1637)}
+.m2{background:linear-gradient(150deg,#1B5566,#0C2230)}
+.m3{background:linear-gradient(150deg,#7A3352,#2A1128)}
+.m4{background:linear-gradient(150deg,#215C4C,#0E2823)}
+.m5{background:linear-gradient(150deg,#7C4A2C,#2C1712)}
+.m6{background:linear-gradient(150deg,#3A3E8C,#161636)}
+.m7{background:linear-gradient(150deg,#5A2742,#180E22)}
+.m8{background:linear-gradient(150deg,#26384B,#0E1620)}
+
+/* masthead — refined, cinematic, single-accent */
+.masthead{background:linear-gradient(120deg,#120F22,#221A40 60%,#171233)}
+.masthead::before{background:radial-gradient(520px 320px at 12% -12%,rgba(123,97,255,.45),transparent 60%),radial-gradient(460px 300px at 96% 0%,rgba(90,87,240,.34),transparent 58%)}
+.mh-tagline em{background:linear-gradient(120deg,#CBBEFF,#8B72FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brandmark{background:var(--grad);box-shadow:var(--glow)}
+.pill-live .blip{background:#A78BFA;box-shadow:0 0 0 0 rgba(167,139,250,.6)}
+
+/* single-accent everywhere (kill hot-pink) */
+.btn-hot,.chip.hot,.plan.feat::before,.bnav .fab,.wm-badge{background:var(--grad)}
+.btn-hot{box-shadow:var(--glow)}
+.plan.feat::before{content:"POPULAR";box-shadow:var(--glow)}
+.plan.free{border-color:var(--border)}
+.dot{background:var(--accent)}
+.badge-premium{background:linear-gradient(135deg,#F0D98A,#D3A32E)}
+.badge-free{background:linear-gradient(135deg,#5EC6A0,#22B07D);color:#04281c}
+
+/* calmer cards & chrome */
+.tcard:hover,.mcard:hover{box-shadow:var(--shadow-lg)}
+.whero h3 em,.hero h3 em{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* review video player + review detail */
+.player{border-radius:16px;overflow:hidden;position:relative;aspect-ratio:16/10;display:grid;place-items:center}
+.player .pbtn{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(8px);display:grid;place-items:center;border:1px solid rgba(255,255,255,.32);cursor:pointer}
+.player .pbtn .ic{fill:#fff;stroke:#fff;width:24px;margin-left:4px}
+.player .wm{position:absolute;top:10px;right:10px;font-size:10px;font-weight:800;color:#fff;background:rgba(0,0,0,.42);padding:3px 8px;border-radius:6px;letter-spacing:.05em}
+.player .ctrl{position:absolute;left:0;right:0;bottom:0;padding:12px;display:flex;align-items:center;gap:11px;background:linear-gradient(0deg,rgba(0,0,0,.68),transparent)}
+.player .ctrl .ic{color:#fff;width:16px;height:16px}
+.track{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.28);position:relative}
+.track>i{position:absolute;left:0;top:0;bottom:0;width:34%;background:var(--accent);border-radius:2px}
+.track>i::after{content:"";position:absolute;right:-5px;top:-3px;width:10px;height:10px;border-radius:50%;background:#fff}
+.tm{color:#fff;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.metagrid{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;font-size:12.5px;align-items:center}
+.metagrid .k{color:var(--text-3);font-weight:800;text-transform:uppercase;font-size:10px;letter-spacing:.04em}
+.metagrid .v{color:var(--text);font-weight:600}
+.reviewnote{width:100%;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);padding:11px 13px;font-size:12.5px;color:var(--text-3)}
+.pager{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:var(--text-2)}
+.pager .nav{width:28px;height:28px;border-radius:9px;border:1px solid var(--border);display:grid;place-items:center;color:var(--text-2);background:var(--surface)}
+.upnext{display:flex;gap:8px;margin-top:14px;overflow:hidden}
+.upnext .u{display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:6px 10px;background:var(--surface);font-size:12px;font-weight:700}
+
+/* ===== modern polish (global, safe) ===== */
+.card,.panelbox{border-radius:20px}
+.browser{border-radius:22px}
+.stat{border-radius:20px;overflow:hidden}
+.stat::before{content:"";position:absolute;left:0;top:0;height:3px;width:56%;background:linear-gradient(90deg,var(--accent),transparent);opacity:.55}
+.mcard,.tcard{border-radius:18px}
+.chip,.input{border-radius:13px}
+.btn{border-radius:14px}
+.card{transition:box-shadow .18s ease,transform .18s ease}
+.panelbox .ph2{letter-spacing:-.01em}
+.filtergroup{padding:14px 0;border-bottom:1px solid var(--border-2)}
+.filtergroup:last-child{border-bottom:0}
+.filtergroup .gh{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:10px}
+.filtergroup .chips{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ===== QA + dev visual fixes ===== */
+.stat .emoji{display:none}                    /* remove leftover meme emojis on dashboard tiles */
+.btn{padding:12px 17px}                        /* less chunky */
+.btn-lg{padding:14px}
+.btn-sm{padding:9px 14px}
+.chip{padding:8px 13px}
+.btn-primary,.btn-hot{box-shadow:0 6px 16px rgba(123,97,255,.22)}   /* softer glow, not oversized */
+.brandmark,.wm-badge,.bnav .fab{box-shadow:0 6px 16px rgba(123,97,255,.24)}
+/* Discover: fit hotcard + 3 rows without clipping */
+.hotcard{height:116px}
+.hscroll .mini{width:104px}
+.hscroll .mini .meme{aspect-ratio:1/1}
+.rowh{padding:12px 18px 4px}
+.hscroll{padding-top:0}
+/* clip posters: title bottom-left, duration pill bottom-right (no overlap) */
+.meme{align-items:stretch}
+.meme .impact{text-align:left;padding-right:36px}
+.meme .dur{z-index:5}
+/* tidy meta rows */
+.metagrid{align-items:start}
+.lrow .g .t{line-height:1.25}
+/* fix: Discover mini poster titles were clipping — force single line + ellipsis */
+.hscroll .mini .meme{padding:8px 8px 10px}
+.hscroll .mini .meme .impact{font-size:10.5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:4px;max-width:100%}
+/* fix: editor sheet 4th tab (Ending) was cut off */
+.sheet-tabs{gap:6px}
+.sheet-tab{padding:8px 10px;font-size:11.5px;gap:5px}
+
+/* ===== FIX: text truncation ===== */
+/* editor field values show fully (they are short) */
+.minival{max-width:none;overflow:visible;text-overflow:clip}
+.mmeta .nm{overflow:visible}
+/* realistic thumbnails: no caption baked on the poster (title shows BELOW) → nothing clips */
+.mcard .meme .impact{display:none}
+.hscroll .mini .meme .impact{display:none}
+/* give the poster a play button hint where the caption used to be (kept via ::before) */
+
+/* ===== realistic cinematic thumbnails (embedded SVG scenes) ===== */
+.m1{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(74,54,142)'/><stop offset='1' stop-color='rgb(17,13,38)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m1)'/><circle cx='186' cy='50' r='19' fill='rgb(255,238,196)'/><g fill='rgb(13,10,28)'><rect x='16' y='150' width='28' height='90'/><rect x='52' y='118' width='32' height='122'/><rect x='92' y='158' width='26' height='82'/><rect x='126' y='128' width='34' height='112'/><rect x='168' y='168' width='26' height='72'/><rect x='202' y='140' width='30' height='100'/></g></svg>") center/cover}
+.m2{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><radialGradient id='m2' cx='0.5' cy='0.34' r='0.75'><stop offset='0' stop-color='rgb(34,132,150)'/><stop offset='1' stop-color='rgb(9,28,38)'/></radialGradient></defs><rect width='240' height='240' fill='url(%23m2)'/><circle cx='120' cy='96' r='40' fill='rgb(7,20,28)'/><path d='M56 240 Q120 148 184 240 Z' fill='rgb(7,20,28)'/></svg>") center/cover}
+.m3{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m3' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(255,152,82)'/><stop offset='0.58' stop-color='rgb(201,70,112)'/><stop offset='1' stop-color='rgb(58,24,58)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m3)'/><circle cx='120' cy='118' r='42' fill='rgb(255,222,152)'/><path d='M0 240 Q60 192 120 210 T240 202 L240 240 Z' fill='rgb(40,18,45)'/></svg>") center/cover}
+.m4{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m4' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(72,152,122)'/><stop offset='1' stop-color='rgb(11,38,30)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m4)'/><g fill='rgb(9,32,26)'><polygon points='38,240 70,148 102,240'/><polygon points='94,240 132,116 170,240'/><polygon points='160,240 196,158 232,240'/></g></svg>") center/cover}
+.m5{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><rect width='240' height='240' fill='rgb(30,10,42)'/><g fill='rgb(255,92,162)' opacity='0.45'><polygon points='120,-4 58,240 98,240'/><polygon points='120,-4 182,240 142,240'/><polygon points='120,-4 18,240 44,240'/><polygon points='120,-4 222,240 196,240'/></g><rect x='0' y='214' width='240' height='26' fill='rgb(9,4,15)'/></svg>") center/cover}
+.m6{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m6' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='rgb(92,112,240)'/><stop offset='1' stop-color='rgb(29,24,68)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m6)'/><g fill='none' stroke='rgba(255,255,255,0.16)' stroke-width='6'><path d='M-10 92 Q60 52 120 92 T250 92'/><path d='M-10 142 Q60 102 120 142 T250 142'/><path d='M-10 192 Q60 152 120 192 T250 192'/></g></svg>") center/cover}
+.m7{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m7' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(150,42,72)'/><stop offset='1' stop-color='rgb(28,10,24)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m7)'/><g fill='rgb(22,8,18)'><rect x='20' y='150' width='30' height='90'/><rect x='58' y='120' width='34' height='120'/><rect x='100' y='160' width='28' height='80'/><rect x='136' y='128' width='36' height='112'/><rect x='180' y='164' width='30' height='76'/></g></svg>") center/cover}
+.m8{background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><defs><linearGradient id='m8' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgb(42,56,82)'/><stop offset='1' stop-color='rgb(10,16,28)'/></linearGradient></defs><rect width='240' height='240' fill='url(%23m8)'/><circle cx='120' cy='120' r='28' fill='rgb(120,140,255)' opacity='0.4'/><g stroke='rgba(140,160,255,0.35)' stroke-width='2' fill='none'><path d='M0 152 H240'/><path d='M0 184 H240'/><path d='M0 216 H240'/><path d='M120 152 L18 240'/><path d='M120 152 L222 240'/><path d='M120 152 L70 240'/><path d='M120 152 L170 240'/></g></svg>") center/cover}
+
+/* ===== layer-based editor (M6) ===== */
+.le-canvas{border-radius:15px;overflow:hidden;position:relative;aspect-ratio:16/11;margin:8px 18px 0}
+.le-layer{position:absolute;z-index:3}
+.le-logo{top:9px;left:9px;background:rgba(255,255,255,.92);color:#111;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:900}
+.le-user{top:11px;right:11px;color:#fff;font-size:10px;font-weight:800;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.le-sub{left:50%;bottom:34px;transform:translateX(-50%);color:#fff;font-weight:800;font-size:12.5px;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.8);max-width:84%;line-height:1.15}
+.le-sub.sel{outline:1.5px dashed rgba(255,255,255,.95);outline-offset:5px;border-radius:3px}
+.le-sub .hd{position:absolute;top:-8px;right:-8px;width:15px;height:15px;border-radius:50%;background:var(--accent);border:2px solid #fff}
+.le-cta{left:50%;bottom:12px;transform:translateX(-50%);color:#fff;font-size:8.5px;font-weight:900;letter-spacing:.1em;opacity:.92;text-shadow:0 1px 4px rgba(0,0,0,.6);white-space:nowrap}
+.le-play{display:flex;align-items:center;gap:11px;padding:7px 18px 4px}
+.le-play .pl{width:30px;height:30px;border-radius:50%;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
+.le-play .pl .ic{width:15px;height:15px;fill:currentColor;stroke:currentColor;margin-left:2px}
+.le-tm{font-size:11px;font-weight:800;color:var(--text-3)}
+.le-tm b{color:var(--text)}
+.le-play .exp{margin-left:auto;color:var(--text-3)}
+.le-tl{background:var(--surface-2);border-top:1px solid var(--border);padding:8px 0 6px;position:relative}
+.le-ruler{display:flex;justify-content:space-between;padding:0 18px 6px;font-size:9px;color:var(--text-3);font-weight:700}
+.le-ph{position:absolute;top:2px;bottom:6px;left:37%;width:2px;background:var(--accent);z-index:6}
+.le-ph::before{content:"";position:absolute;top:-2px;left:-4px;width:10px;height:8px;border-radius:2px;background:var(--accent)}
+.le-track{display:flex;align-items:center;gap:8px;padding:3px 18px}
+.le-tlabel{width:18px;flex:none;color:var(--text-3);display:grid;place-items:center}
+.le-tlabel .ic{width:14px;height:14px}
+.le-tbody{flex:1;height:32px;position:relative}
+.le-thumbs{display:flex;gap:2px;height:100%}
+.le-thumbs>span{flex:1;border-radius:4px}
+.le-seg{position:absolute;top:0;height:32px;border-radius:7px;border:1px solid var(--accent-line);background:var(--accent-weak);display:flex;align-items:center;padding:0 10px;font-size:9.5px;font-weight:800;color:var(--accent);overflow:hidden;white-space:nowrap}
+.le-seg.sel{background:var(--accent);color:#fff;border-color:#fff}
+.le-seg .g{position:absolute;top:7px;bottom:7px;width:3px;border-radius:2px;background:currentColor;opacity:.55}
+.le-seg .g.l{left:3px}.le-seg .g.r{right:3px}
+.le-add{margin:5px 18px 0;border:1px dashed var(--border);border-radius:9px;padding:7px;text-align:center;font-size:11.5px;font-weight:800;color:var(--text-2);display:flex;gap:6px;align-items:center;justify-content:center}
+.le-props{margin:8px 18px 0;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:9px 12px}
+.le-props .ph{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;margin-bottom:4px}
+.le-props .trange{font-size:10px;font-weight:800;color:var(--accent);background:var(--accent-weak);border-radius:999px;padding:2px 9px}
+.le-props .prow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0}
+.le-props .prow .lb{font-size:12px;font-weight:600;color:var(--text-2)}
+.le-tools{display:flex;gap:12px;padding:8px 18px 10px;overflow:hidden}
+.le-tool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9px;font-weight:700;color:var(--text-2)}
+.le-tool .cir{width:36px;height:36px;border-radius:11px;background:var(--panel);display:grid;place-items:center;color:var(--text-2)}
+.le-tool.on{color:var(--accent)}.le-tool.on .cir{background:var(--grad);color:#fff}
+
+/* ===== rich ambient backgrounds (mobile app) + Google login ===== */
+.phone .screen{background:
+  radial-gradient(560px 320px at 12% -6%, rgba(123,97,255,.20), transparent 60%),
+  radial-gradient(480px 300px at 100% 6%, rgba(255,77,141,.14), transparent 58%),
+  radial-gradient(520px 360px at 55% 106%, rgba(18,199,224,.12), transparent 62%),
+  var(--bg-2)}
+.gic{width:18px;height:18px;display:inline-block;vertical-align:middle;flex:none}
+.btn-google{background:#fff;color:#1f1f1f;border:1px solid var(--border);border-radius:14px;font:700 14px 'Segoe UI',system-ui,sans-serif;padding:13px 18px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:var(--shadow-sm)}
+:root[data-theme="dark"] .btn-google{background:#fff;color:#1f1f1f}
+.ordiv{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--text-3);font-size:11px;font-weight:700;letter-spacing:.04em}
+.ordiv::before,.ordiv::after{content:"";flex:1;height:1px;background:var(--border)}
+
+/* ==================================================================
+   SHADCN-INSPIRED CLEAN RE-THEME  (overrides everything above)
+   quiet neutrals · one refined accent · flat/border-defined · precise
+   ================================================================== */
+:root{
+  --bg:#ffffff; --bg-2:#ffffff; --surface:#ffffff; --surface-2:#fafafa; --panel:#f4f4f5;
+  --border:#e4e4e7; --border-2:#efeff1; --hair:rgba(9,9,11,.06);
+  --text:#09090b; --text-2:#71717a; --text-3:#a1a1aa;
+  --accent:#7c5cff; --accent-2:#9a86ff; --accent-press:#6a49f2; --accent-weak:rgba(124,92,255,.10); --accent-line:rgba(124,92,255,.30);
+  --pink:#7c5cff; --cyan:#3b82f6; --lime:#22c55e; --violet2:#7c5cff;
+  --premium:#ca8a04; --premium-2:#a16207; --premium-weak:rgba(202,138,4,.12);
+  --success:#16a34a; --success-weak:rgba(22,163,74,.12); --warning:#d97706; --danger:#e11d48; --danger-weak:rgba(225,29,72,.10); --info:#2563eb;
+  --grad:#7c5cff; --grad-2:#7c5cff; --grad-hot:#7c5cff; --grad-soft:rgba(124,92,255,.08);
+  --mesh:none;
+  --glow:0 1px 2px rgba(9,9,11,.05); --glow-pink:0 1px 2px rgba(9,9,11,.05);
+  --shadow-sm:0 1px 2px rgba(9,9,11,.05);
+  --shadow:0 1px 2px rgba(9,9,11,.04),0 1px 3px rgba(9,9,11,.06);
+  --shadow-lg:0 12px 32px -14px rgba(9,9,11,.22);
+  --display:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+  --bezel:linear-gradient(160deg,#3f3f46,#18181b); --frameline:rgba(255,255,255,.08);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#09090b; --bg-2:#09090b; --surface:#0c0c0f; --surface-2:#101014; --panel:#18181b;
+  --border:#27272a; --border-2:#1e1e21; --hair:rgba(255,255,255,.06);
+  --text:#fafafa; --text-2:#a1a1aa; --text-3:#71717a;
+  --accent-weak:rgba(124,92,255,.16); --accent-line:rgba(124,92,255,.42); --premium-weak:rgba(202,138,4,.16); --success-weak:rgba(22,163,74,.18); --danger-weak:rgba(225,29,72,.18);
+  --grad-soft:rgba(124,92,255,.12);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 40px -16px rgba(0,0,0,.75);
+  --glow:0 1px 2px rgba(0,0,0,.4); --glow-pink:0 1px 2px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --bg:#09090b; --bg-2:#09090b; --surface:#0c0c0f; --surface-2:#101014; --panel:#18181b;
+  --border:#27272a; --border-2:#1e1e21; --hair:rgba(255,255,255,.06);
+  --text:#fafafa; --text-2:#a1a1aa; --text-3:#71717a;
+  --accent-weak:rgba(124,92,255,.16); --accent-line:rgba(124,92,255,.42); --premium-weak:rgba(202,138,4,.16); --success-weak:rgba(22,163,74,.18); --danger-weak:rgba(225,29,72,.18);
+  --grad-soft:rgba(124,92,255,.12);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 40px -16px rgba(0,0,0,.75);
+  --glow:0 1px 2px rgba(0,0,0,.4); --glow-pink:0 1px 2px rgba(0,0,0,.4);
+}
+
+/* flatten backgrounds — no mesh/glow */
+body{background:var(--bg)}
+.phone .screen{background:var(--bg-2)}
+
+/* masthead → clean bordered surface (not a rainbow) */
+.masthead{background:var(--surface);border:1px solid var(--border);color:var(--text);box-shadow:var(--shadow-sm)}
+.masthead::before,.mh-stickers,.masthead .stk{display:none}
+.masthead h1,.mh-tagline{color:var(--text)}
+.masthead .tagbig,.mh-sub{color:var(--text-2)}
+.mh-tagline em{background:none;-webkit-text-fill-color:var(--accent);color:var(--accent)}
+.pill-live{background:var(--panel);border:1px solid var(--border);color:var(--text-2)}
+.pill-live .blip{background:var(--success);animation:none}
+.themebtn{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.eyebrow{color:var(--accent)}.eyebrow::before{background:var(--accent)}
+.brandmark{background:var(--accent);box-shadow:none;transform:none;border-radius:12px}
+.brandmark::after{display:none}
+.platform-head h2,.brand h1{letter-spacing:-.02em}
+
+/* brand/nav marks flat */
+.wm-badge{background:var(--accent);box-shadow:none;transform:none;border-radius:8px}
+.bnav .fab{background:var(--accent);box-shadow:none;transform:none;border-radius:14px}
+
+/* buttons: solid accent, no gradient/glow, tighter radius */
+.btn{border-radius:9px}
+.btn-primary,.btn-hot{background:var(--accent);color:#fff;box-shadow:none}
+.btn-primary::after,.btn-hot::after{display:none}
+.btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.btn-dark{background:var(--text);color:var(--bg)}
+
+/* surfaces: border-defined, subtle shadow, precise radius */
+.card,.panelbox{border-radius:12px;box-shadow:none}
+.browser{border-radius:12px;box-shadow:var(--shadow-lg)}
+.input{border-radius:9px;box-shadow:none}
+.input.focus{box-shadow:0 0 0 3px var(--accent-weak)}
+.chip{border-radius:8px;box-shadow:none}
+.chip.on{background:var(--text);border-color:var(--text);color:var(--bg)}
+.chip.hot{background:var(--accent);border-color:transparent;color:#fff;box-shadow:none}
+.chip.soft{background:var(--accent-weak);border-color:transparent;color:var(--accent)}
+.stat{border-radius:12px;box-shadow:none}
+.stat::before{display:none}
+.mcard,.tcard{border-radius:12px;box-shadow:none}
+.mcard:hover,.tcard:hover{transform:none;box-shadow:var(--shadow)}
+.meme,.thumb{border-radius:0}
+.mcard .meme,.mcard .thumb{border-radius:0}
+.previewbox,.le-canvas{box-shadow:none}
+
+/* plans / earnings cards → solid accent, flat */
+.plan{border-radius:12px;box-shadow:none}
+.plan.feat{border-color:var(--accent);box-shadow:none}
+.plan.feat::before{background:var(--accent);box-shadow:none;font-weight:700}
+.plan-badge,.earncard{background:var(--accent);box-shadow:none;border-radius:12px}
+.plan-badge::before,.earncard::before{display:none}
+
+/* badges muted */
+.badge{border-radius:6px}
+.badge-premium{background:var(--premium);color:#fff}
+.badge-free{background:var(--success);color:#fff}
+.badge-active{background:var(--success-weak)}
+
+/* editor accents flat */
+.sheet-tab.on,.le-tool.on .cir,.le-seg.sel,.seg span.on{box-shadow:none}
+.sheet-tab.on,.le-tool.on .cir{background:var(--accent)}
+.toggle{box-shadow:none}
+.btn-google{border-radius:9px}
+
+/* google fab/glow leftovers */
+.brandmark,.wm-badge,.bnav .fab{box-shadow:none}
+.hotcard{box-shadow:none;border:1px solid var(--border)}
+.floatstrip .fs,.memerow .mm{box-shadow:var(--shadow)}
+
+/* ===== Instagram-Reels-style full-screen template feed (M3) ===== */
+.reel-feed{position:absolute;inset:0;overflow:hidden;font-family:var(--display);color:#fff}
+.reel-bg{position:absolute;inset:0}
+.reel-gt{position:absolute;top:0;left:0;right:0;height:150px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);z-index:2}
+.reel-gb{position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(0deg,rgba(0,0,0,.82),transparent);z-index:2}
+.reel-status{position:absolute;top:0;left:0;right:0;z-index:7;color:#fff}
+.reel-top{position:absolute;top:46px;left:0;right:0;display:flex;align-items:center;justify-content:center;padding:8px 16px;z-index:7}
+.reel-tabs{display:flex;gap:20px;font-weight:800;font-size:14px;color:rgba(255,255,255,.6)}
+.reel-tabs .on{color:#fff}
+.reel-top .rsearch-ic{position:absolute;right:14px;color:#fff}
+.reel-rail{position:absolute;right:12px;bottom:184px;display:flex;flex-direction:column;gap:18px;align-items:center;z-index:5}
+.reel-av{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px;border:2px solid #fff}
+.reel-rail .act{display:flex;flex-direction:column;align-items:center;gap:3px;color:#fff;cursor:pointer}
+.reel-rail .act .ico{width:47px;height:47px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);display:grid;place-items:center}
+.reel-rail .act .ico .ic{width:23px;height:23px}
+.reel-rail .act.liked .ico{background:rgba(225,29,72,.9);border-color:transparent}
+.reel-rail .act.liked .ico .ic{fill:#fff;stroke:#fff}
+.reel-rail .act .lbl{font-size:11px;font-weight:700}
+.reel-disc{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#3a3a3a,#111);border:3px solid rgba(255,255,255,.55);display:grid;place-items:center;color:#fff;animation:rspin 5s linear infinite}
+.reel-disc .ic{width:18px;height:18px}
+@keyframes rspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.reel-disc{animation:none}}
+.reel-info{position:absolute;left:16px;right:78px;bottom:158px;z-index:5}
+.reel-handle{font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px}
+.reel-title{font-size:13px;opacity:.96;margin-top:5px;line-height:1.35}
+.reel-tags{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.reel-tags span{font-size:11px;font-weight:700;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:6px;backdrop-filter:blur(4px)}
+.reel-use{position:absolute;left:16px;right:78px;bottom:114px;z-index:5;background:var(--accent);color:#fff;border:0;border-radius:11px;padding:13px;font:800 14.5px var(--display);display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.reel-use .ic{width:17px;height:17px}
+.reel-bottom{position:absolute;left:14px;right:14px;bottom:16px;display:flex;gap:10px;align-items:center;z-index:7}
+.reel-search{flex:1;height:46px;border-radius:13px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(10px);display:flex;align-items:center;gap:9px;padding:0 14px;color:rgba(255,255,255,.85);font-size:13.5px;font-weight:600}
+.reel-grid{width:46px;height:46px;flex:none;border-radius:13px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.24);backdrop-filter:blur(10px);display:grid;place-items:center;color:#fff}
+.reel-peek{position:absolute;left:0;right:0;bottom:74px;text-align:center;color:rgba(255,255,255,.5);font-size:11px;font-weight:700;z-index:4}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M5 4h14v16l-7-4-7 4z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 7l4 4 5-6 5 6 4-4v11H3z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4"/><path d="M12 3v13"/><path d="M8 11l4 4 4-4"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></symbol>
+  <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M12 6v14"/><path d="M8 20h8"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1 0 1.5-1 1-2-.4-.8 0-2 1-2h2a4 4 0 004-4c0-4.5-4-8-8-8z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M8 7l4-4 4 4M8 17l4 4 4-4M7 8l-4 4 4 4M17 8l4 4-4 4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></symbol>
+  <symbol id="i-devices" viewBox="0 0 24 24"><rect x="2" y="5" width="14" height="10" rx="1.5"/><rect x="17" y="8" width="5" height="11" rx="1.5"/><path d="M6 19h6"/></symbol>
+  <symbol id="i-sticker" viewBox="0 0 24 24"><path d="M4 4h16v10l-6 6H4z"/><path d="M14 20v-6h6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9M17 17l2-2M14 14l2-2"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M15 3h4a1 1 0 011 1v16a1 1 0 01-1 1h-4M10 17l5-5-5-5M15 12H3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+  <symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 13v3M9 10v6M14 7v9M19 4v12"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12a10 10 0 0114 0M8 15a6 6 0 018 0M12 18h0"/></symbol>
+  <symbol id="i-batt" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24"><path d="M12 3c1 4-2 5-2 8a4 4 0 108 0c0-2-1-3-1-5 3 2 4 5 4 8a7 7 0 11-14 0c0-5 4-7 5-11z"/></symbol>
+  <symbol id="i-magic" viewBox="0 0 24 24"><path d="M6 18L16 8M14 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1zM5 11l.7 2 2 .7-2 .7L5 17l-.7-2-2-.7 2-.7z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M16 5a3 3 0 010 6M17 15c2 .5 4 2 4 5"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 14h2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4M12 16V3M8 7l4-4 4 4"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5c-.6-1-4-1.4-4 .6s4 .9 4 2.6-3.4 1.4-4 .4"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-google" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3h3.9c2.3-2.1 3.6-5.2 3.6-8.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1C3.3 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C18 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l4 3.1c.9-2.9 3.6-5 6.7-5z"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.4-9C1.1 9 2.6 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.4 0 4.9 4 3.4 7-2.4 4.4-9.4 9-9.4 9z"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="masthead">
+    <div class="mh-stickers">
+      <span class="stk" style="top:20px;left:44%;--r:-8deg">😂</span>
+      <span class="stk" style="top:110px;left:64%;--r:10deg">🔥</span>
+      <span class="stk" style="top:60px;left:82%;--r:-12deg">💀</span>
+      <span class="stk" style="top:150px;left:52%;--r:6deg">🐸</span>
+    </div>
+    <div class="mh-top">
+      <div class="brand"><div class="brandmark"><svg class="ic"><use href="#i-clip"/></svg></div>
+        <div><h1>ClipCart</h1><div class="tagbig">Entertainment clips — customize, brand, export</div></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="pill-live"><span class="blip"></span>Prototype</span>
+        <button class="themebtn" id="themeToggle"><span id="themeGlyph">🌙</span><span id="themeLabel">Dark</span></button>
+      </div>
+    </div>
+    <div class="mh-tagline">Turn a <em>clip</em> into your brand in seconds.</div>
+    <div class="mh-sub">Browse trending entertainment clips, drop in your logo, text and fonts, and export a ready-to-post video — rendered right on your device. Free clips to start; a subscription unlocks the full library.</div>
+  </div>
+
+  <div class="legend">
+    <span class="chipdot"><i style="background:var(--grad)"></i><b>Accent</b> violet</span>
+    <span class="chipdot"><i style="background:linear-gradient(135deg,#5EC6A0,#22B07D)"></i><b>Free</b> clips</span>
+    <span class="chipdot"><i style="background:linear-gradient(135deg,#F0D98A,#D3A32E)"></i><b>PRO</b> unlock</span>
+    <span class="chipdot"><i style="background:var(--accent)"></i>Trending</span>
+    <span class="t3">Cinematic clip posters · dark-first · toggle ↑</span>
+  </div>
+
+  <!-- ===================== MOBILE ===================== -->
+  <section class="platform">
+    <div class="platform-head"><h2>📱 The App</h2><span class="count">Android · iOS — meme creation core</span></div>
+    <p class="platform-sub">Where the magic happens: discover trending &amp; free memes, drop in your logo/text/fonts, and export an MP4 on-device. Free clips for new users; premium unlocks everything.</p>
+    <div class="rail">
+
+      <!-- Splash -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody" style="place-content:center;place-items:center;text-align:center;gap:20px;background:linear-gradient(160deg,#160f27,#3a1240);color:#fff">
+            <div class="brandmark" style="width:84px;height:84px;border-radius:26px"><svg class="ic" style="width:44px;height:44px"><use href="#i-clip"/></svg></div>
+            <div><div style="font-family:var(--display);font-size:30px">ClipCart</div><div style="opacity:.7;font-size:11px;margin-top:8px;font-weight:700;letter-spacing:.18em">ENTERTAINMENT CLIPS</div></div>
+            <div style="opacity:.55;font-size:12px;font-weight:600">Loading your library…</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M1</span><b>Splash</b> — device security check, then in</div>
+      </div>
+
+      <!-- Login -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody" style="padding:6px 22px 20px;justify-content:center">
+            <div style="text-align:center;margin-bottom:22px"><div class="wordmark" style="justify-content:center;font-size:24px;margin-bottom:18px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><div class="h-title" style="margin-top:6px">Welcome back</div><div class="muted" style="font-size:14px;margin-top:4px">Log in to continue creating</div></div>
+            <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">clip@studio.com</span></div></div>
+            <div class="field"><label>Password</label><div class="input focus"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••••</span><span style="margin-left:auto"><svg class="ic ic-sm"><use href="#i-eye"/></svg></span></div></div>
+            <div style="text-align:right;margin:2px 0 16px"><span style="color:var(--accent);font-size:12.5px;font-weight:800">Forgot password?</span></div>
+            <button class="btn btn-primary btn-lg">Log in</button>
+            <div class="ordiv">OR</div>
+            <button class="btn-google"><svg class="gic"><use href="#i-google"/></svg>Continue with Google</button>
+            <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent)">Create account</b></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M2</span><b>Login</b> — device bound on submit</div>
+      </div>
+
+      <!-- Discover / Home -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="reel-feed">
+            <div class="reel-bg m2"></div>
+            <div class="reel-gt"></div>
+            <div class="reel-gb"></div>
+            <div class="statusbar reel-status"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+            <div class="reel-top"><div class="reel-tabs"><span>Following</span><span class="on">For you</span><span>Trending</span></div><span class="rsearch-ic"><svg class="ic"><use href="#i-bell"/></svg></span></div>
+            <div class="reel-rail">
+              <div class="reel-av">M</div>
+              <div class="act liked"><span class="ico"><svg class="ic"><use href="#i-heart"/></svg></span><span class="lbl">12.4k</span></div>
+              <div class="act"><span class="ico"><svg class="ic"><use href="#i-bookmark"/></svg></span><span class="lbl">Save</span></div>
+              <div class="act"><span class="ico"><svg class="ic"><use href="#i-share"/></svg></span><span class="lbl">Share</span></div>
+              <div class="reel-disc"><svg class="ic"><use href="#i-music"/></svg></div>
+            </div>
+            <div class="reel-info">
+              <div class="reel-handle">@maria.k <span class="badge badge-premium">PRO</span></div>
+              <div class="reel-title">Cinematic movie-edit template — add your own subtitles &amp; logo</div>
+              <div class="reel-tags"><span>#reels</span><span>#cinematic</span><span>0:12</span><span>4K</span></div>
+            </div>
+            <button class="reel-use"><svg class="ic"><use href="#i-magic"/></svg>Use this template</button>
+            <div class="reel-peek">▲ Swipe up for next</div>
+            <div class="reel-bottom">
+              <div class="reel-search"><svg class="ic ic-sm"><use href="#i-search"/></svg>Search templates…</div>
+              <span class="reel-grid"><svg class="ic"><use href="#i-grid"/></svg></span>
+            </div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M3</span><b>Discover</b> — Instagram-Reels-style full-screen feed (swipe ↑ next), action rail, bottom search</div>
+      </div>
+
+      <!-- Library -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="title">Clip Library</span><span class="iconbtn filled"><svg class="ic"><use href="#i-search"/></svg></span></div>
+            <div class="sectpad" style="display:flex;gap:8px;overflow:hidden;padding-bottom:12px"><span class="chip hot"><svg class="ic ic-sm"><use href="#i-fire"/></svg>Hot</span><span class="chip">Free</span><span class="chip">Reactions</span><span class="chip">Comedy</span><span class="chip">Movie Edits</span></div>
+            <div class="pscroll"><div class="mgrid">
+              <div class="mcard"><div class="meme m1"><span class="badgewrap badge badge-premium"><svg class="ic"><use href="#i-crown"/></svg>Pro</span><span class="play"><svg class="ic"><use href="#i-play"/></svg></span><span class="dur">0:08</span><span class="subj">😂</span><div class="impact">IT FINALLY<br>WORKS</div></div><div class="mmeta"><span class="nm">Dev Life</span><span class="tcat">React</span></div></div>
+              <div class="mcard pressed"><div class="meme m4"><span class="badgewrap badge badge-free">Free</span><span class="play"><svg class="ic"><use href="#i-play"/></svg></span><span class="dur">0:06</span><span class="subj">🐸</span><div class="impact">MONDAY<br>AGAIN</div></div><div class="mmeta"><span class="nm">Monday Frog</span><span class="tcat">Free</span></div></div>
+              <div class="mcard"><div class="meme m7"><span class="badgewrap badge badge-premium"><svg class="ic"><use href="#i-crown"/></svg>Pro</span><span class="lock"><svg class="ic"><use href="#i-lock"/></svg></span><span class="dur">0:10</span><span class="subj">💀</span><div class="impact">ME AT<br>3 AM</div></div><div class="mmeta"><span class="nm">Night Owl</span><span class="tcat">Mood</span></div></div>
+              <div class="mcard"><div class="meme m3"><span class="badgewrap badge badge-free">Free</span><span class="play"><svg class="ic"><use href="#i-play"/></svg></span><span class="dur">0:07</span><span class="subj">🔥</span><div class="impact">THIS IS<br>FIRE</div></div><div class="mmeta"><span class="nm">Fire Deal</span><span class="tcat">Free</span></div></div>
+            </div></div>
+            <div class="bnav"><a><svg class="ic"><use href="#i-fire"/></svg>Discover</a><a class="on"><svg class="ic"><use href="#i-grid"/></svg>Library</a><span class="fab"><svg class="ic"><use href="#i-magic"/></svg></span><a><svg class="ic"><use href="#i-down"/></svg>Exports</a><a><svg class="ic"><use href="#i-user"/></svg>Me</a></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M4</span><b>Clip Library</b> — Free + Pro clips, categories, cinematic posters</div>
+      </div>
+
+      <!-- M4b Filters -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="title" style="font-size:17px">Filters</span><span style="font-size:12px;font-weight:800;color:var(--accent)">Reset</span></div>
+            <div class="pscroll sectpad">
+              <div class="filtergroup"><div class="gh">Sort by</div><div class="chips"><span class="chip on">Trending</span><span class="chip">Newest</span><span class="chip">Most popular</span></div></div>
+              <div class="filtergroup"><div class="gh">Category</div><div class="chips"><span class="chip on">All</span><span class="chip">Reactions</span><span class="chip">Comedy</span><span class="chip">Movie Edits</span></div></div>
+              <div class="filtergroup"><div class="gh">Genre</div><div class="chips"><span class="chip">Action</span><span class="chip on">Sci-fi</span><span class="chip">Drama</span><span class="chip">Comedy</span></div></div>
+              <div class="filtergroup"><div class="gh">Language</div><div class="chips"><span class="chip on">English</span><span class="chip">Hindi</span><span class="chip">Spanish</span></div></div>
+              <div class="filtergroup"><div class="gh">Duration</div><div class="chips"><span class="chip on">Any</span><span class="chip">&lt; 10s</span><span class="chip">10–20s</span><span class="chip">20s+</span></div></div>
+              <div class="filtergroup"><div class="gh">Editor</div><div class="chips"><span class="chip">maria.k</span><span class="chip">rahul.fx</span><span class="chip">zoya.clips</span></div></div>
+              <div class="filtergroup"><div class="gh">Access</div><div class="chips"><span class="chip on">All</span><span class="chip">Free</span><span class="chip">Premium</span></div></div>
+            </div>
+            <div class="sectpad" style="padding:12px 18px 16px"><button class="btn btn-primary btn-lg">Show 248 clips</button></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M4b</span><b>Filters</b> — category · movie/genre · editor · language · duration · access</div>
+      </div>
+
+      <!-- Detail -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="iconbtn filled"><svg class="ic"><use href="#i-share"/></svg></span></div>
+            <div class="pscroll sectpad">
+              <div class="meme m1" style="aspect-ratio:4/5;border-radius:22px"><span class="play" style="width:52px;height:52px;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);border-radius:50%;display:grid;place-items:center"><svg class="ic" style="fill:#fff;stroke:#fff;width:20px;margin-left:3px"><use href="#i-play"/></svg></span><span class="subj" style="font-size:70px">😂</span><div class="impact" style="font-size:26px">IT FINALLY WORKS</div></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px"><div class="h-title">Dev Life</div><span class="badge badge-premium"><svg class="ic"><use href="#i-crown"/></svg>Premium</span></div>
+              <div class="muted" style="font-size:12px;margin-top:8px;display:flex;flex-wrap:wrap;gap:6px 10px"><span>0:08</span>·<span>1080p</span>·<span>9:16</span>·<span>2.1k downloads</span>·<span>Added 3d ago</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"><span class="chip" style="padding:5px 11px;font-size:11px">Reactions</span><span class="chip" style="padding:5px 11px;font-size:11px">#devlife</span><span class="chip" style="padding:5px 11px;font-size:11px">#coding</span><span class="muted tiny" style="align-self:center">by maria.k</span></div>
+              <div class="muted" style="font-size:13px;margin-top:10px">A short reaction clip. Add your subtitle, username, logo and CTA — post-ready in seconds.</div>
+              <div style="font-size:11px;font-weight:900;letter-spacing:.06em;color:var(--text-3);text-transform:uppercase;margin:18px 0 9px">You can edit</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip soft">Subtitle</span><span class="chip soft">Logo</span><span class="chip soft">Font</span><span class="chip soft">Color</span><span class="chip soft">Username</span><span class="chip soft">CTA</span></div>
+            </div>
+            <div class="sectpad" style="padding-top:14px;padding-bottom:18px"><button class="btn btn-primary btn-lg"><svg class="ic ic-sm"><use href="#i-magic"/></svg>Make it mine</button></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M5</span><b>Detail</b> — clip preview, metadata, editable fields, CTA</div>
+      </div>
+
+      <!-- Editor -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="title" style="font-size:17px">Editor</span><button class="btn btn-hot btn-sm"><svg class="ic ic-sm"><use href="#i-down"/></svg>Export</button></div>
+            <div class="le-canvas m2">
+              <span class="le-layer le-logo">LOGO</span>
+              <span class="le-layer le-user">@yourpage</span>
+              <div class="le-layer le-sub sel">i cried… she's literally a victim<span class="hd"></span></div>
+              <span class="le-layer le-cta">▶ FOLLOW FOR MORE</span>
+            </div>
+            <div class="le-play"><span class="pl"><svg class="ic"><use href="#i-play"/></svg></span><span class="le-tm"><b>00:03</b> / 01:18</span><span class="exp"><svg class="ic ic-sm"><use href="#i-move"/></svg></span></div>
+            <div class="le-tl">
+              <div class="le-ph"></div>
+              <div class="le-ruler"><span>0:00</span><span>0:02</span><span>0:04</span><span>0:06</span></div>
+              <div class="le-track">
+                <span class="le-tlabel"><svg class="ic"><use href="#i-lock"/></svg></span>
+                <div class="le-tbody"><div class="le-thumbs"><span class="m2"></span><span class="m6"></span><span class="m8"></span><span class="m1"></span><span class="m4"></span><span class="m2"></span></div></div>
+              </div>
+              <div class="le-track">
+                <span class="le-tlabel"><svg class="ic"><use href="#i-type"/></svg></span>
+                <div class="le-tbody">
+                  <div class="le-seg" style="left:2%;width:26%">Sub 1<span class="g l"></span><span class="g r"></span></div>
+                  <div class="le-seg sel" style="left:32%;width:34%"><span class="g l"></span>i cried…<span class="g r"></span></div>
+                  <div class="le-seg" style="left:70%;width:28%">Sub 3<span class="g l"></span><span class="g r"></span></div>
+                </div>
+              </div>
+              <div class="le-add"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Add text layer</div>
+            </div>
+            <div class="le-props">
+              <div class="ph">Subtitle 2 <span class="trange">0:02 – 0:05</span></div>
+              <div class="prow"><span class="lb">Text</span><span class="minival">i cried… she's literally a victim</span></div>
+              <div class="prow"><span class="lb">Font</span><span class="seg"><span class="on">Clean</span><span>Bold</span><span>Serif</span></span></div>
+              <div class="prow" style="padding-bottom:0"><span class="lb">Color</span><span class="swrow"><span class="sw on" style="background:#fff"></span><span class="sw" style="background:#FBBF24"></span><span class="sw" style="background:#7B61FF"></span><span class="sw" style="background:#F43F5E"></span></span></div>
+            </div>
+            <div class="le-tools">
+              <span class="le-tool on"><span class="cir"><svg class="ic"><use href="#i-type"/></svg></span>Subtitle</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-image"/></svg></span>Logo</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-user"/></svg></span>Username</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-type"/></svg></span>CTA</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-eye"/></svg></span>Ending</span>
+              <span class="le-tool"><span class="cir"><svg class="ic"><use href="#i-palette"/></svg></span>Style</span>
+            </div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M6</span><b>Layer Editor</b> — timeline + <b>timed subtitle track</b> (multiple lines at different timestamps) · logo · username · CTA layers</div>
+      </div>
+
+      <!-- Export -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody" style="padding:22px;justify-content:center;text-align:center">
+            <div class="previewbox m1" style="aspect-ratio:1/1;max-height:230px;margin-bottom:24px"><div class="impact" style="font-size:17px">MY BRAND</div><span class="subj" style="font-size:52px">😂</span><div class="impact" style="font-size:17px">IS TRENDING</div></div>
+            <div class="h-title">Rendering your clip</div>
+            <div class="muted" style="font-size:13.5px;margin:6px 0 22px">Exporting on your device · nothing uploaded</div>
+            <div class="bar"><i style="width:64%"></i></div>
+            <div style="display:flex;justify-content:space-between;margin-top:9px;font-size:12px;font-weight:800"><span class="t3">1080p · MP4</span><span style="color:var(--accent)" class="mono">64%</span></div>
+            <div style="margin-top:26px;display:flex;flex-direction:column;gap:11px"><button class="btn btn-primary btn-lg" style="opacity:.5"><svg class="ic ic-sm"><use href="#i-share"/></svg>Save &amp; share</button><div class="muted tiny">Free plan: 2 of 3 free exports left</div></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M7</span><b>Export</b> — on-device FFmpeg render, free/pro limits</div>
+      </div>
+
+      <!-- Paywall -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody" style="padding:22px;justify-content:center;text-align:center">
+            <div style="font-size:52px;margin-bottom:6px">🔓</div>
+            <div class="h-title" style="font-size:26px">Unlock the vault</div>
+            <div class="muted" style="font-size:14px;max-width:28ch;margin:8px auto 18px">Go Pro for every meme, unlimited exports and no watermark.</div>
+            <div class="card" style="padding:16px;text-align:left;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:700"><svg class="ic ic-sm" style="color:var(--success)"><use href="#i-check"/></svg>Every premium clip in the library</div>
+              <div style="display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:700"><svg class="ic ic-sm" style="color:var(--success)"><use href="#i-check"/></svg>Unlimited MP4 exports</div>
+              <div style="display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:700"><svg class="ic ic-sm" style="color:var(--success)"><use href="#i-check"/></svg>No watermark · 2 devices</div>
+            </div>
+            <button class="btn btn-hot btn-lg" style="margin-top:18px"><svg class="ic ic-sm"><use href="#i-crown"/></svg>Go Pro on website</button>
+            <div class="muted tiny" style="margin-top:10px">Pay in crypto via Binance Pay · keep using free clips anytime</div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M8</span><b>Paywall</b> — free stays usable, Pro unlocks all</div>
+      </div>
+
+      <!-- Subscription -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="title" style="font-size:17px">My Plan</span><span style="width:40px"></span></div>
+            <div class="pscroll sectpad">
+              <div class="plan-badge"><div style="position:relative;z-index:1"><div style="font-size:11px;font-weight:900;letter-spacing:.1em;opacity:.85">YEARLY · PRO</div><div style="font-family:var(--display);font-size:26px;margin-top:4px">Unlimited clips</div><div style="margin-top:12px;font-size:12.5px;opacity:.92">Renews manually · expires 12 Mar 2027</div></div></div>
+              <div class="card" style="margin-top:14px;padding:16px;display:flex;align-items:center;gap:14px"><div style="font-size:30px">🚀</div><div><div style="font-size:14px;font-weight:800">Unlimited exports</div><div class="muted tiny">No monthly cap on Pro</div></div><span class="badge badge-active" style="margin-left:auto"><svg class="ic"><use href="#i-check"/></svg>Active</span></div>
+              <div class="card" style="margin-top:12px;padding:4px 16px"><div class="lrow"><span class="licon"><svg class="ic ic-sm"><use href="#i-devices"/></svg></span><div class="g"><div class="t">Devices</div><div class="s">2 of 2 active</div></div><svg class="ic"><use href="#i-chev"/></svg></div></div>
+              <button class="btn btn-ghost btn-lg" style="margin-top:16px"><svg class="ic ic-sm"><use href="#i-share"/></svg>Manage &amp; renew on website</button>
+            </div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M9</span><b>Subscription</b> — read-only; renew on web</div>
+      </div>
+
+      <!-- Notifications -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="title" style="font-size:17px">Notifications</span><span style="width:40px"></span></div>
+            <div class="pscroll sectpad">
+              <div class="lrow notif-unread"><span class="licon" style="background:var(--lime);color:#0b2e13;font-size:18px">🆓</span><div class="g"><div class="t">12 new free clips added</div><div class="s">Fresh reactions pack · tap to browse</div></div></div>
+              <div class="lrow"><span class="licon" style="background:var(--warning);color:#fff"><svg class="ic ic-sm"><use href="#i-clock"/></svg></span><div class="g"><div class="t">Plan expiring soon</div><div class="s">Renew in 5 days to keep Pro · yesterday</div></div></div>
+              <div class="lrow"><span class="licon" style="background:var(--danger-weak);color:var(--danger)"><svg class="ic ic-sm"><use href="#i-down"/></svg></span><div class="g"><div class="t">Free export limit reached</div><div class="s">Go Pro for unlimited · 2 days ago</div></div></div>
+            </div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M10</span><b>Notifications</b> — free drops, plan &amp; limit notices</div>
+      </div>
+
+      <!-- Profile -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="title">Me</span><span class="iconbtn filled"><svg class="ic"><use href="#i-settings"/></svg></span></div>
+            <div class="pscroll sectpad">
+              <div class="card" style="padding:18px;display:flex;align-items:center;gap:14px"><div class="licon" style="width:54px;height:54px;border-radius:17px;background:var(--grad);color:#fff;font-family:var(--display);font-size:20px">A</div><div class="g"><div class="t" style="font-size:16px">Aarav Sharma</div><div class="s">aarav@studio.com</div></div><span class="badge badge-premium"><svg class="ic"><use href="#i-crown"/></svg>Pro</span></div>
+              <div class="card" style="padding:4px 16px;margin-top:12px">
+                <div class="lrow"><span class="licon"><svg class="ic ic-sm"><use href="#i-crown"/></svg></span><div class="g"><div class="t">My plan</div><div class="s">Yearly Pro · active</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+                <div class="lrow"><span class="licon"><svg class="ic ic-sm"><use href="#i-key"/></svg></span><div class="g"><div class="t">Change password</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+                <div class="lrow"><span class="licon">🌙</span><div class="g"><div class="t">Theme</div></div><span class="seg"><span class="on">Light</span><span>Dark</span></span></div>
+                <div class="lrow"><span class="licon"><svg class="ic ic-sm"><use href="#i-devices"/></svg></span><div class="g"><div class="t">Devices</div><div class="s">2 active</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+              </div>
+              <button class="btn btn-ghost btn-lg" style="margin-top:14px;color:var(--danger)"><svg class="ic ic-sm"><use href="#i-logout"/></svg>Log out</button>
+            </div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M11</span><b>Me / Settings</b> — plan, security, theme, devices</div>
+      </div>
+
+      <!-- M12 Favorites -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="iconbtn filled"><svg class="ic"><use href="#i-back"/></svg></span><span class="title" style="font-size:17px">❤️ Favorites</span><span style="width:40px"></span></div>
+            <div class="pscroll"><div class="mgrid">
+              <div class="mcard"><div class="meme m1"><span class="badgewrap" style="font-size:18px">❤️</span><span class="dur">0:08</span><span class="subj">😂</span><div class="impact" style="font-size:13px">IT WORKS</div></div><div class="mmeta"><span class="nm">Dev Life</span><span class="tcat">React</span></div></div>
+              <div class="mcard"><div class="meme m5"><span class="badgewrap" style="font-size:18px">❤️</span><span class="dur">0:09</span><span class="subj">🤯</span><div class="impact" style="font-size:13px">50% OFF</div></div><div class="mmeta"><span class="nm">Deal Alert</span><span class="tcat">Promo</span></div></div>
+              <div class="mcard"><div class="meme m4"><span class="badgewrap" style="font-size:18px">❤️</span><span class="dur">0:06</span><span class="subj">🐸</span><div class="impact" style="font-size:13px">MONDAY</div></div><div class="mmeta"><span class="nm">Frog</span><span class="tcat">Free</span></div></div>
+              <div class="mcard"><div class="meme m6"><span class="badgewrap" style="font-size:18px">❤️</span><span class="dur">0:10</span><span class="subj">💀</span><div class="impact" style="font-size:13px">3 AM</div></div><div class="mmeta"><span class="nm">Night Owl</span><span class="tcat">Mood</span></div></div>
+            </div></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M12</span><b>Favorites</b> — saved clips for quick access</div>
+      </div>
+
+      <!-- M13 Download History -->
+      <div class="figure">
+        <div class="phone"><div class="screen"><div class="island"></div>
+          <div class="statusbar"><span>9:41</span><span class="r"><svg class="ic"><use href="#i-signal"/></svg><svg class="ic"><use href="#i-wifi"/></svg><svg class="ic"><use href="#i-batt"/></svg></span></div>
+          <div class="pbody">
+            <div class="appbar"><span class="title">Exports</span><span class="iconbtn filled"><svg class="ic"><use href="#i-search"/></svg></span></div>
+            <div class="pscroll sectpad">
+              <div class="lrow"><span class="tmini" style="width:46px;height:46px"><span class="meme m1"><span class="subj">😂</span></span></span><div class="g"><div class="t">Dev Life — edited</div><div class="s">1080p · MP4 · today, 9:12</div></div><span class="iconbtn"><svg class="ic ic-sm"><use href="#i-down"/></svg></span></div>
+              <div class="lrow"><span class="tmini" style="width:46px;height:46px"><span class="meme m5"><span class="subj">🤯</span></span></span><div class="g"><div class="t">Deal Alert — edited</div><div class="s">1080p · MP4 · yesterday</div></div><span class="iconbtn"><svg class="ic ic-sm"><use href="#i-down"/></svg></span></div>
+              <div class="lrow"><span class="tmini" style="width:46px;height:46px"><span class="meme m4"><span class="subj">🐸</span></span></span><div class="g"><div class="t">Monday Frog — edited</div><div class="s">720p · MP4 · 2 days ago</div></div><span class="iconbtn"><svg class="ic ic-sm"><use href="#i-down"/></svg></span></div>
+            </div>
+            <div class="bnav"><a><svg class="ic"><use href="#i-fire"/></svg>Discover</a><a><svg class="ic"><use href="#i-grid"/></svg>Library</a><span class="fab"><svg class="ic"><use href="#i-magic"/></svg></span><a class="on"><svg class="ic"><use href="#i-down"/></svg>Exports</a><a><svg class="ic"><use href="#i-user"/></svg>Me</a></div>
+          </div>
+        </div></div>
+        <div class="caption"><span class="id">M13</span><b>Download History</b> — re-download past exports (Exports tab)</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== WEB (taste) ===================== -->
+  <section class="platform">
+    <div class="platform-head"><h2>🌐 Website</h2><span class="count">Flutter Web — landing + pricing preview</span></div>
+    <p class="platform-sub">Buy Pro (Binance Pay) &amp; manage account on web — no editor on web. Full web set + admin roll out next in this same bold style.</p>
+    <div class="rail">
+
+      <!-- Landing -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app</span></div>
+          <div class="bbody" style="height:auto;min-height:600px">
+            <div class="wnav"><div class="wordmark"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><div class="links"><span>Clips</span><span>Pricing</span><span style="color:var(--text)">Log in</span><button class="btn btn-primary btn-sm">Start free</button></div></div>
+            <div class="whero">
+              <span class="kick"><svg class="ic ic-sm"><use href="#i-fire"/></svg>Entertainment clips for creators &amp; brands</span>
+              <h3>Your brand,<br>on every <em>clip</em>.</h3>
+              <p>Grab a trending clip, add your logo, text &amp; font, and export a post-ready video in seconds. Free clips to start — subscribe for the full library.</p>
+              <div class="wcta"><button class="btn btn-hot">Start free</button><button class="btn btn-ghost">See pricing</button></div>
+            </div>
+            <div class="memerow">
+              <div class="mm"><div class="meme m4" style="height:100%"><span class="badgewrap badge badge-free">Free</span><div class="impact">Reaction</div></div></div>
+              <div class="mm"><div class="meme m1" style="height:100%"><div class="impact">Comedy</div></div></div>
+              <div class="mm"><div class="meme m5" style="height:100%"><span class="badgewrap badge badge-premium">Pro</span><div class="impact">Movie Edit</div></div></div>
+              <div class="mm"><div class="meme m6" style="height:100%"><div class="impact">Mood</div></div></div>
+              <div class="mm"><div class="meme m3" style="height:100%"><div class="impact">Trending</div></div></div>
+            </div>
+            <div style="padding:6px 40px 40px">
+              <div class="section-h" style="padding:8px 0 16px"><div class="kick">Loved by creators</div></div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+                <div class="card" style="padding:16px;text-align:left"><div style="color:var(--premium);font-size:12px;letter-spacing:2px">★★★★★</div><div style="font-size:12.5px;color:var(--text-2);margin:8px 0 12px">“I post 3× more now — grab a clip, drop my logo, done in a minute.”</div><div style="display:flex;gap:9px;align-items:center"><span class="av">A</span><div><div style="font-size:12px;font-weight:800">Aisha K.</div><div class="muted tiny">@aisha.reels</div></div></div></div>
+                <div class="card" style="padding:16px;text-align:left"><div style="color:var(--premium);font-size:12px;letter-spacing:2px">★★★★★</div><div style="font-size:12.5px;color:var(--text-2);margin:8px 0 12px">“The free clips hooked me, the library kept me. Great value.”</div><div style="display:flex;gap:9px;align-items:center"><span class="av">R</span><div><div style="font-size:12px;font-weight:800">Rohan M.</div><div class="muted tiny">@rohan.edits</div></div></div></div>
+                <div class="card" style="padding:16px;text-align:left"><div style="color:var(--premium);font-size:12px;letter-spacing:2px">★★★★★</div><div style="font-size:12.5px;color:var(--text-2);margin:8px 0 12px">“Fresh trending clips every week — my page finally looks consistent.”</div><div style="display:flex;gap:9px;align-items:center"><span class="av">L</span><div><div style="font-size:12px;font-weight:800">Lena P.</div><div class="muted tiny">@lena.daily</div></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="caption"><span class="id">W1</span><b>Landing</b> — hero · clip categories · <b>testimonials</b> · free hook · CTA</div>
+      </div>
+
+      <!-- Pricing -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/pricing</span></div>
+          <div class="bbody">
+            <div class="section-h"><div class="kick">Start free · upgrade in crypto</div><h3>Plans for every creator</h3></div>
+            <div class="pricewrap" style="gap:14px;padding:24px 30px 12px">
+              <div class="plan free" style="padding:20px"><div class="pn" style="color:var(--lime)">🆓 Free</div><div class="amt">$0</div><div class="muted tiny">forever</div><ul><li><svg class="ic"><use href="#i-check"/></svg>Free clip categories</li><li><svg class="ic"><use href="#i-check"/></svg>3 exports / mo</li><li><svg class="ic"><use href="#i-check"/></svg>720p · watermark</li><li><svg class="ic"><use href="#i-check"/></svg>1 device</li></ul><button class="btn btn-ghost btn-sm" style="width:100%">Start free</button></div>
+              <div class="plan" style="padding:20px"><div class="pn">Basic</div><div class="amt"><span class="ph">$—</span></div><div class="muted tiny">USDT · monthly</div><ul><li><svg class="ic"><use href="#i-check"/></svg>Full library</li><li><svg class="ic"><use href="#i-check"/></svg>30 exports / mo</li><li><svg class="ic"><use href="#i-check"/></svg>1080p · no watermark</li><li><svg class="ic"><use href="#i-check"/></svg>2 devices</li></ul><button class="btn btn-ghost btn-sm" style="width:100%">Choose</button></div>
+              <div class="plan feat" style="padding:20px"><div class="pn">Professional</div><div class="amt"><span class="ph">$—</span></div><div class="muted tiny">USDT · monthly</div><ul><li><svg class="ic"><use href="#i-check"/></svg>Everything in Basic</li><li><svg class="ic"><use href="#i-check"/></svg>150 exports / mo</li><li><svg class="ic"><use href="#i-check"/></svg>1080p · priority drops</li><li><svg class="ic"><use href="#i-check"/></svg>2 devices</li></ul><button class="btn btn-hot btn-sm" style="width:100%">Choose</button></div>
+              <div class="plan" style="padding:20px"><div class="pn">Agency</div><div class="amt"><span class="ph">$—</span></div><div class="muted tiny">USDT · monthly</div><ul><li><svg class="ic"><use href="#i-check"/></svg>Everything in Pro</li><li><svg class="ic"><use href="#i-check"/></svg>Unlimited exports</li><li><svg class="ic"><use href="#i-check"/></svg>4K · no watermark</li><li><svg class="ic"><use href="#i-check"/></svg>5 devices</li></ul><button class="btn btn-ghost btn-sm" style="width:100%">Choose</button></div>
+            </div>
+            <div style="text-align:center" class="muted tiny">Admin-configurable plans · prices are placeholders. Crypto (Binance Pay) · manual renewal, no auto-charge.</div>
+          </div>
+        </div>
+        <div class="caption"><span class="id">W2</span><b>Pricing</b> — Free tier + Pro (placeholder prices)</div>
+      </div>
+
+      <!-- W4 Login -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/login</span></div>
+          <div class="bbody"><div class="wauth"><div class="wauthcard">
+            <div class="wordmark" style="justify-content:center;font-size:22px;margin-bottom:18px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div>
+            <div class="card" style="padding:28px">
+              <div class="h-title" style="text-align:center;margin-top:4px">Welcome back</div><div class="muted" style="text-align:center;font-size:13.5px;margin:4px 0 18px">Log in to continue</div>
+              <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">clip@studio.com</span></div></div>
+              <div class="field"><label>Password</label><div class="input focus"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••••</span></div></div>
+              <button class="btn btn-primary btn-lg" style="margin-top:6px">Log in</button>
+              <div class="ordiv">OR</div>
+              <button class="btn-google"><svg class="gic"><use href="#i-google"/></svg>Continue with Google</button>
+              <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent)">Create account</b></div>
+            </div>
+          </div></div></div>
+        </div>
+        <div class="caption"><span class="id">W4</span><b>Login</b> — centered auth card</div>
+      </div>
+
+      <!-- W3 Register -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/register</span></div>
+          <div class="bbody"><div class="wauth"><div class="wauthcard">
+            <div class="card" style="padding:28px">
+              <span class="badge badge-free" style="margin:0 auto 12px;display:table">🆓 Free to start</span>
+              <div class="h-title" style="text-align:center">Create your account</div><div class="muted" style="text-align:center;font-size:13.5px;margin:4px 0 18px">Start free, upgrade anytime</div>
+              <div class="field"><label>Full name</label><div class="input"><svg class="ic ic-sm"><use href="#i-user"/></svg><span class="val">Aarav Sharma</span></div></div>
+              <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">aarav@studio.com</span></div></div>
+              <div class="field"><label>Password</label><div class="input"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••</span></div></div>
+              <button class="btn btn-primary btn-lg" style="margin-top:6px">Create account</button>
+              <div class="ordiv">OR</div>
+              <button class="btn-google"><svg class="gic"><use href="#i-google"/></svg>Sign up with Google</button>
+              <div class="muted tiny" style="text-align:center;margin-top:14px">We'll email a verification link before first login.</div>
+            </div>
+          </div></div></div>
+        </div>
+        <div class="caption"><span class="id">W3</span><b>Register</b> — free start, email verification</div>
+      </div>
+
+      <!-- W5 Reset -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/reset</span></div>
+          <div class="bbody"><div class="wauth"><div class="wauthcard">
+            <div class="card" style="padding:28px;text-align:center">
+              <div class="licon" style="width:62px;height:62px;border-radius:19px;margin:0 auto 16px;background:var(--accent-weak);color:var(--accent)"><svg class="ic" style="width:28px;height:28px"><use href="#i-key"/></svg></div>
+              <div class="h-title">Reset your password</div><div class="muted" style="font-size:13.5px;margin:6px 0 18px">Enter your email for a secure reset link.</div>
+              <div class="field" style="text-align:left"><label>Email</label><div class="input focus"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">clip@studio.com</span></div></div>
+              <button class="btn btn-primary btn-lg" style="margin-top:6px">Send reset link</button>
+            </div>
+          </div></div></div>
+        </div>
+        <div class="caption"><span class="id">W5</span><b>Verify / Forgot / Reset</b> — email token flow</div>
+      </div>
+
+      <!-- W6 Library -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/memes</span></div>
+          <div class="bbody">
+            <div class="wnav"><div class="wordmark"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><div class="links"><span style="color:var(--text)">Memes</span><span>Pricing</span><span class="av">A</span></div></div>
+            <div class="wpage" style="padding:22px 40px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="h-title">Clip Library</div><div class="input" style="width:230px;height:40px"><svg class="ic ic-sm"><use href="#i-search"/></svg><span>Search memes…</span></div></div>
+              <div style="display:flex;gap:8px;margin-bottom:16px"><span class="chip hot"><svg class="ic ic-sm"><use href="#i-fire"/></svg>Hot</span><span class="chip">Free</span><span class="chip">Reactions</span><span class="chip">Comedy</span><span class="chip">Movie Edits</span></div>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+                <div class="mcard"><div class="meme m1"><span class="badgewrap badge badge-premium">Pro</span><span class="dur">0:08</span><span class="subj">😂</span><div class="impact" style="font-size:12px">IT WORKS</div></div><div class="mmeta"><span class="nm" style="font-size:11px">Dev Life</span></div></div>
+                <div class="mcard"><div class="meme m4"><span class="badgewrap badge badge-free">Free</span><span class="dur">0:06</span><span class="subj">🐸</span><div class="impact" style="font-size:12px">MONDAY</div></div><div class="mmeta"><span class="nm" style="font-size:11px">Frog</span></div></div>
+                <div class="mcard"><div class="meme m5"><span class="badgewrap badge badge-premium">Pro</span><span class="dur">0:09</span><span class="subj">🤯</span><div class="impact" style="font-size:12px">50% OFF</div></div><div class="mmeta"><span class="nm" style="font-size:11px">Deal</span></div></div>
+                <div class="mcard"><div class="meme m3"><span class="badgewrap badge badge-free">Free</span><span class="dur">0:07</span><span class="subj">🔥</span><div class="impact" style="font-size:12px">FIRE</div></div><div class="mmeta"><span class="nm" style="font-size:11px">Hot</span></div></div>
+                <div class="mcard"><div class="meme m6"><span class="badgewrap badge badge-premium">Pro</span><span class="dur">0:10</span><span class="subj">💀</span><div class="impact" style="font-size:12px">3 AM</div></div><div class="mmeta"><span class="nm" style="font-size:11px">Night</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="caption"><span class="id">W6</span><b>Clip Library</b> — browse Free + Pro (previews only)</div>
+      </div>
+
+      <!-- W7 Detail -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/m/dev-life</span></div>
+          <div class="bbody"><div class="wpage" style="display:flex;gap:28px;align-items:center">
+            <div class="meme m1" style="width:280px;aspect-ratio:1/1;flex:none;border-radius:22px"><span class="play" style="width:52px;height:52px;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);border-radius:50%;display:grid;place-items:center"><svg class="ic" style="fill:#fff;stroke:#fff;width:20px;margin-left:3px"><use href="#i-play"/></svg></span><span class="subj" style="font-size:66px">😂</span><div class="impact" style="font-size:24px">IT FINALLY WORKS</div></div>
+            <div style="flex:1">
+              <span class="badge badge-premium"><svg class="ic"><use href="#i-crown"/></svg>Premium</span>
+              <div class="h-title" style="font-size:30px;margin:12px 0 8px">Dev Life</div>
+              <div class="muted" style="font-size:14px;max-width:46ch">8-second reaction meme. Swap the caption, drop your logo, pick a font — post-ready in seconds. Editing &amp; export happen in the ClipCart mobile app.</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin:18px 0"><span class="chip soft">Subtitle</span><span class="chip soft">Logo</span><span class="chip soft">Font</span><span class="chip soft">Color</span><span class="chip soft">Username</span><span class="chip soft">CTA</span></div>
+              <button class="btn btn-hot" style="width:auto;padding:14px 26px">Go Pro to unlock</button>
+              <div class="muted tiny" style="margin-top:12px;display:flex;gap:7px;align-items:center"><svg class="ic ic-sm"><use href="#i-devices"/></svg>Make it yours in the ClipCart mobile app.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">W7</span><b>Meme Detail</b> — subscribe CTA, editor is mobile-only</div>
+      </div>
+
+      <!-- W8 Checkout -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/checkout</span></div>
+          <div class="bbody"><div class="cowrap"><div class="cocard card">
+            <div class="cohead"><div style="font-family:var(--display);font-size:18px">Go Pro</div><div class="muted tiny">Secure crypto payment</div></div>
+            <div class="cobody">
+              <div class="sumrow"><span>Yearly Pro</span><span class="ph">$—</span></div>
+              <div class="sumrow"><span>Network</span><span style="color:var(--text);font-weight:700">BEP20 · USDT</span></div>
+              <div class="sumrow total"><span>Total</span><span class="ph">$—</span></div>
+              <button class="btn btn-primary btn-lg" style="margin-top:18px"><svg class="ic ic-sm"><use href="#i-coin"/></svg>Pay</button>
+              <div class="waiting"><span class="spin"></span>Waiting for payment confirmation — Pro unlocks automatically once verified on our server.</div>
+            </div>
+          </div></div></div>
+        </div>
+        <div class="caption"><span class="id">W8</span><b>Checkout</b> — Binance Pay, verified server-side (never frontend)</div>
+      </div>
+
+      <!-- W9 Payment Result -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/payment/success</span></div>
+          <div class="bbody"><div class="cowrap"><div class="cocard card" style="padding:34px;text-align:center">
+            <div class="successmark">🎉</div>
+            <div class="h-title">You're Pro now!</div>
+            <div class="muted" style="font-size:14px;margin:8px 0 6px">Payment verified — the whole meme vault is unlocked. A confirmation email is on its way.</div>
+            <div class="badge badge-active" style="margin:6px auto 20px"><svg class="ic"><use href="#i-check"/></svg>Active until 12 Mar 2027</div>
+            <button class="btn btn-primary btn-lg">Open the app</button>
+          </div></div></div>
+        </div>
+        <div class="caption"><span class="id">W9</span><b>Payment Result</b> — success / pending / failed, backend-driven</div>
+      </div>
+
+      <!-- W10 Dashboard -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/account</span></div>
+          <div class="bbody">
+            <div class="wnav"><div class="wordmark"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><div class="links"><span>Memes</span><span>Pricing</span><span class="av">A</span></div></div>
+            <div class="wpage" style="padding:24px 40px">
+              <div class="h-title" style="margin-bottom:14px">Your account</div>
+              <div class="wgrid">
+                <div class="plan-badge"><div style="position:relative;z-index:1"><div style="font-size:11px;font-weight:900;letter-spacing:.1em;opacity:.85">YEARLY · PRO</div><div style="font-family:var(--display);font-size:23px;margin-top:4px">Unlimited memes</div><div style="margin-top:12px;font-size:12.5px;opacity:.92">Expires 12 Mar 2027 · manual renewal</div><button class="btn" style="background:#fff;color:var(--accent);margin-top:14px;width:auto;padding:10px 18px">Renew now</button></div></div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <div class="card" style="padding:16px;display:flex;gap:12px;align-items:center"><span style="font-size:26px">🚀</span><div class="g"><div style="font-size:13px;font-weight:800">Unlimited exports</div><div class="muted tiny">No cap on Pro</div></div></div>
+                  <div class="card" style="padding:16px;display:flex;gap:12px;align-items:center"><span class="licon"><svg class="ic ic-sm"><use href="#i-devices"/></svg></span><div class="g"><div style="font-size:13px;font-weight:800">Devices</div><div class="muted tiny">2 of 2 active</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+                  <div class="card" style="padding:16px;display:flex;gap:12px;align-items:center"><span class="licon"><svg class="ic ic-sm"><use href="#i-clock"/></svg></span><div class="g"><div style="font-size:13px;font-weight:800">Payment history</div><div class="muted tiny">3 payments</div></div><svg class="ic"><use href="#i-chev"/></svg></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="caption"><span class="id">W10</span><b>Account Dashboard</b> — plan, exports, quick links</div>
+      </div>
+
+      <!-- W11 Payment History -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/account/payments</span></div>
+          <div class="bbody"><div class="wpage">
+            <div class="h-title" style="margin-bottom:16px">Payment history</div>
+            <div class="panelbox"><table class="tbl"><thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Network</th><th>Status</th></tr></thead><tbody>
+              <tr><td><b>12 Mar 2026</b></td><td>Yearly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>BEP20</td><td><span class="pill ok">Verified</span></td></tr>
+              <tr><td><b>10 Feb 2026</b></td><td>Monthly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>BEP20</td><td><span class="pill ok">Verified</span></td></tr>
+              <tr><td><b>09 Jan 2026</b></td><td>Monthly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>BEP20</td><td><span class="pill ok">Verified</span></td></tr>
+            </tbody></table></div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">W11</span><b>Payment History</b> — verified payments only</div>
+      </div>
+
+      <!-- W11b Invoices -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/account/invoices</span></div>
+          <div class="bbody"><div class="wpage">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div class="h-title">Invoices</div><span class="muted tiny">Generated on each verified payment</span></div>
+            <div class="panelbox"><table class="tbl"><thead><tr><th>Invoice</th><th>Plan</th><th>Amount</th><th>Date</th><th>Status</th><th></th></tr></thead><tbody>
+              <tr><td><b>INV-2026-0312</b></td><td>Yearly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>12 Mar 2026</td><td><span class="pill ok">Paid</span></td><td><button class="btn btn-ghost btn-sm"><svg class="ic ic-sm"><use href="#i-down"/></svg>PDF</button></td></tr>
+              <tr><td><b>INV-2026-0210</b></td><td>Monthly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>10 Feb 2026</td><td><span class="pill ok">Paid</span></td><td><button class="btn btn-ghost btn-sm"><svg class="ic ic-sm"><use href="#i-down"/></svg>PDF</button></td></tr>
+              <tr><td><b>INV-2026-0109</b></td><td>Monthly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>09 Jan 2026</td><td><span class="pill ok">Paid</span></td><td><button class="btn btn-ghost btn-sm"><svg class="ic ic-sm"><use href="#i-down"/></svg>PDF</button></td></tr>
+            </tbody></table></div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">W11b</span><b>Invoices</b> — downloadable, per verified payment</div>
+      </div>
+
+      <!-- W12 Devices -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/account/devices</span></div>
+          <div class="bbody"><div class="wpage">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div class="h-title">Devices</div><button class="btn btn-ghost btn-sm">Buy extra slot</button></div>
+            <div class="panelbox"><table class="tbl"><thead><tr><th>Device</th><th>OS</th><th>Location</th><th>Last active</th><th></th></tr></thead><tbody>
+              <tr><td><b>iPhone 15 Pro</b> <span class="pill info">This device</span></td><td>iOS 18 · v1.0.2</td><td>Mumbai, IN</td><td>Active now</td><td></td></tr>
+              <tr><td><b>Pixel 8</b></td><td>Android 15 · v1.0.2</td><td>Delhi, IN</td><td>2h ago</td><td><span style="color:var(--danger);font-weight:800;cursor:pointer">Remove</span></td></tr>
+            </tbody></table></div>
+            <div class="muted tiny" style="margin-top:12px">Max 2 active devices. Remove one or buy an extra slot to add a third.</div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">W12</span><b>Devices</b> — manage bound devices, buy slot</div>
+      </div>
+
+      <!-- W13 Profile -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/account/profile</span></div>
+          <div class="bbody"><div class="wpage">
+            <div class="h-title" style="margin-bottom:16px">Profile &amp; settings</div>
+            <div class="card" style="padding:22px;max-width:520px">
+              <div style="display:flex;gap:14px;align-items:center;margin-bottom:20px"><div class="av" style="width:56px;height:56px;border-radius:17px;font-family:var(--display);font-size:20px">A</div><div><div style="font-weight:800;font-size:16px">Aarav Sharma</div><div class="muted tiny">aarav@studio.com</div></div><span class="badge badge-premium" style="margin-left:auto"><svg class="ic"><use href="#i-crown"/></svg>Pro</span></div>
+              <div class="field"><label>Full name</label><div class="input"><span class="val">Aarav Sharma</span></div></div>
+              <div class="field"><label>Email</label><div class="input"><span class="val">aarav@studio.com</span><span class="pill ok" style="margin-left:auto">Verified</span></div></div>
+              <div style="display:flex;gap:10px;margin-top:8px"><button class="btn btn-primary" style="width:auto;padding:11px 20px">Save changes</button><button class="btn btn-ghost" style="width:auto;padding:11px 20px"><svg class="ic ic-sm"><use href="#i-key"/></svg>Change password</button></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">W13</span><b>Profile &amp; Settings</b> — profile, password, theme</div>
+      </div>
+
+      <!-- W14 Support -->
+      <div class="figure">
+        <div class="browser"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>clipcart.app/support</span></div>
+          <div class="bbody"><div class="wpage" style="text-align:center;display:grid;place-items:center">
+            <div style="max-width:460px">
+              <div style="font-size:44px;margin-bottom:8px">🙌</div>
+              <div class="h-title">Need a hand?</div>
+              <div class="muted" style="font-size:14px;margin:8px 0 20px">Reach the ClipCart team — we usually reply within a day.</div>
+              <div class="card" style="padding:18px;text-align:left;display:flex;flex-direction:column;gap:12px">
+                <div class="lrow" style="padding:6px 0;border:0"><span class="licon"><svg class="ic ic-sm"><use href="#i-mail"/></svg></span><div class="g"><div class="t">Email us</div><div class="s">support@clipcart.app</div></div></div>
+                <button class="btn btn-primary btn-lg">Contact support</button>
+              </div>
+              <div class="muted tiny" style="margin-top:12px">Optional page — include only if client wants it.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">W14</span><b>Support / Contact</b> — optional static page</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN ===================== -->
+  <section class="platform">
+    <div class="platform-head"><h2>🛠️ Admin Panel</h2><span class="count">Flutter Web — roles: admin · editor</span></div>
+    <p class="platform-sub">Super-admin manages everything. <b>Editors</b> get their own login to upload memes/clips + metadata and track earnings. Payout is driven by each creator's <b>exports/downloads</b>. Payout rate &amp; settlement method are business decisions (marked placeholder).</p>
+    <div class="rail">
+
+      <!-- A1 Admin Login -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app</span></div>
+          <div class="bbody"><div class="wauth"><div class="wauthcard">
+            <div class="card" style="padding:30px;text-align:center">
+              <div class="licon" style="width:60px;height:60px;border-radius:18px;margin:0 auto 14px;background:var(--grad);color:#fff"><svg class="ic" style="width:28px;height:28px"><use href="#i-shield"/></svg></div>
+              <div class="h-title">Admin &amp; Creator login</div><div class="muted" style="font-size:13px;margin:5px 0 18px">Role-gated · admins &amp; editors only</div>
+              <div class="field" style="text-align:left"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">team@clipcart.app</span></div></div>
+              <div class="field" style="text-align:left"><label>Password</label><div class="input focus"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••••</span></div></div>
+              <button class="btn btn-primary btn-lg" style="margin-top:6px">Sign in</button>
+            </div>
+          </div></div></div>
+        </div>
+        <div class="caption"><span class="id">A1</span><b>Login</b> — one gate, routes admin vs editor by role</div>
+      </div>
+
+      <!-- A2 Admin Dashboard -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side">
+              <div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div>
+              <a class="on"><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a>
+              <div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a>
+            </div>
+            <div class="content">
+              <div class="chead"><h4>Dashboard</h4><span class="rolebadge role-admin">Admin</span></div>
+              <div class="stats">
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-user"/></svg>Subscribers</div><div class="v mono">1,284</div><div class="d up">▲ 6.2%</div><span class="emoji">😎</span></div>
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-coin"/></svg>Revenue</div><div class="v mono">$18.4k</div><div class="d up">▲ USDT · 30d</div><span class="emoji">💰</span></div>
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-down"/></svg>Exports</div><div class="v mono">7,905</div><div class="d muted">30d</div><span class="emoji">📤</span></div>
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-users"/></svg>Editors</div><div class="v mono">14</div><div class="d up">2 pending payout</div><span class="emoji">✍️</span></div>
+              </div>
+              <div class="panelbox"><div class="ph2">Top creators <span class="muted tiny" style="font-weight:600">by exports · this month</span></div>
+                <table class="tbl"><tbody>
+                  <tr><td style="width:36px"><span class="av">M</span></td><td><b>maria.k</b> <span class="rolebadge role-editor">Editor</span></td><td class="mono">2,140 exports</td><td class="mono"><b style="color:var(--success)">$—</b> earned</td><td><span class="pill warn">Payout due</span></td></tr>
+                  <tr><td><span class="av">R</span></td><td><b>rahul.fx</b> <span class="rolebadge role-editor">Editor</span></td><td class="mono">1,760 exports</td><td class="mono"><b style="color:var(--success)">$—</b> earned</td><td><span class="pill ok">Paid</span></td></tr>
+                  <tr><td><span class="av">Z</span></td><td><b>zoya.clips</b> <span class="rolebadge role-editor">Editor</span></td><td class="mono">980 exports</td><td class="mono"><b style="color:var(--success)">$—</b> earned</td><td><span class="pill ok">Paid</span></td></tr>
+                </tbody></table>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A2</span><b>Dashboard</b> — KPIs + top creators &amp; payout status</div>
+      </div>
+
+      <!-- A3 Memes list -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/memes</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a class="on"><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Clips Library</h4><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-plus"/></svg>New clip</button></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Meme</th><th>Creator</th><th>Category</th><th>Tier</th><th>Exports</th><th>Status</th><th></th></tr></thead><tbody>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="tmini"><span class="meme m1"><span class="subj">😂</span><span class="impact">WORKS</span></span></span><b>Dev Life</b></td><td>maria.k</td><td>Reactions</td><td><span class="badge badge-premium">Pro</span></td><td class="mono">2,140</td><td><span class="pill ok">Published</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="tmini"><span class="meme m4"><span class="subj">🐸</span><span class="impact">MON</span></span></span><b>Monday Frog</b></td><td>rahul.fx</td><td>Free</td><td><span class="badge badge-free">Free</span></td><td class="mono">1,320</td><td><span class="pill ok">Published</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="tmini"><span class="meme m6"><span class="subj">💀</span><span class="impact">3AM</span></span></span><b>Night Owl</b></td><td>zoya.clips</td><td>Mood</td><td><span class="badge badge-premium">Pro</span></td><td class="mono">640</td><td><span class="pill warn">Draft</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A3</span><b>Memes list</b> — all creators' content, tier &amp; exports</div>
+      </div>
+
+      <!-- A3b Approval Queue -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/approvals</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a class="on"><svg class="ic"><use href="#i-check"/></svg>Approvals <span style="margin-left:auto;background:var(--danger);color:#fff;font-size:10px;font-weight:900;padding:1px 7px;border-radius:999px">3</span></a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Review clip <span class="rolebadge role-admin" style="margin-left:6px">3 pending</span></h4><div class="pager"><span class="nav"><svg class="ic ic-sm"><use href="#i-back"/></svg></span>1 of 3<span class="nav"><svg class="ic ic-sm"><use href="#i-chev"/></svg></span></div></div>
+              <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:18px">
+                <div>
+                  <div class="player m6"><span class="wm">PREVIEW · watermarked</span><span class="pbtn"><svg class="ic"><use href="#i-play"/></svg></span><div class="ctrl"><svg class="ic"><use href="#i-play"/></svg><span class="tm">0:03</span><div class="track"><i></i></div><span class="tm">0:10</span></div></div>
+                  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost btn-sm"><svg class="ic ic-sm"><use href="#i-lock"/></svg>View original (private)</button><button class="btn btn-ghost btn-sm"><svg class="ic ic-sm"><use href="#i-type"/></svg>Editable-field config</button></div>
+                  <div class="upnext"><span class="muted tiny" style="align-self:center">Up next:</span><span class="u"><span class="tmini" style="width:26px;height:26px"><span class="meme m3"></span></span>Fire Sale</span><span class="u"><span class="tmini" style="width:26px;height:26px"><span class="meme m2"></span></span>Wait What</span></div>
+                </div>
+                <div>
+                  <div class="panelbox" style="padding:16px;margin-bottom:12px"><div class="metagrid">
+                    <span class="k">Title</span><span class="v">Night Owl</span>
+                    <span class="k">Creator</span><span class="v">zoya.clips <span class="rolebadge role-editor" style="margin-left:4px">Editor</span></span>
+                    <span class="k">Category</span><span class="v">Reactions</span>
+                    <span class="k">Movie</span><span class="v">Interstellar</span>
+                    <span class="k">Genre · Lang</span><span class="v">Sci-fi · English</span>
+                    <span class="k">Specs</span><span class="v">0:10 · 1080p · 9:16</span>
+                    <span class="k">Tier</span><span class="v"><span class="badge badge-premium">Pro</span></span>
+                    <span class="k">Editable</span><span class="v">Subtitle · Logo · Font · Color</span>
+                  </div></div>
+                  <div class="reviewnote">Add a note for the editor (required for Reject / Request changes)…</div>
+                  <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px">
+                    <button class="btn btn-lg" style="background:var(--success);color:#fff"><svg class="ic ic-sm"><use href="#i-check"/></svg>Approve &amp; publish</button>
+                    <div style="display:flex;gap:9px"><button class="btn btn-ghost" style="flex:1">Request changes</button><button class="btn btn-ghost" style="flex:1;color:var(--danger)">Reject</button></div>
+                    <label style="display:flex;gap:9px;align-items:center;font-size:12px;font-weight:700;color:var(--text-2);margin-top:4px"><span class="toggle off" style="transform:scale(.82)"></span>Feature on homepage after approval</label>
+                  </div>
+                </div>
+              </div>
+              <div class="muted tiny" style="margin-top:14px">Admin watches the preview → decides. Nothing goes live until <b>Approved</b>. Reject / Request changes returns it to the editor with your note. Every action is audit-logged.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A3b</span><b>Review Clip</b> — admin <b>watches the video</b> + checks metadata, then approve / reject (reason) / request-changes</div>
+      </div>
+
+      <!-- A4 Meme Upload & Metadata -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/memes/new</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a class="on"><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content" style="overflow:hidden">
+              <div class="chead"><h4>New clip</h4><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-check"/></svg>Submit for review</button></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="panelbox" style="padding:16px"><div style="font-weight:800;font-size:12px;margin-bottom:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Assets &amp; metadata</div>
+                  <div style="display:flex;gap:10px;margin-bottom:14px"><div class="upbox" style="flex:1"><svg class="ic"><use href="#i-upload"/></svg>Clip file</div><div class="upbox" style="flex:1"><svg class="ic"><use href="#i-image"/></svg>Thumbnail</div></div>
+                  <div class="field"><label>Title</label><div class="input"><span class="val">Dev Life</span></div></div>
+                  <div style="display:flex;gap:10px"><div class="field" style="flex:1"><label>Category</label><div class="input"><span class="val">Reactions</span></div></div><div class="field" style="flex:1"><label>Duration</label><div class="input"><span class="val">0:08</span></div></div></div>
+                  <div class="field"><label>Creator (editor)</label><div class="input"><svg class="ic ic-sm"><use href="#i-user"/></svg><span class="val">maria.k</span></div></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Tier</span><span class="seg"><span>Free</span><span class="on">Pro</span></span></div>
+                </div>
+                <div class="panelbox" style="padding:16px"><div style="font-weight:800;font-size:12px;margin-bottom:8px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Editable fields (what users can change)</div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700"><svg class="ic ic-sm" style="color:var(--accent);vertical-align:-3px"><use href="#i-type"/></svg> Subtitle (text · font · size · color · position · stroke)</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700"><svg class="ic ic-sm" style="color:var(--accent);vertical-align:-3px"><use href="#i-palette"/></svg> Background</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700"><svg class="ic ic-sm" style="color:var(--accent);vertical-align:-3px"><use href="#i-user"/></svg> Username</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700"><svg class="ic ic-sm" style="color:var(--accent);vertical-align:-3px"><use href="#i-image"/></svg> Logo</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700"><svg class="ic ic-sm" style="color:var(--accent);vertical-align:-3px"><use href="#i-type"/></svg> CTA · Ending screen</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700"><svg class="ic ic-sm" style="color:var(--accent);vertical-align:-3px"><use href="#i-grid"/></svg> Aspect ratio · Watermark</span><span class="toggle off"></span></div>
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A4</span><b>Upload &amp; Metadata</b> — assets, tier, creator, editable-field config</div>
+      </div>
+
+      <!-- A5 Editors -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/editors</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a class="on"><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Editors (creators)</h4><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Add editor</button></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Editor</th><th>Role</th><th>Memes</th><th>Exports</th><th>Earnings</th><th>Status</th><th></th></tr></thead><tbody>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="av">M</span><div><b>maria.k</b><div class="muted tiny">maria@clipcart.app</div></div></td><td><span class="rolebadge role-editor">Editor</span></td><td class="mono">24</td><td class="mono">2,140</td><td class="mono"><b style="color:var(--success)">$—</b></td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="av">R</span><div><b>rahul.fx</b><div class="muted tiny">rahul@clipcart.app</div></div></td><td><span class="rolebadge role-editor">Editor</span></td><td class="mono">18</td><td class="mono">1,760</td><td class="mono"><b style="color:var(--success)">$—</b></td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="av" style="background:var(--grad-hot)">G</span><div><b>Gulshan T.</b><div class="muted tiny">admin@clipcart.app</div></div></td><td><span class="rolebadge role-admin">Admin</span></td><td class="mono">—</td><td class="mono">—</td><td class="mono">—</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+              </tbody></table></div>
+              <div class="muted tiny" style="margin-top:12px">“Add editor” creates a role-gated login. Editors only see &amp; manage their own content + payouts.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A5</span><b>Editors</b> — create logins, assign role, see output &amp; earnings</div>
+      </div>
+
+      <!-- A6 Payouts -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/payouts</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a class="on"><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Creator payouts</h4><span class="muted tiny">Based on exports/downloads · rate <b>placeholder</b></span></div>
+              <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-wallet"/></svg>Owed now</div><div class="v mono"><span class="ph">$—</span></div><div class="d muted">2 editors pending</div></div>
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-coin"/></svg>Paid this month</div><div class="v mono"><span class="ph">$—</span></div><div class="d up">3 payouts</div></div>
+                <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-down"/></svg>Billable exports</div><div class="v mono">4,880</div><div class="d muted">30d</div></div>
+              </div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Editor</th><th>Period</th><th>Exports</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+                <tr><td><b>maria.k</b></td><td>Mar 2026</td><td class="mono">2,140</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill warn">Pending</span></td><td><button class="btn btn-primary btn-sm">Mark paid</button></td></tr>
+                <tr><td><b>rahul.fx</b></td><td>Mar 2026</td><td class="mono">1,760</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill warn">Pending</span></td><td><button class="btn btn-primary btn-sm">Mark paid</button></td></tr>
+                <tr><td><b>zoya.clips</b></td><td>Feb 2026</td><td class="mono">980</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill ok">Paid</span></td><td></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A6</span><b>Payouts</b> — export-based earnings per creator, mark paid</div>
+      </div>
+
+      <!-- A6b Plans -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/plans</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><div class="grow"></div><a class="on"><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><div><h4>Subscription plans</h4><div class="muted tiny" style="margin-top:2px">Settings → Plans &amp; pricing</div></div><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-plus"/></svg>New plan</button></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Plan</th><th>Price</th><th>Exports</th><th>Quality</th><th>Devices</th><th>Status</th><th></th></tr></thead><tbody>
+                <tr><td><b>Free</b></td><td class="mono">$0</td><td class="mono">3 / mo</td><td>720p · WM</td><td class="mono">1</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td><b>Basic</b></td><td class="mono"><span class="ph">$—</span></td><td class="mono">30 / mo</td><td>1080p</td><td class="mono">2</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td><b>Professional</b> <span class="badge badge-premium" style="margin-left:4px">Featured</span></td><td class="mono"><span class="ph">$—</span></td><td class="mono">150 / mo</td><td>1080p</td><td class="mono">2</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td><b>Agency</b></td><td class="mono"><span class="ph">$—</span></td><td class="mono">Unlimited</td><td>4K</td><td class="mono">5</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+              </tbody></table></div>
+              <div class="muted tiny" style="margin-top:12px">Admin-configurable (name · price USDT · export limit · quality · devices · features). Editing a plan does <b>not</b> change active subscribers — terms are snapshotted at purchase.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A6b</span><b>Plans</b> — admin CRUD, per-plan limits/quality/devices</div>
+      </div>
+
+      <!-- A6c Categories / Lookups -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/lookups</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><div class="grow"></div><a class="on"><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><div><h4>Categories &amp; lookups</h4><div class="muted tiny" style="margin-top:2px">Settings → Categories · Genres · Languages</div></div></div>
+              <div class="seg" style="margin-bottom:16px;width:max-content"><span class="on">Categories</span><span>Genres</span><span>Languages</span></div>
+              <div class="panelbox" style="padding:16px">
+                <div style="display:flex;flex-wrap:wrap;gap:9px;margin-bottom:14px">
+                  <span class="chip on">Reactions <span style="opacity:.6;margin-left:4px">84</span></span>
+                  <span class="chip">Comedy <span style="opacity:.6;margin-left:4px">63</span></span>
+                  <span class="chip">Movie Edits <span style="opacity:.6;margin-left:4px">51</span></span>
+                  <span class="chip">Mood <span style="opacity:.6;margin-left:4px">28</span></span>
+                  <span class="chip">Promo <span style="opacity:.6;margin-left:4px">22</span></span>
+                </div>
+                <div style="display:flex;gap:9px"><div class="input" style="flex:1"><svg class="ic ic-sm"><use href="#i-tag"/></svg><span>Add a category…</span></div><button class="btn btn-primary" style="width:auto;padding:0 20px"><svg class="ic ic-sm"><use href="#i-plus"/></svg>Add</button></div>
+              </div>
+              <div class="muted tiny" style="margin-top:12px">Counts = clips using each. These feed the editor upload form + customer filters.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A6c</span><b>Categories &amp; Lookups</b> — manage categories, genres, languages</div>
+      </div>
+
+      <!-- A7 Users -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/users</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a class="on"><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Users</h4><div class="input" style="width:220px;height:38px"><svg class="ic ic-sm"><use href="#i-search"/></svg><span>Search users…</span></div></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Email</th><th>Name</th><th>Plan</th><th>Devices</th><th>Status</th><th></th></tr></thead><tbody>
+                <tr><td><b>aarav@studio.com</b></td><td>Aarav Sharma</td><td><span class="badge badge-premium">Pro</span></td><td class="mono">2/2</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td><b>neha@mail.com</b></td><td>Neha R</td><td><span class="badge badge-free">Free</span></td><td class="mono">1/2</td><td><span class="pill ok">Active</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+                <tr><td><b>sam_dev@mail.com</b></td><td>Sam</td><td class="muted">Expired</td><td class="mono">2/2</td><td><span class="pill warn">Expired</span></td><td><svg class="ic ic-sm"><use href="#i-chev"/></svg></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A7</span><b>Users</b> — search, plan, devices, suspend / adjust</div>
+      </div>
+
+      <!-- A8 Subscriptions & Payments -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/payments</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a class="on"><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Subscriptions &amp; Payments</h4><span class="muted tiny">Binance Pay · verified</span></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>User</th><th>Plan</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody>
+                <tr><td><b>aarav@studio.com</b></td><td>Yearly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>12 Mar 2026</td><td><span class="pill ok">Verified</span></td></tr>
+                <tr><td><b>karan@mail.com</b></td><td>Monthly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>11 Mar 2026</td><td><span class="pill ok">Verified</span></td></tr>
+                <tr><td><b>priya@mail.com</b></td><td>Monthly Pro</td><td class="mono"><span class="ph">$—</span> USDT</td><td>10 Mar 2026</td><td><span class="pill warn">Pending</span></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A8</span><b>Subscriptions &amp; Payments</b> — verified Binance Pay records</div>
+      </div>
+
+      <!-- A9 Reports -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/reports</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a class="on"><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Analytics</h4><span class="seg"><span>7d</span><span class="on">30d</span><span>90d</span></span></div>
+              <div class="stats" style="grid-template-columns:repeat(5,1fr)">
+                <div class="stat"><div class="k">Total customers</div><div class="v mono">1,284</div><div class="d up">▲ 6.2%</div></div>
+                <div class="stat"><div class="k">Active subs</div><div class="v mono">912</div><div class="d up">▲ 4%</div></div>
+                <div class="stat"><div class="k">MRR</div><div class="v mono">$6.1k</div><div class="d up">▲ USDT</div></div>
+                <div class="stat"><div class="k">Daily exports</div><div class="v mono">263</div><div class="d up">▲ 8%</div></div>
+                <div class="stat"><div class="k">Revenue 30d</div><div class="v mono">$18.4k</div><div class="d up">▲</div></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px">
+                <div class="panelbox" style="padding:18px"><div style="font-weight:800;font-size:13px;margin-bottom:14px">Customer growth · 30 days</div>
+                  <div style="display:flex;align-items:flex-end;gap:7px;height:118px">
+                    <div style="flex:1;height:40%;background:var(--accent-weak);border-radius:7px 7px 0 0"></div><div style="flex:1;height:52%;background:var(--accent-weak);border-radius:7px 7px 0 0"></div><div style="flex:1;height:48%;background:var(--accent-weak);border-radius:7px 7px 0 0"></div><div style="flex:1;height:66%;background:var(--accent-weak);border-radius:7px 7px 0 0"></div><div style="flex:1;height:72%;background:var(--grad);border-radius:7px 7px 0 0"></div><div style="flex:1;height:84%;background:var(--accent-weak);border-radius:7px 7px 0 0"></div><div style="flex:1;height:95%;background:var(--grad);border-radius:7px 7px 0 0"></div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:14px">
+                  <div class="panelbox"><div class="ph2">Most downloaded</div><table class="tbl"><tbody>
+                    <tr><td><b>Dev Life</b></td><td class="mono" style="text-align:right">2,140</td></tr>
+                    <tr><td><b>Deal Alert</b></td><td class="mono" style="text-align:right">1,510</td></tr>
+                    <tr><td><b>Night Owl</b></td><td class="mono" style="text-align:right">980</td></tr>
+                  </tbody></table></div>
+                  <div class="panelbox"><div class="ph2">Top editors</div><table class="tbl"><tbody>
+                    <tr><td><b>maria.k</b></td><td class="mono" style="text-align:right">2,140</td></tr>
+                    <tr><td><b>rahul.fx</b></td><td class="mono" style="text-align:right">1,760</td></tr>
+                  </tbody></table></div>
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A9</span><b>Analytics</b> — customers · active subs · MRR · exports · growth · most-downloaded · top editors</div>
+      </div>
+
+      <!-- A10 Audit Logs -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/audit</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a class="on"><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content">
+              <div class="chead"><h4>Audit logs</h4><div class="input" style="width:220px;height:38px"><svg class="ic ic-sm"><use href="#i-search"/></svg><span>Filter by actor…</span></div></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>IP</th></tr></thead><tbody>
+                <tr><td class="mono">09:42</td><td><b>admin</b></td><td>marked payout paid</td><td>zoya.clips</td><td class="mono">10.2.1.4</td></tr>
+                <tr><td class="mono">09:31</td><td><b>maria.k</b></td><td>published meme</td><td>Dev Life</td><td class="mono">10.2.1.9</td></tr>
+                <tr><td class="mono">09:20</td><td><b>admin</b></td><td>revoked device</td><td>sam_dev</td><td class="mono">10.2.1.4</td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A10</span><b>Audit Logs</b> — every sensitive action recorded</div>
+      </div>
+
+      <!-- A11 Platform Settings -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/settings</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>Clips</a><a><svg class="ic"><use href="#i-users"/></svg>Editors</a><a><svg class="ic"><use href="#i-wallet"/></svg>Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Users</a><a><svg class="ic"><use href="#i-card"/></svg>Payments</a><a><svg class="ic"><use href="#i-file"/></svg>Reports</a><a><svg class="ic"><use href="#i-shield"/></svg>Audit Logs</a><div class="grow"></div><a class="on"><svg class="ic"><use href="#i-settings"/></svg>Settings</a></div>
+            <div class="content" style="overflow:hidden">
+              <div class="chead"><h4>Platform settings</h4><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-check"/></svg>Save</button></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="panelbox" style="padding:16px"><div style="font-weight:800;font-size:12px;margin-bottom:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">General</div>
+                  <div class="field"><label>Platform name</label><div class="input"><span class="val">ClipCart</span></div></div>
+                  <div class="field" style="margin-bottom:0"><label>Support email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">support@clipcart.app</span></div></div>
+                </div>
+                <div class="panelbox" style="padding:16px"><div style="font-weight:800;font-size:12px;margin-bottom:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Payments &amp; payouts</div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Binance Pay merchant</span><span class="pill ok">Connected</span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Payout rate (per download)</span><span class="minival"><span class="ph">$—</span></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Min withdrawal</span><span class="minival"><span class="ph">$—</span></span></div>
+                </div>
+                <div class="panelbox" style="padding:16px"><div style="font-weight:800;font-size:12px;margin-bottom:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Content defaults</div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Watermark on free exports</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Require review before publish</span><span class="toggle"></span></div>
+                  <div class="cfgrow"><span style="font-size:13px;font-weight:700">Max upload size</span><span class="minival">200 MB</span></div>
+                </div>
+                <div class="panelbox" style="padding:16px"><div style="font-weight:800;font-size:12px;margin-bottom:12px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Email (SMTP)</div>
+                  <div class="field"><label>From address</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">no-reply@clipcart.app</span></div></div>
+                  <div class="field" style="margin-bottom:0"><label>SMTP host</label><div class="input"><span class="val">smtp.brevo.com</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">A11</span><b>Platform Settings</b> — general · payments/payouts · content · email</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== EDITOR PORTAL ===================== -->
+  <section class="platform">
+    <div class="platform-head"><h2>✍️ Creator Portal</h2><span class="count">Editor role — same login, own view</span></div>
+    <p class="platform-sub">What an <b>editor</b> sees after login: only their own content and earnings. They upload memes + metadata, and watch payouts grow with every export/download of their clips.</p>
+    <div class="rail">
+
+      <!-- E1 Editor Dashboard -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/creator</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a class="on"><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>My Content</a><a><svg class="ic"><use href="#i-wallet"/></svg>My Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Profile</a><div class="grow"></div><a><svg class="ic"><use href="#i-logout"/></svg>Log out</a></div>
+            <div class="content">
+              <div class="chead"><div style="display:flex;align-items:center;gap:10px"><span class="av">M</span><h4>Hey, maria.k 👋</h4></div><span class="rolebadge role-editor">Editor</span></div>
+              <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:16px;margin-bottom:16px">
+                <div class="earncard"><div style="position:relative;z-index:1"><div style="font-size:11px;font-weight:900;letter-spacing:.1em;opacity:.85">EARNINGS · THIS MONTH</div><div style="font-family:var(--display);font-size:34px;margin:6px 0"><span class="ph" style="color:#fff;opacity:.9">$—</span></div><div style="font-size:12px;opacity:.9">From <b>2,140</b> exports · rate placeholder</div></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-grid"/></svg>Uploads</div><div class="v mono">24</div></div>
+                  <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-check"/></svg>Approved</div><div class="v mono" style="color:var(--success)">20</div></div>
+                  <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-clock"/></svg>Pending</div><div class="v mono" style="color:var(--warning)">3</div></div>
+                  <div class="stat"><div class="k"><svg class="ic ic-sm"><use href="#i-down"/></svg>Exports</div><div class="v mono">11,290</div></div>
+                </div>
+              </div>
+              <div class="panelbox"><div class="ph2">My top content</div><table class="tbl"><tbody>
+                <tr><td style="width:36px"><span class="tmini"><span class="meme m1"><span class="subj">😂</span></span></span></td><td><b>Dev Life</b></td><td class="mono">2,140 exports</td><td class="mono"><b style="color:var(--success)">$—</b></td></tr>
+                <tr><td><span class="tmini"><span class="meme m5"><span class="subj">🤯</span></span></span></td><td><b>Deal Alert</b></td><td class="mono">1,510 exports</td><td class="mono"><b style="color:var(--success)">$—</b></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">E1</span><b>Creator Dashboard</b> — my earnings, exports, top content</div>
+      </div>
+
+      <!-- E2 My Content -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/creator/content</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a class="on"><svg class="ic"><use href="#i-grid"/></svg>My Content</a><a><svg class="ic"><use href="#i-wallet"/></svg>My Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Profile</a><div class="grow"></div><a><svg class="ic"><use href="#i-logout"/></svg>Log out</a></div>
+            <div class="content">
+              <div class="chead"><h4>My content</h4><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-upload"/></svg>Upload clip</button></div>
+              <div class="panelbox"><table class="tbl"><thead><tr><th>Meme</th><th>Category</th><th>Tier</th><th>Exports</th><th>Earnings</th><th>Status</th></tr></thead><tbody>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="tmini"><span class="meme m1"><span class="subj">😂</span></span></span><b>Dev Life</b></td><td>Reactions</td><td><span class="badge badge-premium">Pro</span></td><td class="mono">2,140</td><td class="mono"><b style="color:var(--success)">$—</b></td><td><span class="pill ok">Published</span></td></tr>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="tmini"><span class="meme m5"><span class="subj">🤯</span></span></span><b>Deal Alert</b></td><td>Promo</td><td><span class="badge badge-premium">Pro</span></td><td class="mono">1,510</td><td class="mono"><b style="color:var(--success)">$—</b></td><td><span class="pill ok">Published</span></td></tr>
+                <tr><td style="display:flex;gap:10px;align-items:center"><span class="tmini"><span class="meme m3"><span class="subj">🔥</span></span></span><b>Fire Sale</b></td><td>Free</td><td><span class="badge badge-free">Free</span></td><td class="mono">640</td><td class="mono"><b style="color:var(--success)">$—</b></td><td><span class="pill warn">Review</span></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">E2</span><b>My Content</b> — editor uploads + per-meme exports &amp; earnings</div>
+      </div>
+
+      <!-- E3 My Payouts -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/creator/payouts</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>My Content</a><a class="on"><svg class="ic"><use href="#i-wallet"/></svg>My Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Profile</a><div class="grow"></div><a><svg class="ic"><use href="#i-logout"/></svg>Log out</a></div>
+            <div class="content">
+              <div class="chead"><h4>My payouts</h4><button class="btn btn-primary btn-sm"><svg class="ic ic-sm"><use href="#i-wallet"/></svg>Request withdrawal</button></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+                <div class="earncard"><div style="position:relative;z-index:1"><div style="font-size:11px;font-weight:900;letter-spacing:.1em;opacity:.85">AVAILABLE BALANCE</div><div style="font-family:var(--display);font-size:32px;margin:6px 0"><span class="ph" style="color:#fff;opacity:.9">$—</span> <span style="font-size:14px;opacity:.8">USDT</span></div><div style="font-size:12px;opacity:.9">Next payout: 1 Apr 2026</div></div></div>
+                <div class="stat" style="display:flex;flex-direction:column;justify-content:center"><div class="k"><svg class="ic ic-sm"><use href="#i-coin"/></svg>Lifetime earned</div><div class="v mono"><span class="ph">$—</span></div><div class="d muted">from 11,290 exports</div></div>
+              </div>
+              <div class="panelbox"><div class="ph2">Payout history</div><table class="tbl"><thead><tr><th>Period</th><th>Exports</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+                <tr><td>Feb 2026</td><td class="mono">1,980</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill ok">Paid</span></td></tr>
+                <tr><td>Jan 2026</td><td class="mono">1,640</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill ok">Paid</span></td></tr>
+                <tr><td>Mar 2026</td><td class="mono">2,140</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill warn">Pending</span></td></tr>
+              </tbody></table></div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">E3</span><b>My Payouts</b> — balance, lifetime, payout history</div>
+      </div>
+
+      <!-- E4 Clip status / resubmit -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/creator/content/fire-sale</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a class="on"><svg class="ic"><use href="#i-grid"/></svg>My Content</a><a><svg class="ic"><use href="#i-wallet"/></svg>My Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Profile</a><div class="grow"></div><a><svg class="ic"><use href="#i-logout"/></svg>Log out</a></div>
+            <div class="content">
+              <div class="chead"><h4>Clip status</h4><span class="rolebadge role-editor">Editor</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1.35fr;gap:18px">
+                <div class="player m3"><span class="pbtn"><svg class="ic"><use href="#i-play"/></svg></span><div class="ctrl"><svg class="ic"><use href="#i-play"/></svg><span class="tm">0:00</span><div class="track"><i style="width:0"></i></div><span class="tm">0:07</span></div></div>
+                <div>
+                  <div class="panelbox" style="padding:16px;margin-bottom:12px;border-color:var(--warning)">
+                    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><span class="pill warn">Changes requested</span><b>Fire Sale</b></div>
+                    <div class="muted tiny" style="margin-bottom:8px">Admin note · 5h ago</div>
+                    <div style="font-size:13px;color:var(--text-2)">“Great clip! Trim the intro to under 2s and re-upload a cleaner thumbnail, then resubmit.”</div>
+                  </div>
+                  <div class="metagrid" style="margin-bottom:14px">
+                    <span class="k">Category</span><span class="v">Promo</span>
+                    <span class="k">Movie · Genre</span><span class="v">—  · Comedy</span>
+                    <span class="k">Tier · Specs</span><span class="v">Free · 0:07 · 1080p</span>
+                  </div>
+                  <div style="display:flex;gap:9px"><button class="btn btn-ghost" style="flex:1"><svg class="ic ic-sm"><use href="#i-type"/></svg>Edit clip</button><button class="btn btn-primary" style="flex:1"><svg class="ic ic-sm"><use href="#i-check"/></svg>Resubmit for review</button></div>
+                </div>
+              </div>
+              <div class="muted tiny" style="margin-top:14px">Status flow: Draft → <b>Pending review</b> → Changes requested / Rejected → edit → Resubmit → <b>Live</b>. Full history kept.</div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">E4</span><b>Clip Status &amp; Resubmit</b> — admin note, edit, re-enter review queue</div>
+      </div>
+
+      <!-- E5 Withdrawal request -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/creator/withdraw</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>My Content</a><a class="on"><svg class="ic"><use href="#i-wallet"/></svg>My Payouts</a><a><svg class="ic"><use href="#i-user"/></svg>Profile</a><div class="grow"></div><a><svg class="ic"><use href="#i-logout"/></svg>Log out</a></div>
+            <div class="content">
+              <div class="chead"><h4>Request withdrawal</h4></div>
+              <div style="max-width:480px">
+                <div class="earncard" style="margin-bottom:16px"><div style="position:relative;z-index:1"><div style="font-size:11px;font-weight:900;letter-spacing:.1em;opacity:.85">AVAILABLE BALANCE</div><div style="font-family:var(--display);font-size:30px;margin:6px 0"><span class="ph" style="color:#fff;opacity:.9">$—</span> <span style="font-size:14px;opacity:.8">USDT</span></div></div></div>
+                <div class="field"><label>Amount (USDT)</label><div class="input"><svg class="ic ic-sm"><use href="#i-coin"/></svg><span class="val">— all available</span></div></div>
+                <div class="field"><label>Payout wallet (USDT · BEP20)</label><div class="input"><svg class="ic ic-sm"><use href="#i-wallet"/></svg><span class="val">0x…your address</span></div></div>
+                <div class="muted tiny" style="margin:2px 0 14px">Minimum <span class="ph">$—</span> · admin reviews &amp; settles manually.</div>
+                <button class="btn btn-primary btn-lg">Request withdrawal</button>
+                <div class="panelbox" style="margin-top:18px"><div class="ph2">Recent requests</div><table class="tbl"><tbody>
+                  <tr><td>Mar 2026</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill warn">Pending</span></td></tr>
+                  <tr><td>Feb 2026</td><td class="mono"><b>$—</b> USDT</td><td><span class="pill ok">Paid</span></td></tr>
+                </tbody></table></div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">E5</span><b>Withdrawal Request</b> — amount, wallet, threshold → admin approves</div>
+      </div>
+
+      <!-- E6 Editor Notifications -->
+      <div class="figure">
+        <div class="browser" style="width:960px"><div class="browserbar"><span class="tl"><i style="background:#F43F5E"></i><i style="background:#FBBF24"></i><i style="background:#20C997"></i></span><span class="urlbar"><svg class="ic ic-sm"><use href="#i-lock"/></svg>admin.clipcart.app/creator/notifications</span></div>
+          <div class="bbody"><div class="admin">
+            <div class="side"><div class="brandrow wordmark" style="font-size:16px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div><a><svg class="ic"><use href="#i-chart"/></svg>Dashboard</a><a><svg class="ic"><use href="#i-grid"/></svg>My Content</a><a><svg class="ic"><use href="#i-wallet"/></svg>My Payouts</a><a class="on"><svg class="ic"><use href="#i-bell"/></svg>Notifications</a><a><svg class="ic"><use href="#i-user"/></svg>Profile</a><div class="grow"></div><a><svg class="ic"><use href="#i-logout"/></svg>Log out</a></div>
+            <div class="content">
+              <div class="chead"><h4>Notifications</h4><span class="rolebadge role-editor">Editor</span></div>
+              <div class="panelbox" style="max-width:600px">
+                <div class="lrow" style="padding:14px 16px"><span class="licon" style="background:var(--success-weak);color:var(--success)"><svg class="ic ic-sm"><use href="#i-check"/></svg></span><div class="g"><div class="t">Upload approved — “Night Owl” is live</div><div class="s">Now visible in the library · 20m ago</div></div></div>
+                <div class="lrow" style="padding:14px 16px"><span class="licon" style="background:var(--accent-weak);color:var(--accent)"><svg class="ic ic-sm"><use href="#i-down"/></svg></span><div class="g"><div class="t">New download — “Dev Life”</div><div class="s">Earnings updated · 1h ago</div></div></div>
+                <div class="lrow" style="padding:14px 16px"><span class="licon" style="background:rgba(224,169,59,.18);color:var(--warning)"><svg class="ic ic-sm"><use href="#i-type"/></svg></span><div class="g"><div class="t">Changes requested — “Fire Sale”</div><div class="s">Admin left a note · yesterday</div></div></div>
+                <div class="lrow" style="padding:14px 16px"><span class="licon" style="background:var(--success-weak);color:var(--success)"><svg class="ic ic-sm"><use href="#i-wallet"/></svg></span><div class="g"><div class="t">Payout processed — <span class="ph">$—</span> USDT</div><div class="s">Sent to your wallet · 3 days ago</div></div></div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+        <div class="caption"><span class="id">E6</span><b>Editor Notifications</b> — approved · rejected/changes · new download · payout</div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="footnote">
+    <b>ClipCart — Entertainment Clips Platform — full prototype, reconciled with client requirements.</b><br>
+    App (14) · Website (15) · Admin (14) · Creator Portal (6) — 49 screens, one identity, light + dark.<br>
+    <span style="opacity:.7">Roles: customer · editor · admin · Admin approval queue · multi-plan pricing · favorites · download history · export-based payouts. Web = browse/subscribe only (no edit/export). Placeholder branding &amp; pricing.</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeToggle');
+  var glyph=document.getElementById('themeGlyph'), label=document.getElementById('themeLabel');
+  btn.addEventListener('click',function(){
+    var next=root.getAttribute('data-theme')==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    glyph.textContent=next==='dark'?'☀':'🌙';
+    label.textContent=next==='dark'?'Light':'Dark';
+  });
+  root.setAttribute('data-theme','dark'); glyph.textContent='☀'; label.textContent='Light';
+})();
+</script>

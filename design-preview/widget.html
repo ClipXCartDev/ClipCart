@@ -1,0 +1,72 @@
+<style>
+.cc-fab{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9998;background:#171226;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 16px;font:600 13px/1 'Segoe UI',system-ui,sans-serif;box-shadow:0 12px 34px rgba(0,0,0,.45);display:flex;gap:10px;align-items:center;max-width:92vw}
+.cc-fab b{color:#a78bfa}
+.cc-fab .x{background:none;border:0;color:#8a84a0;cursor:pointer;font-size:15px;line-height:1}
+.cc-btn{margin-left:8px;border:1px solid rgba(123,97,255,.5);background:rgba(123,97,255,.14);color:#8f78ff;border-radius:999px;padding:3px 10px;font:700 11px/1 'Segoe UI',system-ui,sans-serif;cursor:pointer;vertical-align:middle}
+.cc-btn:hover{background:rgba(123,97,255,.26)}
+.cc-modal{position:fixed;inset:0;z-index:9999;background:rgba(6,4,12,.62);backdrop-filter:blur(4px);display:none;place-items:center;padding:20px}
+.cc-modal.cc-open{display:grid}
+.cc-card{position:relative;width:430px;max-width:100%;background:#17131f;color:#f2f0fa;border:1px solid #2a2740;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6);padding:20px;font-family:'Segoe UI',system-ui,sans-serif}
+.cc-card h4{margin:0 0 2px;font-size:17px;font-weight:800}
+.cc-sub{color:#a78bfa;font-size:12.5px;font-weight:700;margin-bottom:14px}
+.cc-card input,.cc-card textarea{width:100%;background:#0f0d1a;border:1px solid #2a2740;border-radius:11px;color:#f2f0fa;padding:11px 13px;font:14px 'Segoe UI',system-ui,sans-serif;margin-bottom:10px}
+.cc-card textarea{min-height:100px;resize:vertical}
+.cc-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.cc-send{background:linear-gradient(135deg,#7B61FF,#5A57F0);color:#fff;border:0;border-radius:11px;padding:11px 20px;font:700 14px 'Segoe UI',system-ui,sans-serif;cursor:pointer}
+.cc-mail{color:#a78bfa;font-size:12.5px;text-decoration:none;font-weight:600}
+.cc-x{position:absolute;top:14px;right:16px;background:none;border:0;color:#8a84a0;font-size:19px;cursor:pointer;line-height:1}
+.cc-status{font-size:12.5px;margin-top:10px;min-height:16px}
+.cc-ok{color:#3ee6b0}.cc-err{color:#ff7b7f}
+@media(max-width:520px){.cc-fab{font-size:11.5px;padding:9px 13px}}
+</style>
+
+<div class="cc-fab" id="ccFab">💬&nbsp;<span>Review mode — click <b>Comment</b> on any screen</span> <button class="x" id="ccFabX" title="Hide">✕</button></div>
+
+<div class="cc-modal" id="ccModal">
+  <div class="cc-card">
+    <button class="cc-x" id="ccClose">✕</button>
+    <h4>Leave a comment</h4>
+    <div class="cc-sub" id="ccScreen">Screen</div>
+    <input id="ccName" placeholder="Your name (optional)">
+    <textarea id="ccText" placeholder="What should change on this screen?"></textarea>
+    <div class="cc-row"><a class="cc-mail" id="ccMail" href="#">Email instead</a><button class="cc-send" id="ccSend">Send comment</button></div>
+    <div class="cc-status" id="ccStatus"></div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function(){
+  var RECEIVE_EMAIL = "clipxcart@gmail.com"; /* <-- client comments are emailed here. */
+  var modal=document.getElementById('ccModal'), scr=document.getElementById('ccScreen'),
+      nm=document.getElementById('ccName'), tx=document.getElementById('ccText'),
+      st=document.getElementById('ccStatus'), mail=document.getElementById('ccMail'), cur='';
+  function setMail(){ mail.href='mailto:'+RECEIVE_EMAIL+'?subject='+encodeURIComponent('ClipCart feedback — '+cur)+'&body='+encodeURIComponent((tx.value||'')+'\n\n— '+(nm.value||'client')); }
+  function openM(label){ cur=label; scr.textContent=label; st.textContent=''; st.className='cc-status'; tx.value=''; modal.classList.add('cc-open'); setMail(); setTimeout(function(){tx.focus();},50); }
+  function closeM(){ modal.classList.remove('cc-open'); }
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeM(); });
+  tx.addEventListener('input',setMail); nm.addEventListener('input',setMail);
+  document.getElementById('ccClose').onclick=closeM;
+  modal.addEventListener('click',function(e){ if(e.target===modal) closeM(); });
+  document.getElementById('ccFabX').onclick=function(){ document.getElementById('ccFab').style.display='none'; };
+  document.querySelectorAll('.caption').forEach(function(cap){
+    var idEl=cap.querySelector('.id'); var id=idEl?idEl.textContent.trim():'';
+    var b0=cap.querySelector('b'); var title=b0?b0.textContent.trim():'';
+    var label=(id?id+' · ':'')+title;
+    var b=document.createElement('button'); b.className='cc-btn'; b.type='button'; b.textContent='💬 Comment';
+    b.onclick=function(){ openM(label||id||'Screen'); };
+    cap.appendChild(b);
+  });
+  document.getElementById('ccSend').onclick=function(){
+    var c=tx.value.trim(); if(!c){ st.textContent='Please write a comment first.'; st.className='cc-status cc-err'; return; }
+    st.textContent='Sending…'; st.className='cc-status';
+    fetch('https://formsubmit.co/ajax/'+RECEIVE_EMAIL,{
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({ _subject:'ClipCart feedback — '+cur, screen:cur, name:(nm.value||'(anonymous)'), comment:c })
+    }).then(function(r){return r.json();}).then(function(){
+      st.textContent='✓ Sent! Thank you.'; st.className='cc-status cc-ok'; setTimeout(closeM,1200);
+    }).catch(function(){
+      st.innerHTML='Auto-send unavailable — please tap <a class="cc-mail" href="'+mail.href+'">Email instead</a>.'; st.className='cc-status cc-err';
+    });
+  };
+});
+</script>

@@ -1,0 +1,1 @@
+"""ClipCart backend application package."""

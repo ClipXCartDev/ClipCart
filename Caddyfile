@@ -1,0 +1,8 @@
+# Reverse proxy + automatic HTTPS (decisions §4.2).
+# Local dev: http://localhost. Prod: replace :80 with your domain for auto-TLS.
+:80 {
+	handle_path /api/* {
+		reverse_proxy api:8000
+	}
+	respond /health "ok" 200
+}
