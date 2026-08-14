@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../../models/clip.dart';
 import '../../services/creator_service.dart';
-import '../../widgets/primary_button.dart';
 
 class CreatorDashboard extends StatefulWidget {
   const CreatorDashboard({super.key});
