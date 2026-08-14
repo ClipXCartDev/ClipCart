@@ -549,6 +549,120 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
 :root[data-theme="dark"] .btn-google{background:#fff;color:#1f1f1f}
 .ordiv{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--text-3);font-size:11px;font-weight:700;letter-spacing:.04em}
 .ordiv::before,.ordiv::after{content:"";flex:1;height:1px;background:var(--border)}
+
+/* ==================================================================
+   SHADCN-INSPIRED CLEAN RE-THEME  (overrides everything above)
+   quiet neutrals · one refined accent · flat/border-defined · precise
+   ================================================================== */
+:root{
+  --bg:#ffffff; --bg-2:#ffffff; --surface:#ffffff; --surface-2:#fafafa; --panel:#f4f4f5;
+  --border:#e4e4e7; --border-2:#efeff1; --hair:rgba(9,9,11,.06);
+  --text:#09090b; --text-2:#71717a; --text-3:#a1a1aa;
+  --accent:#7c5cff; --accent-2:#9a86ff; --accent-press:#6a49f2; --accent-weak:rgba(124,92,255,.10); --accent-line:rgba(124,92,255,.30);
+  --pink:#7c5cff; --cyan:#3b82f6; --lime:#22c55e; --violet2:#7c5cff;
+  --premium:#ca8a04; --premium-2:#a16207; --premium-weak:rgba(202,138,4,.12);
+  --success:#16a34a; --success-weak:rgba(22,163,74,.12); --warning:#d97706; --danger:#e11d48; --danger-weak:rgba(225,29,72,.10); --info:#2563eb;
+  --grad:#7c5cff; --grad-2:#7c5cff; --grad-hot:#7c5cff; --grad-soft:rgba(124,92,255,.08);
+  --mesh:none;
+  --glow:0 1px 2px rgba(9,9,11,.05); --glow-pink:0 1px 2px rgba(9,9,11,.05);
+  --shadow-sm:0 1px 2px rgba(9,9,11,.05);
+  --shadow:0 1px 2px rgba(9,9,11,.04),0 1px 3px rgba(9,9,11,.06);
+  --shadow-lg:0 12px 32px -14px rgba(9,9,11,.22);
+  --display:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+  --bezel:linear-gradient(160deg,#3f3f46,#18181b); --frameline:rgba(255,255,255,.08);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#09090b; --bg-2:#09090b; --surface:#0c0c0f; --surface-2:#101014; --panel:#18181b;
+  --border:#27272a; --border-2:#1e1e21; --hair:rgba(255,255,255,.06);
+  --text:#fafafa; --text-2:#a1a1aa; --text-3:#71717a;
+  --accent-weak:rgba(124,92,255,.16); --accent-line:rgba(124,92,255,.42); --premium-weak:rgba(202,138,4,.16); --success-weak:rgba(22,163,74,.18); --danger-weak:rgba(225,29,72,.18);
+  --grad-soft:rgba(124,92,255,.12);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 40px -16px rgba(0,0,0,.75);
+  --glow:0 1px 2px rgba(0,0,0,.4); --glow-pink:0 1px 2px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"]{
+  --bg:#09090b; --bg-2:#09090b; --surface:#0c0c0f; --surface-2:#101014; --panel:#18181b;
+  --border:#27272a; --border-2:#1e1e21; --hair:rgba(255,255,255,.06);
+  --text:#fafafa; --text-2:#a1a1aa; --text-3:#71717a;
+  --accent-weak:rgba(124,92,255,.16); --accent-line:rgba(124,92,255,.42); --premium-weak:rgba(202,138,4,.16); --success-weak:rgba(22,163,74,.18); --danger-weak:rgba(225,29,72,.18);
+  --grad-soft:rgba(124,92,255,.12);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.5);
+  --shadow-lg:0 16px 40px -16px rgba(0,0,0,.75);
+  --glow:0 1px 2px rgba(0,0,0,.4); --glow-pink:0 1px 2px rgba(0,0,0,.4);
+}
+
+/* flatten backgrounds — no mesh/glow */
+body{background:var(--bg)}
+.phone .screen{background:var(--bg-2)}
+
+/* masthead → clean bordered surface (not a rainbow) */
+.masthead{background:var(--surface);border:1px solid var(--border);color:var(--text);box-shadow:var(--shadow-sm)}
+.masthead::before,.mh-stickers,.masthead .stk{display:none}
+.masthead h1,.mh-tagline{color:var(--text)}
+.masthead .tagbig,.mh-sub{color:var(--text-2)}
+.mh-tagline em{background:none;-webkit-text-fill-color:var(--accent);color:var(--accent)}
+.pill-live{background:var(--panel);border:1px solid var(--border);color:var(--text-2)}
+.pill-live .blip{background:var(--success);animation:none}
+.themebtn{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.eyebrow{color:var(--accent)}.eyebrow::before{background:var(--accent)}
+.brandmark{background:var(--accent);box-shadow:none;transform:none;border-radius:12px}
+.brandmark::after{display:none}
+.platform-head h2,.brand h1{letter-spacing:-.02em}
+
+/* brand/nav marks flat */
+.wm-badge{background:var(--accent);box-shadow:none;transform:none;border-radius:8px}
+.bnav .fab{background:var(--accent);box-shadow:none;transform:none;border-radius:14px}
+
+/* buttons: solid accent, no gradient/glow, tighter radius */
+.btn{border-radius:9px}
+.btn-primary,.btn-hot{background:var(--accent);color:#fff;box-shadow:none}
+.btn-primary::after,.btn-hot::after{display:none}
+.btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text)}
+.btn-dark{background:var(--text);color:var(--bg)}
+
+/* surfaces: border-defined, subtle shadow, precise radius */
+.card,.panelbox{border-radius:12px;box-shadow:none}
+.browser{border-radius:12px;box-shadow:var(--shadow-lg)}
+.input{border-radius:9px;box-shadow:none}
+.input.focus{box-shadow:0 0 0 3px var(--accent-weak)}
+.chip{border-radius:8px;box-shadow:none}
+.chip.on{background:var(--text);border-color:var(--text);color:var(--bg)}
+.chip.hot{background:var(--accent);border-color:transparent;color:#fff;box-shadow:none}
+.chip.soft{background:var(--accent-weak);border-color:transparent;color:var(--accent)}
+.stat{border-radius:12px;box-shadow:none}
+.stat::before{display:none}
+.mcard,.tcard{border-radius:12px;box-shadow:none}
+.mcard:hover,.tcard:hover{transform:none;box-shadow:var(--shadow)}
+.meme,.thumb{border-radius:0}
+.mcard .meme,.mcard .thumb{border-radius:0}
+.previewbox,.le-canvas{box-shadow:none}
+
+/* plans / earnings cards → solid accent, flat */
+.plan{border-radius:12px;box-shadow:none}
+.plan.feat{border-color:var(--accent);box-shadow:none}
+.plan.feat::before{background:var(--accent);box-shadow:none;font-weight:700}
+.plan-badge,.earncard{background:var(--accent);box-shadow:none;border-radius:12px}
+.plan-badge::before,.earncard::before{display:none}
+
+/* badges muted */
+.badge{border-radius:6px}
+.badge-premium{background:var(--premium);color:#fff}
+.badge-free{background:var(--success);color:#fff}
+.badge-active{background:var(--success-weak)}
+
+/* editor accents flat */
+.sheet-tab.on,.le-tool.on .cir,.le-seg.sel,.seg span.on{box-shadow:none}
+.sheet-tab.on,.le-tool.on .cir{background:var(--accent)}
+.toggle{box-shadow:none}
+.btn-google{border-radius:9px}
+
+/* google fab/glow leftovers */
+.brandmark,.wm-badge,.bnav .fab{box-shadow:none}
+.hotcard{box-shadow:none;border:1px solid var(--border)}
+.floatstrip .fs,.memerow .mm{box-shadow:var(--shadow)}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
