@@ -1,22 +1,22 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClipCart — New Design v2</title></head><body><style>
 :root{
-  --bg:#f5f6fb; --surface:#ffffff; --surface-2:#f0f1f7; --panel:#f6f7fb;
-  --border:#e8e9f2; --border-2:#f0f1f7;
-  --text:#141428; --text-2:#6a6d84; --text-3:#9b9db4;
-  --accent:#6c5cff; --accent-2:#8f82ff; --accent-soft:#efedff; --accent-press:#5a49f0;
-  --ok:#12b76a; --ok-soft:#e7f7ef; --warn:#f79009; --danger:#f04438;
-  --gold:#f5a623;
-  --sh-sm:0 1px 2px rgba(20,20,40,.05);
-  --sh:0 4px 16px -6px rgba(20,20,40,.14), 0 1px 3px rgba(20,20,40,.05);
-  --sh-lg:0 24px 48px -20px rgba(30,25,90,.28);
+  --bg:#f6f5f7; --surface:#ffffff; --surface-2:#f2f1f4; --panel:#f7f6f8;
+  --border:#eae8ee; --border-2:#f1eff4;
+  --text:#191521; --text-2:#6f6a79; --text-3:#a09aac;
+  --accent:#ff4d6d; --accent-2:#ff8a3d; --accent-soft:#ffe9ec; --accent-press:#f0395c; --accent-ink:#e01a48;
+  --grad:linear-gradient(135deg,#ff8a3d,#ff4d6d);
+  --ok:#12b76a; --ok-soft:#e7f7ef; --warn:#f79009; --danger:#f04438; --gold:#f5a623;
+  --sh-sm:0 1px 2px rgba(30,20,30,.05);
+  --sh:0 4px 16px -6px rgba(30,20,30,.14), 0 1px 3px rgba(30,20,30,.05);
+  --sh-lg:0 24px 48px -20px rgba(60,20,40,.28);
   --r:16px; --r-sm:12px; --r-pill:999px;
   --font:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
 }
 :root[data-theme="dark"]{
-  --bg:#0d0d14; --surface:#16161f; --surface-2:#1c1c27; --panel:#14141c;
-  --border:#26263340; --border:#282833; --border-2:#20202a;
-  --text:#f3f3f8; --text-2:#a2a3b8; --text-3:#6b6c80;
-  --accent-soft:#221f45;
+  --bg:#0e0c0f; --surface:#18151b; --surface-2:#211d24; --panel:#161318;
+  --border:#2c2731; --border-2:#221e27;
+  --text:#f4f2f6; --text-2:#a8a2af; --text-3:#6f6a76;
+  --accent-soft:#3a2028; --accent-ink:#ff7e97;
   --sh:0 8px 24px -10px rgba(0,0,0,.6); --sh-sm:0 1px 2px rgba(0,0,0,.4); --sh-lg:0 30px 60px -24px rgba(0,0,0,.8);
 }
 *{box-sizing:border-box}
@@ -25,15 +25,13 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
 .ic-sm{width:18px;height:18px}
 .wrap{max-width:1200px;margin:0 auto;padding:40px 24px 100px}
 
-/* header */
 .head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:8px}
 .brand{display:flex;align-items:center;gap:13px}
-.logo{width:46px;height:46px;border-radius:14px;background:var(--accent);display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px -6px rgba(108,92,255,.6)}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px -6px rgba(255,77,109,.5)}
 .logo .ic{width:24px;height:24px;stroke-width:2.2}
 .brand h1{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0}
 .brand p{margin:3px 0 0;color:var(--text-2);font-size:13.5px}
-.tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
-.hbtns{display:flex;gap:10px}
+.tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:10px}
 .pill{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-pill);padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--sh-sm)}
 .legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:22px 2px 34px;font-size:12.5px;color:var(--text-2)}
 .legend b{color:var(--text)}
@@ -45,59 +43,51 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
 .cap b{color:var(--text);font-weight:700}
 .cap .id{color:#fff;background:var(--accent);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:800;margin-right:6px}
 
-/* phone */
-.ph{width:300px;background:#0b0b12;border-radius:44px;padding:11px;box-shadow:var(--sh-lg),inset 0 1px 1px rgba(255,255,255,.14)}
+.ph{width:300px;background:#0b0a0c;border-radius:44px;padding:11px;box-shadow:var(--sh-lg),inset 0 1px 1px rgba(255,255,255,.14)}
 .scr{position:relative;width:100%;height:632px;background:var(--surface);border-radius:33px;overflow:hidden;display:flex;flex-direction:column}
-.isl{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:25px;background:#05050a;border-radius:999px;z-index:40}
+.isl{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:25px;background:#050405;border-radius:999px;z-index:40}
 .sb{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;font-size:12.5px;font-weight:800;color:var(--text)}
 .sb .r{display:flex;gap:5px;align-items:center}.sb .r .ic{width:15px;height:15px;stroke-width:2.3}
 .body{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
 .pad{padding:0 16px}
 
-/* top bar */
 .top{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;gap:10px}
 .top h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0}
 .iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--text);background:var(--surface-2);border:1px solid var(--border)}
-.avatar{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
 
-/* search */
 .search{display:flex;align-items:center;gap:10px;height:46px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);padding:0 14px;color:var(--text-3);font-size:14px;font-weight:500;margin:0 16px 12px}
 
-/* chips */
 .chips{display:flex;gap:8px;overflow:hidden;padding:0 16px 14px}
 .chip{border:1px solid var(--border);background:var(--surface);border-radius:var(--r-pill);padding:8px 15px;font-size:12.5px;font-weight:700;color:var(--text-2);white-space:nowrap}
 .chip.on{background:var(--text);border-color:var(--text);color:var(--surface)}
 
-/* buttons */
-.btn{border:0;border-radius:14px;font:inherit;font-weight:800;font-size:14.5px;padding:14px 18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%}
-.btn-a{background:var(--accent);color:#fff;box-shadow:0 10px 22px -10px rgba(108,92,255,.7)}
+.btn{border:0;border-radius:12px;font:inherit;font-weight:800;font-size:14px;padding:12px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn-a{background:var(--grad);color:#fff;box-shadow:0 10px 22px -12px rgba(255,77,109,.6)}
 .btn-2{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
 .btn-w{background:#fff;color:#1f1f1f;border:1px solid var(--border);box-shadow:var(--sh-sm)}
-.btn-sm{padding:9px 15px;font-size:13px;border-radius:11px;width:auto}
+.btn-sm{padding:9px 14px;font-size:13px;border-radius:11px;width:auto}
 
-/* section head */
 .sh{display:flex;align-items:center;justify-content:space-between;padding:2px 16px 10px}
 .sh h3{font-size:16px;font-weight:800;letter-spacing:-.01em;margin:0}
-.sh a{font-size:12.5px;font-weight:700;color:var(--accent)}
+.sh a{font-size:12.5px;font-weight:700;color:var(--accent-ink)}
 
-/* featured carousel */
 .feat{flex:none;margin:12px 16px 6px;border-radius:18px;overflow:hidden;position:relative;height:150px;display:flex;align-items:flex-end;padding:16px;color:#fff;box-shadow:var(--sh)}
-.feat::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(0,0,0,.15),rgba(0,0,0,.5))}
+.feat::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(0,0,0,.12),rgba(0,0,0,.42))}
 .feat .z{position:relative;z-index:2}
-.feat .k{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.25);padding:4px 9px;border-radius:999px;backdrop-filter:blur(4px)}
+.feat .k{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.28);padding:4px 9px;border-radius:999px;backdrop-filter:blur(4px)}
 .feat h4{font-size:21px;font-weight:800;margin:9px 0 0;letter-spacing:-.02em;max-width:80%}
-.feat .play{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:2}
+.feat .play{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.24);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:2}
 .feat .play .ic{fill:#fff;stroke:#fff;margin-left:3px}
 
-/* template grid (RenderForest style) */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:12px 16px 16px}
 .tpl{border-radius:16px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm)}
 .tpl .thumb{aspect-ratio:3/4;position:relative;display:flex;align-items:flex-end;padding:10px}
 .tpl .thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.35))}
 .tpl .badge{position:absolute;top:9px;left:9px;z-index:3;font-size:9.5px;font-weight:900;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
 .b-pro{background:var(--gold);color:#3a2600}.b-free{background:var(--ok);color:#fff}
-.tpl .play{position:absolute;top:9px;right:9px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.25);backdrop-filter:blur(4px);display:grid;place-items:center}
+.tpl .play{position:absolute;top:9px;right:9px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28);backdrop-filter:blur(4px);display:grid;place-items:center}
 .tpl .play .ic{fill:#fff;stroke:#fff;width:12px;margin-left:1px}
 .tpl .dur{position:relative;z-index:2;color:#fff;font-size:10px;font-weight:800;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:6px}
 .tpl .meta{padding:9px 11px}
@@ -106,78 +96,74 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
 
 .g1{background:linear-gradient(150deg,#7b61ff,#4c9aff)}.g2{background:linear-gradient(150deg,#ff7a59,#ff4d8d)}
 .g3{background:linear-gradient(150deg,#12c7a0,#3b9eff)}.g4{background:linear-gradient(150deg,#2b2350,#7b61ff)}
-.g5{background:linear-gradient(150deg,#f5a623,#ff4d8d)}.g6{background:linear-gradient(150deg,#3b9eff,#7b61ff)}
-.g7{background:linear-gradient(150deg,#0f2f4a,#12c7a0)}.g8{background:linear-gradient(150deg,#c0304a,#2b1236)}
+.g5{background:linear-gradient(150deg,#f5a623,#ff4d6d)}.g6{background:linear-gradient(150deg,#ff9247,#ff2d6b)}
+.g7{background:linear-gradient(150deg,#1a2740,#c0304a)}.g8{background:linear-gradient(150deg,#c0304a,#2b1236)}
 
-/* bottom nav (Instagram-style) */
 .nav{height:64px;flex:none;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-around;padding-bottom:4px}
 .nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--text-3)}
-.nav a.on{color:var(--accent)}
+.nav a.on{color:var(--accent-ink)}
 .nav a .ic{width:23px;height:23px}
-.nav .create{width:48px;height:48px;border-radius:16px;background:var(--accent);display:grid;place-items:center;color:#fff;margin-top:-16px;box-shadow:0 10px 22px -8px rgba(108,92,255,.7)}
-.nav .create .ic{width:24px;height:24px;stroke-width:2.3}
+.nav a.on .ic{stroke-width:2.2}
 
-/* dark screen variant — remap neutral tokens so children go fully dark & cohesive */
-.scr.dark{background:#0b0b12;color:#fff;
-  --surface:#16161f;--surface-2:#1c1c27;--panel:#14141c;--border:#282833;--border-2:#20202a;
-  --text:#f3f3f8;--text-2:#a2a3b8;--text-3:#7a7b90;--accent-soft:#241f4a;}
+.scr.dark{background:#0b0a0c;color:#fff;
+  --surface:#18151b;--surface-2:#211d24;--panel:#161318;--border:#2c2731;--border-2:#221e27;
+  --text:#f4f2f6;--text-2:#a8a2af;--text-3:#7a7580;--accent-soft:#3a2028;--accent-ink:#ff7e97;}
 .dark .sb{color:#fff}
 
-/* reels */
+/* full-screen clip player (opens from gallery, swipe = next) */
 .reel{position:absolute;inset:0;overflow:hidden}
 .reel .bg{position:absolute;inset:0}
-.reel .gt{position:absolute;top:0;left:0;right:0;height:130px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);z-index:2}
-.reel .gb{position:absolute;bottom:0;left:0;right:0;height:280px;background:linear-gradient(0deg,rgba(0,0,0,.82),transparent);z-index:2}
-.reel .tabs{position:absolute;top:46px;left:0;right:0;display:flex;justify-content:center;gap:20px;z-index:6;color:rgba(255,255,255,.6);font-weight:800;font-size:14px}
-.reel .tabs .on{color:#fff}
-.reel .rail{position:absolute;right:12px;bottom:104px;display:flex;flex-direction:column;gap:17px;align-items:center;z-index:5;color:#fff}
-.reel .rav{width:44px;height:44px;border-radius:50%;background:var(--accent);border:2px solid #fff;display:grid;place-items:center;font-weight:800;color:#fff}
+.reel .gt{position:absolute;top:0;left:0;right:0;height:150px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);z-index:2}
+.reel .gb{position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent);z-index:2}
+.ptop{position:absolute;top:44px;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:6px 14px;z-index:6}
+.pchip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);color:#fff;font-size:12px;font-weight:700;padding:7px 13px;border-radius:999px}
+.pclose{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff}
+.reel .rail{position:absolute;right:12px;bottom:150px;display:flex;flex-direction:column;gap:17px;align-items:center;z-index:5;color:#fff}
+.reel .rav{width:44px;height:44px;border-radius:50%;background:var(--grad);border:2px solid #fff;display:grid;place-items:center;font-weight:800;color:#fff}
 .reel .act{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700}
 .reel .act .o{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);display:grid;place-items:center}
-.reel .act.lk .o{background:#f04438;border-color:transparent}.reel .act.lk .o .ic{fill:#fff;stroke:#fff}
-.reel .info{position:absolute;left:16px;right:78px;bottom:120px;color:#fff;z-index:5}
+.reel .act.lk .o{background:var(--accent);border-color:transparent}.reel .act.lk .o .ic{fill:#fff;stroke:#fff}
+.reel .info{position:absolute;left:16px;right:78px;bottom:110px;color:#fff;z-index:5}
 .reel .hn{font-weight:800;font-size:15px;display:flex;gap:8px;align-items:center}
 .reel .tt{font-size:12.5px;opacity:.95;margin-top:5px}
 .reel .tg{display:flex;gap:6px;margin-top:8px}.reel .tg span{font-size:11px;font-weight:700;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:6px}
-.reel .use{position:absolute;left:16px;right:16px;bottom:64px;z-index:6}
-.reel .use .btn{border-radius:13px}
+.reel .swipe{position:absolute;left:0;right:0;bottom:78px;text-align:center;color:rgba(255,255,255,.55);font-size:11px;font-weight:700;z-index:5}
+.reel .use{position:absolute;left:16px;right:16px;bottom:18px;z-index:6}
 
-/* detail */
 .dhero{position:relative;aspect-ratio:4/5;margin:12px 16px 0;border-radius:18px;overflow:hidden;display:grid;place-items:center;box-shadow:var(--sh)}
-.dhero .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.24);backdrop-filter:blur(8px);display:grid;place-items:center}
+.dhero .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.26);backdrop-filter:blur(8px);display:grid;place-items:center}
 .dhero .play .ic{fill:#fff;stroke:#fff;width:22px;margin-left:3px}
 .drow{display:flex;align-items:center;gap:9px;padding:14px 16px 4px}
-.metaline{display:flex;flex-wrap:wrap;gap:5px 10px;color:var(--text-2);font-size:12px;padding:0 16px}
+.metaline{display:flex;flex-wrap:wrap;gap:5px 9px;color:var(--text-2);font-size:11.5px;padding:0 16px}
+.metaline b{color:var(--text);font-weight:700}
 .efields{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px}
-.efields span{background:var(--accent-soft);color:var(--accent);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:8px}
+.efields span{background:var(--accent-soft);color:var(--accent-ink);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:8px}
 
-/* editor (CapCut) */
 .ecanvas{margin:8px 16px 0;border-radius:14px;overflow:hidden;position:relative;aspect-ratio:16/11}
-.ecanvas .sub{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);color:#fff;font-weight:800;font-size:13px;text-shadow:0 1px 6px rgba(0,0,0,.8);outline:1.5px dashed rgba(255,255,255,.9);outline-offset:5px;border-radius:3px;padding:0 2px}
-.ecanvas .lg{position:absolute;top:9px;left:9px;background:rgba(255,255,255,.9);color:#111;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:900}
+.ecanvas .sub{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);color:#fff;font-weight:800;font-size:13px;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.8);outline:1.5px dashed rgba(255,255,255,.9);outline-offset:5px;border-radius:3px;padding:0 2px;white-space:nowrap}
+.ecanvas .lg{position:absolute;top:9px;left:9px;background:rgba(255,255,255,.92);color:#111;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:900}
 .eplay{display:flex;align-items:center;gap:10px;padding:8px 16px 4px;color:var(--text-2)}
 .eplay .p{width:30px;height:30px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
 .eplay .p .ic{fill:currentColor;stroke:currentColor;width:14px;margin-left:2px}
-.eplay .tm{font-size:11px;font-weight:800}.eplay .tm b{color:var(--text)}
+.eplay .tm{font-size:11px;font-weight:800}
 .etl{background:var(--panel);border-top:1px solid var(--border);padding:8px 0;position:relative}
 .etl .ph{position:absolute;top:6px;bottom:8px;left:38%;width:2px;background:var(--accent);z-index:4}
 .etrack{display:flex;align-items:center;gap:8px;padding:4px 16px}
 .etrack .lb{width:16px;color:var(--text-3);display:grid;place-items:center}.etrack .lb .ic{width:14px;height:14px}
 .etrack .bd{flex:1;height:30px;position:relative;display:flex;gap:2px}
 .etrack .bd .th{flex:1;border-radius:4px}
-.seg{position:absolute;top:0;height:30px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);font-size:9.5px;font-weight:800;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden}
+.seg{position:absolute;top:0;height:30px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent-ink);font-size:9.5px;font-weight:800;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden}
 .seg.on{background:var(--accent);color:#fff}
 .etools{display:flex;gap:10px;padding:10px 16px;overflow:hidden;border-top:1px solid var(--border)}
 .etool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--text-2)}
 .etool .c{width:38px;height:38px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;color:var(--text-2)}
-.etool.on{color:var(--accent)}.etool.on .c{background:var(--accent);color:#fff}
+.etool.on{color:var(--accent-ink)}.etool.on .c{background:var(--accent);color:#fff}
 
-/* onboarding */
 .onb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;position:relative;color:#fff;padding:24px}
-.onb .k{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
-.onb h2{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:10px 0 8px;line-height:1.05}
-.onb p{font-size:14px;opacity:.9;margin:0 0 18px;max-width:26ch}
-.dots{display:flex;gap:6px;margin-bottom:16px}.dots i{width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.4)}.dots i.on{width:20px;background:#fff}
+.onb .k{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.9}
+.onb h2{font-size:29px;font-weight:800;letter-spacing:-.03em;margin:10px 0 8px;line-height:1.05}
+.onb p{font-size:14px;opacity:.92;margin:0 0 18px;max-width:26ch}
+.dots{display:flex;gap:6px;margin-bottom:16px}.dots i{width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.45)}.dots i.on{width:20px;background:#fff}
 
 .field{margin:0 16px 12px}
 .field label{display:block;font-size:12.5px;font-weight:700;color:var(--text-2);margin-bottom:6px}
@@ -195,9 +181,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
 <symbol id="clip" viewBox="0 0 24 24"><path d="M5 4h14v16l-7-4-7 4z"/></symbol>
 <symbol id="home" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z"/></symbol>
 <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></symbol>
-<symbol id="reel" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 8h18M9 3l2.5 5M15 3l2.5 5M10 12l5 2.5-5 2.5z"/></symbol>
 <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
-<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 <symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></symbol>
 <symbol id="play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
 <symbol id="heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.4-9C1.1 9 2.6 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.4 0 4.9 4 3.4 7-2.4 4.4-9.4 9-9.4 9z"/></symbol>
@@ -209,6 +193,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
 <symbol id="palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1 0 1.5-1 1-2-.4-.8 0-2 1-2h2a4 4 0 004-4c0-4.5-4-8-8-8z"/></symbol>
 <symbol id="magic" viewBox="0 0 24 24"><path d="M6 18L16 8M14 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1zM5 11l.7 2 2 .7-2 .7L5 17l-.7-2-2-.7 2-.7z"/></symbol>
 <symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="chev-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
 <symbol id="lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></symbol>
 <symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
 <symbol id="sig" viewBox="0 0 24 24"><path d="M4 13v3M9 10v6M14 7v9M19 4v12"/></symbol>
@@ -222,18 +208,18 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
 <div class="wrap">
   <div class="head">
     <div>
-      <div class="tag">New Design · v2 · from scratch</div>
+      <div class="tag">New Design · v2 · Sunset Coral</div>
       <div class="brand"><div class="logo"><svg class="ic"><use href="#clip"/></svg></div>
-        <div><h1>ClipCart</h1><p>RenderForest × Instagram × CapCut — clean, real UI</p></div>
+        <div><h1>ClipCart</h1><p>Subscription marketplace for funny movie clips — customize &amp; export on device</p></div>
       </div>
     </div>
     <div class="hbtns"><button class="pill" id="themeBtn">🌙 Dark</button></div>
   </div>
   <div class="legend">
-    <span class="dotc"><i style="background:var(--accent)"></i><b>Accent</b> #6C5CFF</span>
+    <span class="dotc"><i style="background:var(--accent)"></i><b>Accent</b> Sunset Coral</span>
     <span class="dotc"><i style="background:var(--gold)"></i><b>Pro</b></span>
     <span class="dotc"><i style="background:var(--ok)"></i><b>Free</b></span>
-    <span>Soft depth · rounded cards · pill buttons · real bottom-nav</span>
+    <span>Gallery browse → tap clip → full-screen swipe player · light + dark</span>
   </div>
 
   <div class="rail">
@@ -243,12 +229,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
       <div class="ph"><div class="scr dark"><div class="isl"></div>
         <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
         <div class="body" style="position:relative">
-          <div class="g4" style="position:absolute;inset:0"></div>
-          <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent 60%)"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(160deg,#ff8a3d,#ff2d6b 58%,#b81d54)"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55),transparent 60%)"></div>
           <div class="onb">
-            <div class="k">Create · Customize · Export</div>
-            <h2>Turn templates into your brand</h2>
-            <p>Browse trending clip templates, drop in your text, logo & subtitles, and export in seconds.</p>
+            <div class="k">Browse · Customize · Export</div>
+            <h2>Funny clips, made your brand</h2>
+            <p>Browse trending meme &amp; movie clips, drop in your text, logo &amp; subtitles, and export in seconds.</p>
             <div class="dots"><i class="on"></i><i></i><i></i></div>
             <button class="btn btn-a">Get started</button>
             <button class="btn btn-w" style="margin-top:10px"><svg class="gic"><use href="#google"/></svg>Continue with Google</button>
@@ -258,37 +244,37 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
       <div class="cap caption"><span class="id">01</span><b>Onboarding</b> — brand + Get started + Google</div>
     </div>
 
-    <!-- Home (RenderForest) -->
+    <!-- Home (RenderForest-style gallery) -->
     <div class="fig">
       <div class="ph"><div class="scr"><div class="isl"></div>
         <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
         <div class="body">
           <div class="top"><h2>Discover</h2><div style="display:flex;gap:8px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#bell"/></svg></span><span class="avatar">A</span></div></div>
-          <div class="search"><svg class="ic ic-sm"><use href="#search"/></svg>Search templates, creators…</div>
-          <div class="chips"><span class="chip on">All</span><span class="chip">Trending</span><span class="chip">Reactions</span><span class="chip">Movie edits</span></div>
+          <div class="search"><svg class="ic ic-sm"><use href="#search"/></svg>Search clips, movies, creators…</div>
+          <div class="chips"><span class="chip on">All</span><span class="chip">Trending</span><span class="chip">Comedy</span><span class="chip">Reactions</span><span class="chip">Movie edits</span></div>
           <div class="scroll">
-            <div class="feat g1"><span class="play"><svg class="ic"><use href="#play"/></svg></span><div class="z"><span class="k">Featured</span><h4>Editor's picks this week</h4></div></div>
-            <div class="sh"><h3>Popular templates</h3><a>See all</a></div>
+            <div class="feat" style="background:var(--grad)"><span class="play"><svg class="ic"><use href="#play"/></svg></span><div class="z"><span class="k">Featured</span><h4>Editor's picks this week</h4></div></div>
+            <div class="sh"><h3>Popular clips</h3><a>See all</a></div>
             <div class="grid">
-              <div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Neon Promo</div><div class="by">by maria.k · 2.1k</div></div></div>
-              <div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:08</span></div><div class="meta"><div class="nm">Fresh Reel</div><div class="by">by rahul.fx · 1.4k</div></div></div>
-              <div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:15</span></div><div class="meta"><div class="nm">Cinematic</div><div class="by">by zoya · 980</div></div></div>
-              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Sunset Sale</div><div class="by">by maria.k · 3.0k</div></div></div>
+              <div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Monday Mood</div><div class="by">by maria.k · 2.1k</div></div></div>
+              <div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:08</span></div><div class="meta"><div class="nm">Reaction Pack</div><div class="by">by rahul.fx · 1.4k</div></div></div>
+              <div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:15</span></div><div class="meta"><div class="nm">Movie Dialogue</div><div class="by">by zoya · 980</div></div></div>
+              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Comedy Cut</div><div class="by">by maria.k · 3.0k</div></div></div>
             </div>
           </div>
-          <div class="nav"><a class="on"><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#reel"/></svg>Reels</a><span class="create"><svg class="ic"><use href="#plus"/></svg></span><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+          <div class="nav"><a class="on"><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#search"/></svg>Search</a><a><svg class="ic"><use href="#heart"/></svg>Saved</a><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
         </div>
       </div></div>
-      <div class="cap caption"><span class="id">02</span><b>Home</b> — RenderForest-style template gallery + categories + bottom nav</div>
+      <div class="cap caption"><span class="id">02</span><b>Home</b> — RenderForest-style clip gallery + categories + bottom nav</div>
     </div>
 
-    <!-- Reels (Instagram) -->
+    <!-- Clip Player (full-screen, opens on tap from gallery; swipe = next) -->
     <div class="fig">
       <div class="ph"><div class="scr dark"><div class="isl"></div>
         <div class="reel">
           <div class="bg g7"></div><div class="gt"></div><div class="gb"></div>
           <div class="sb" style="position:absolute;top:0;left:0;right:0;z-index:7;color:#fff"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
-          <div class="tabs"><span>Following</span><span class="on">For you</span><span>Trending</span></div>
+          <div class="ptop"><span class="pclose"><svg class="ic"><use href="#chev-down"/></svg></span><span class="pchip">Comedy · Movie edit</span><span class="pclose"><svg class="ic ic-sm"><use href="#more"/></svg></span></div>
           <div class="rail">
             <div class="rav">M</div>
             <div class="act lk"><div class="o"><svg class="ic"><use href="#heart"/></svg></div>12.4k</div>
@@ -296,14 +282,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
             <div class="act"><div class="o"><svg class="ic"><use href="#share"/></svg></div>Share</div>
             <div class="act"><div class="o" style="background:linear-gradient(135deg,#333,#111)"><svg class="ic ic-sm"><use href="#music"/></svg></div></div>
           </div>
-          <div class="info"><div class="hn">@maria.k <span class="badge b-pro" style="position:static">PRO</span></div><div class="tt">Cinematic movie-edit — add your subtitles &amp; logo</div><div class="tg"><span>#reels</span><span>#cinematic</span><span>4K</span></div></div>
-          <div class="use"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use this template</button></div>
+          <div class="info"><div class="hn">@maria.k <span class="badge b-pro" style="position:static">PRO</span></div><div class="tt">When Monday hits different 😭 — add your subtitles &amp; logo</div><div class="tg"><span>#comedy</span><span>#movieedit</span><span>0:12</span></div></div>
+          <div class="swipe">▲ Swipe up · next clip</div>
+          <div class="use"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use template</button></div>
         </div>
       </div></div>
-      <div class="cap caption"><span class="id">03</span><b>Reels Discover</b> — Instagram-style full-screen feed (swipe ↑ next)</div>
+      <div class="cap caption"><span class="id">03</span><b>Clip Player</b> — full-screen (opens on tap from gallery), swipe ↑ = next clip</div>
     </div>
 
-    <!-- Template Detail -->
+    <!-- Clip Detail -->
     <div class="fig">
       <div class="ph"><div class="scr"><div class="isl"></div>
         <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
@@ -311,15 +298,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
           <div class="top" style="padding-top:2px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#back"/></svg></span><span class="iconbtn"><svg class="ic ic-sm"><use href="#share"/></svg></span></div>
           <div class="scroll">
             <div class="dhero g6"><span class="play"><svg class="ic"><use href="#play"/></svg></span></div>
-            <div class="drow"><span class="avatar" style="width:34px;height:34px">M</span><div style="flex:1"><div style="font-weight:800;font-size:15px">Cinematic Promo</div><div style="font-size:12px;color:var(--text-3)">by maria.k</div></div><span class="badge b-pro" style="position:static">Pro</span></div>
-            <div class="metaline"><span>0:12</span>·<span>1080p</span>·<span>9:16</span>·<span>2.1k uses</span>·<span>Added 3d ago</span></div>
-            <div style="font-size:11px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;padding:14px 16px 2px">You can edit</div>
-            <div class="efields"><span>Subtitle</span><span>Logo</span><span>Font</span><span>Color</span><span>Username</span><span>CTA</span></div>
+            <div class="drow"><span class="avatar" style="width:34px;height:34px">M</span><div style="flex:1"><div style="font-weight:800;font-size:15px">Monday Mood</div><div style="font-size:12px;color:var(--text-3)">by maria.k</div></div><span class="badge b-pro" style="position:static">Pro</span></div>
+            <div class="metaline"><span><b>Movie:</b> 3 Idiots</span>·<span><b>Genre:</b> Comedy</span>·<span><b>Lang:</b> English</span>·<span>0:12</span>·<span>1080p</span>·<span>9:16</span>·<span>2.1k uses</span></div>
+            <div style="font-size:11px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;padding:14px 16px 2px">You can customize</div>
+            <div class="efields"><span>Subtitle</span><span>Font</span><span>Color</span><span>Stroke</span><span>Logo</span><span>Username</span><span>CTA</span><span>Ending</span><span>Aspect</span></div>
           </div>
-          <div class="pad" style="padding-bottom:16px"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use this template</button></div>
+          <div class="pad" style="padding-bottom:16px"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use template</button></div>
         </div>
       </div></div>
-      <div class="cap caption"><span class="id">04</span><b>Template Detail</b> — preview, creator, metadata, editable fields</div>
+      <div class="cap caption"><span class="id">04</span><b>Clip Detail</b> — preview, movie/genre/language, customizable fields</div>
     </div>
 
     <!-- Editor (CapCut) -->
@@ -327,15 +314,15 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
       <div class="ph"><div class="scr dark"><div class="isl"></div>
         <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
         <div class="body">
-          <div class="top" style="padding:2px 16px 8px"><span class="iconbtn" style="background:#1c1c27;border-color:#282833;color:#fff"><svg class="ic ic-sm"><use href="#back"/></svg></span><span style="font-weight:800;color:#fff">Editor</span><button class="btn btn-a btn-sm"><svg class="ic ic-sm"><use href="#dl"/></svg>Export</button></div>
+          <div class="top" style="padding:2px 16px 8px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#back"/></svg></span><span style="font-weight:800;color:#fff">Editor</span><button class="btn btn-a btn-sm"><svg class="ic ic-sm"><use href="#dl"/></svg>Export</button></div>
           <div class="ecanvas g7"><span class="lg">LOGO</span><span class="sub">i cried… she's literally a victim</span></div>
-          <div class="eplay"><span class="p"><svg class="ic"><use href="#play"/></svg></span><span class="tm"><b style="color:#fff">00:03</b> / 00:12</span></div>
+          <div class="eplay"><span class="p"><svg class="ic"><use href="#play"/></svg></span><span class="tm"><span style="color:#fff">00:03</span> / 00:12</span></div>
           <div class="etl">
             <div class="ph" style="left:38%"></div>
-            <div class="etrack"><span class="lb"><svg class="ic"><use href="#img"/></svg></span><div class="bd"><span class="th g1"></span><span class="th g6"></span><span class="th g4"></span><span class="th g2"></span><span class="th g7"></span></div></div>
+            <div class="etrack"><span class="lb"><svg class="ic"><use href="#img"/></svg></span><div class="bd"><span class="th g6"></span><span class="th g8"></span><span class="th g7"></span><span class="th g5"></span><span class="th g6"></span></div></div>
             <div class="etrack"><span class="lb"><svg class="ic"><use href="#type"/></svg></span><div class="bd"><div class="seg" style="left:2%;width:26%">Sub 1</div><div class="seg on" style="left:32%;width:34%">i cried…</div><div class="seg" style="left:70%;width:28%">Sub 3</div></div></div>
           </div>
-          <div class="etools"><span class="etool on"><span class="c" style="background:var(--accent);color:#fff"><svg class="ic ic-sm"><use href="#type"/></svg></span>Text</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#img"/></svg></span>Logo</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#user"/></svg></span>Username</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#palette"/></svg></span>Style</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#sticker"/></svg></span>Sticker</span></div>
+          <div class="etools"><span class="etool on"><span class="c"><svg class="ic ic-sm"><use href="#type"/></svg></span>Text</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#img"/></svg></span>Logo</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#user"/></svg></span>Username</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#palette"/></svg></span>Style</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#sticker"/></svg></span>CTA</span></div>
         </div>
       </div></div>
       <div class="cap caption"><span class="id">05</span><b>Editor</b> — CapCut-style: canvas + timeline + timed subtitle track + tools</div>
@@ -352,7 +339,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
           <div class="pad"><button class="btn btn-a">Log in</button></div>
           <div class="ordiv">OR</div>
           <div class="pad"><button class="btn btn-w"><svg class="gic"><use href="#google"/></svg>Continue with Google</button></div>
-          <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent)">Create account</b></div>
+          <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent-ink)">Create account</b></div>
         </div>
       </div></div>
       <div class="cap caption"><span class="id">06</span><b>Login</b> — clean, real inputs, Google</div>
@@ -361,8 +348,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-we
   </div>
 
   <div class="footnote">
-    <b>New from-scratch design system — 6 core screens.</b><br>
-    RenderForest (template gallery) × Instagram (Reels + nav) × CapCut (editor) · clean · real buttons · light + dark.<br>
+    <b>New from-scratch design — Sunset Coral · 6 core screens.</b><br>
+    Gallery browse (RenderForest) → tap clip → full-screen swipe player (Instagram) → CapCut-style editor · aligned to client requirements (meme/movie clips, no "reels").<br>
     Look approve karo → main <b>saare pages (mobile + web + admin)</b> isi exact system me bana dunga.
   </div>
 </div>
