@@ -1,18 +1,21 @@
-/// App configuration. Override at build: --dart-define=API_BASE_URL=https://api.clipcart.app/api/v1
+/// Build-time constants. Everything server-specific (API base, flags) is loaded at
+/// RUNTIME from [bootstrapConfigUrl] via RemoteConfig — so changing the server means
+/// editing that JSON, not rebuilding the app.
 class AppConfig {
-  /// Android emulator reaches the host machine via 10.0.2.2.
-  /// iOS simulator / desktop can use http://127.0.0.1:8000.
-  static const String apiBaseUrl = String.fromEnvironment(
+  /// The ONE fixed URL (stable GitHub Pages). Override at build with --dart-define=CONFIG_URL=...
+  static const String bootstrapConfigUrl = String.fromEnvironment(
+    'CONFIG_URL',
+    defaultValue: 'https://clipxcartdev.github.io/ClipCart/app-config.json',
+  );
+
+  /// Used only until remote config loads (or if network + cache are both unavailable).
+  static const String fallbackApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://38.9.96.250/api/v1', // production VPS; override with --dart-define
+    defaultValue: 'http://38.9.96.250/api/v1',
   );
 
   static const String googleServerClientId = String.fromEnvironment(
     'GOOGLE_SERVER_CLIENT_ID',
     defaultValue: '',
   );
-
-  /// Signed storage URLs may be relative (local dev) or absolute (R2). Make absolute.
-  static String absolute(String url) =>
-      url.startsWith('http') ? url : '${apiBaseUrl.replaceAll('/api/v1', '')}$url';
 }

@@ -20,6 +20,7 @@ dependencies:
   file_picker: ^8.1.4           # custom font (.ttf/.otf) + base clip picking
   path_provider: ^2.1.5         # app dirs for fonts/exports
   ffmpeg_kit_flutter_new: ^4.6.2 # on-device MP4 export (drawtext/overlay) — fixes Windows build
+  gal: ^2.3.0                    # save exported MP4 to the phone Gallery
 
 dev_dependencies:
   flutter_lints: ^4.0.0

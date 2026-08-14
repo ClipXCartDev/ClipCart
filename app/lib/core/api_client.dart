@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
 
-import 'config.dart';
+import 'runtime_config.dart';
 import 'token_store.dart';
 
 /// Dio wrapper: attaches the access token and transparently refreshes on 401.
 class ApiClient {
   ApiClient(this.tokens) {
     dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
+      baseUrl: RuntimeConfig.apiBaseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 20),
     ));

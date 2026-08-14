@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/api_client.dart';
+import 'core/remote_config.dart';
 import 'core/token_store.dart';
 import 'services/auth_service.dart';
 import 'services/billing_service.dart';
@@ -11,8 +12,9 @@ import 'services/creator_service.dart';
 import 'services/font_service.dart';
 import 'state/auth_controller.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await RemoteConfig.load(); // resolve API base + flags from the stable config URL
   final tokens = TokenStore();
   final api = ApiClient(tokens);
   final authService = AuthService(api);

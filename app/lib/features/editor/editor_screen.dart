@@ -116,13 +116,15 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _export() async {
     setState(() => _busy = true);
     try {
-      final out = await ExportService().export(_project!);
+      final res = await ExportService().export(_project!);
       if (mounted) {
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
             title: const Text('Exported 🎉'),
-            content: Text('Saved on device:\n$out'),
+            content: Text(res.savedToGallery
+                ? 'Saved to your Gallery (ClipCart album) 📱\nShare it to Instagram from there.'
+                : 'Saved on device:\n${res.path}'),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
           ),
         );
