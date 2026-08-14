@@ -1,0 +1,1354 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClipCart — Complete Design</title></head><body><style>
+:root{
+  --bg:#f6f5f7; --surface:#ffffff; --surface-2:#f2f1f4; --panel:#f7f6f8;
+  --border:#eae8ee; --border-2:#f1eff4;
+  --text:#191521; --text-2:#6f6a79; --text-3:#a09aac;
+  --accent:#ff4d6d; --accent-2:#ff8a3d; --accent-soft:#ffe9ec; --accent-press:#f0395c; --accent-ink:#e01a48;
+  --grad:linear-gradient(135deg,#ff8a3d,#ff4d6d);
+  --ok:#12b76a; --ok-soft:#e7f7ef; --warn:#f79009; --danger:#f04438; --gold:#f5a623;
+  --sh-sm:0 1px 2px rgba(30,20,30,.05);
+  --sh:0 4px 16px -6px rgba(30,20,30,.14), 0 1px 3px rgba(30,20,30,.05);
+  --sh-lg:0 24px 48px -20px rgba(60,20,40,.28);
+  --r:16px; --r-sm:12px; --r-pill:999px;
+  --font:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#0e0c0f; --surface:#18151b; --surface-2:#211d24; --panel:#161318;
+  --border:#2c2731; --border-2:#221e27;
+  --text:#f4f2f6; --text-2:#a8a2af; --text-3:#6f6a76;
+  --accent-soft:#3a2028; --accent-ink:#ff7e97;
+  --sh:0 8px 24px -10px rgba(0,0,0,.6); --sh-sm:0 1px 2px rgba(0,0,0,.4); --sh-lg:0 30px 60px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.45;letter-spacing:-.006em}
+.ic{width:22px;height:22px;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:18px;height:18px}
+.wrap{max-width:1200px;margin:0 auto;padding:40px 24px 100px}
+
+.head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px -6px rgba(255,77,109,.5)}
+.logo .ic{width:24px;height:24px;stroke-width:2.2}
+.brand h1{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0}
+.brand p{margin:3px 0 0;color:var(--text-2);font-size:13.5px}
+.tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:10px}
+.pill{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-pill);padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--sh-sm)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:22px 2px 34px;font-size:12.5px;color:var(--text-2)}
+.legend b{color:var(--text)}
+.dotc{display:inline-flex;align-items:center;gap:7px}.dotc i{width:12px;height:12px;border-radius:4px;display:block}
+
+.rail{display:flex;flex-wrap:wrap;gap:44px 34px}
+.fig{display:flex;flex-direction:column;gap:13px}
+.cap{font-size:12.5px;color:var(--text-2);max-width:300px}
+.cap b{color:var(--text);font-weight:700}
+.cap .id{color:#fff;background:var(--accent);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:800;margin-right:6px}
+
+.ph{width:300px;background:#0b0a0c;border-radius:44px;padding:11px;box-shadow:var(--sh-lg),inset 0 1px 1px rgba(255,255,255,.14)}
+.scr{position:relative;width:100%;height:632px;background:var(--surface);border-radius:33px;overflow:hidden;display:flex;flex-direction:column}
+.isl{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:25px;background:#050405;border-radius:999px;z-index:40}
+.sb{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;font-size:12.5px;font-weight:800;color:var(--text)}
+.sb .r{display:flex;gap:5px;align-items:center}.sb .r .ic{width:15px;height:15px;stroke-width:2.3}
+.body{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.pad{padding:0 16px}
+
+.top{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;gap:10px}
+.top h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0}
+.iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--text);background:var(--surface-2);border:1px solid var(--border)}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+
+.search{display:flex;align-items:center;gap:10px;height:46px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);padding:0 14px;color:var(--text-3);font-size:14px;font-weight:500;margin:0 16px 12px}
+
+.chips{display:flex;gap:8px;overflow:hidden;padding:0 16px 14px}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:var(--r-pill);padding:8px 15px;font-size:12.5px;font-weight:700;color:var(--text-2);white-space:nowrap}
+.chip.on{background:var(--text);border-color:var(--text);color:var(--surface)}
+
+.btn{border:0;border-radius:12px;font:inherit;font-weight:800;font-size:14px;padding:12px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn-a{background:var(--grad);color:#fff;box-shadow:0 10px 22px -12px rgba(255,77,109,.6)}
+.btn-2{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.btn-w{background:#fff;color:#1f1f1f;border:1px solid var(--border);box-shadow:var(--sh-sm)}
+.btn-sm{padding:9px 14px;font-size:13px;border-radius:11px;width:auto}
+
+.sh{display:flex;align-items:center;justify-content:space-between;padding:2px 16px 10px}
+.sh h3{font-size:16px;font-weight:800;letter-spacing:-.01em;margin:0}
+.sh a{font-size:12.5px;font-weight:700;color:var(--accent-ink)}
+
+.feat{flex:none;margin:12px 16px 6px;border-radius:18px;overflow:hidden;position:relative;height:150px;display:flex;align-items:flex-end;padding:16px;color:#fff;box-shadow:var(--sh)}
+.feat::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(0,0,0,.12),rgba(0,0,0,.42))}
+.feat .z{position:relative;z-index:2}
+.feat .k{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.28);padding:4px 9px;border-radius:999px;backdrop-filter:blur(4px)}
+.feat h4{font-size:21px;font-weight:800;margin:9px 0 0;letter-spacing:-.02em;max-width:80%}
+.feat .play{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.24);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:2}
+.feat .play .ic{fill:#fff;stroke:#fff;margin-left:3px}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:12px 16px 16px}
+.tpl{border-radius:16px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm)}
+.tpl .thumb{aspect-ratio:3/4;position:relative;display:flex;align-items:flex-end;padding:10px}
+.tpl .thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.35))}
+.tpl .badge{position:absolute;top:9px;left:9px;z-index:3;font-size:9.5px;font-weight:900;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
+.b-pro{background:var(--gold);color:#3a2600}.b-free{background:var(--ok);color:#fff}
+.tpl .play{position:absolute;top:9px;right:9px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28);backdrop-filter:blur(4px);display:grid;place-items:center}
+.tpl .play .ic{fill:#fff;stroke:#fff;width:12px;margin-left:1px}
+.tpl .dur{position:relative;z-index:2;color:#fff;font-size:10px;font-weight:800;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:6px}
+.tpl .meta{padding:9px 11px}
+.tpl .nm{font-size:12.5px;font-weight:700}
+.tpl .by{font-size:10.5px;color:var(--text-3);margin-top:1px}
+
+.g1{background:linear-gradient(150deg,#7b61ff,#4c9aff)}.g2{background:linear-gradient(150deg,#ff7a59,#ff4d8d)}
+.g3{background:linear-gradient(150deg,#12c7a0,#3b9eff)}.g4{background:linear-gradient(150deg,#2b2350,#7b61ff)}
+.g5{background:linear-gradient(150deg,#f5a623,#ff4d6d)}.g6{background:linear-gradient(150deg,#ff9247,#ff2d6b)}
+.g7{background:linear-gradient(150deg,#1a2740,#c0304a)}.g8{background:linear-gradient(150deg,#c0304a,#2b1236)}
+
+.nav{height:64px;flex:none;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-around;padding-bottom:4px}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--text-3)}
+.nav a.on{color:var(--accent-ink)}
+.nav a .ic{width:23px;height:23px}
+.nav a.on .ic{stroke-width:2.2}
+
+.scr.dark{background:#0b0a0c;color:#fff;
+  --surface:#18151b;--surface-2:#211d24;--panel:#161318;--border:#2c2731;--border-2:#221e27;
+  --text:#f4f2f6;--text-2:#a8a2af;--text-3:#7a7580;--accent-soft:#3a2028;--accent-ink:#ff7e97;}
+.dark .sb{color:#fff}
+
+/* full-screen clip player (opens from gallery, swipe = next) */
+.reel{position:absolute;inset:0;overflow:hidden}
+.reel .bg{position:absolute;inset:0}
+.reel .gt{position:absolute;top:0;left:0;right:0;height:150px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);z-index:2}
+.reel .gb{position:absolute;bottom:0;left:0;right:0;height:300px;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent);z-index:2}
+.ptop{position:absolute;top:44px;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:6px 14px;z-index:6}
+.pchip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);color:#fff;font-size:12px;font-weight:700;padding:7px 13px;border-radius:999px}
+.pclose{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff}
+.reel .rail{position:absolute;right:12px;bottom:150px;display:flex;flex-direction:column;gap:17px;align-items:center;z-index:5;color:#fff}
+.reel .rav{width:44px;height:44px;border-radius:50%;background:var(--grad);border:2px solid #fff;display:grid;place-items:center;font-weight:800;color:#fff}
+.reel .act{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700}
+.reel .act .o{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);display:grid;place-items:center}
+.reel .act.lk .o{background:var(--accent);border-color:transparent}.reel .act.lk .o .ic{fill:#fff;stroke:#fff}
+.reel .info{position:absolute;left:16px;right:78px;bottom:110px;color:#fff;z-index:5}
+.reel .hn{font-weight:800;font-size:15px;display:flex;gap:8px;align-items:center}
+.reel .tt{font-size:12.5px;opacity:.95;margin-top:5px}
+.reel .tg{display:flex;gap:6px;margin-top:8px}.reel .tg span{font-size:11px;font-weight:700;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:6px}
+.reel .swipe{position:absolute;left:0;right:0;bottom:78px;text-align:center;color:rgba(255,255,255,.55);font-size:11px;font-weight:700;z-index:5}
+.reel .use{position:absolute;left:16px;right:16px;bottom:18px;z-index:6}
+
+.dhero{position:relative;aspect-ratio:4/5;margin:12px 16px 0;border-radius:18px;overflow:hidden;display:grid;place-items:center;box-shadow:var(--sh)}
+.dhero .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.26);backdrop-filter:blur(8px);display:grid;place-items:center}
+.dhero .play .ic{fill:#fff;stroke:#fff;width:22px;margin-left:3px}
+.drow{display:flex;align-items:center;gap:9px;padding:14px 16px 4px}
+.metaline{display:flex;flex-wrap:wrap;gap:5px 9px;color:var(--text-2);font-size:11.5px;padding:0 16px}
+.metaline b{color:var(--text);font-weight:700}
+.efields{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px}
+.efields span{background:var(--accent-soft);color:var(--accent-ink);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:8px}
+
+.ecanvas{margin:8px 16px 0;border-radius:14px;overflow:hidden;position:relative;aspect-ratio:16/11}
+.ecanvas .sub{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);color:#fff;font-weight:800;font-size:13px;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.8);outline:1.5px dashed rgba(255,255,255,.9);outline-offset:5px;border-radius:3px;padding:0 2px;white-space:nowrap}
+.ecanvas .lg{position:absolute;top:9px;left:9px;background:rgba(255,255,255,.92);color:#111;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:900}
+.eplay{display:flex;align-items:center;gap:10px;padding:8px 16px 4px;color:var(--text-2)}
+.eplay .p{width:30px;height:30px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
+.eplay .p .ic{fill:currentColor;stroke:currentColor;width:14px;margin-left:2px}
+.eplay .tm{font-size:11px;font-weight:800}
+.etl{background:var(--panel);border-top:1px solid var(--border);padding:8px 0;position:relative}
+.etl .ph{position:absolute;top:6px;bottom:8px;left:38%;width:2px;background:var(--accent);z-index:4}
+.etrack{display:flex;align-items:center;gap:8px;padding:4px 16px}
+.etrack .lb{width:16px;color:var(--text-3);display:grid;place-items:center}.etrack .lb .ic{width:14px;height:14px}
+.etrack .bd{flex:1;height:30px;position:relative;display:flex;gap:2px}
+.etrack .bd .th{flex:1;border-radius:4px}
+.seg{position:absolute;top:0;height:30px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent-ink);font-size:9.5px;font-weight:800;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden}
+.seg.on{background:var(--accent);color:#fff}
+.etools{display:flex;gap:10px;padding:10px 16px;overflow:hidden;border-top:1px solid var(--border)}
+.etool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--text-2)}
+.etool .c{width:38px;height:38px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;color:var(--text-2)}
+.etool.on{color:var(--accent-ink)}.etool.on .c{background:var(--accent);color:#fff}
+
+.onb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;position:relative;color:#fff;padding:24px}
+.onb .k{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.9}
+.onb h2{font-size:29px;font-weight:800;letter-spacing:-.03em;margin:10px 0 8px;line-height:1.05}
+.onb p{font-size:14px;opacity:.92;margin:0 0 18px;max-width:26ch}
+.dots{display:flex;gap:6px;margin-bottom:16px}.dots i{width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.45)}.dots i.on{width:20px;background:#fff}
+
+.field{margin:0 16px 12px}
+.field label{display:block;font-size:12.5px;font-weight:700;color:var(--text-2);margin-bottom:6px}
+.input{height:48px;border-radius:13px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--text-3);font-size:14px}
+.input.f{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.input .v{color:var(--text)}
+.ordiv{display:flex;align-items:center;gap:12px;margin:14px 16px;color:var(--text-3);font-size:11px;font-weight:700}
+.ordiv::before,.ordiv::after{content:"";flex:1;height:1px;background:var(--border)}
+.gic{width:18px;height:18px;flex:none}
+.footnote{margin-top:60px;padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--border);text-align:center;color:var(--text-2);font-size:13px;box-shadow:var(--sh-sm)}
+.footnote b{color:var(--text)}
+
+/* section dividers + shared components for full deck */
+.section{width:100%;margin:34px 2px 4px;padding-top:18px;border-top:2px solid var(--border);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.section h2{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
+.section .sc{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:var(--accent);padding:3px 10px;border-radius:999px}
+.section p{margin:0;color:var(--text-2);font-size:13px}
+.appbar{display:flex;align-items:center;gap:10px;padding:6px 16px 10px}
+.appbar .bk{width:36px;height:36px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
+.appbar h2{font-size:17px;font-weight:800;margin:0;flex:1}
+.list{padding:2px 16px}
+.lrow{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--border)}
+.lrow:last-child{border-bottom:0}
+.lrow .li{width:38px;height:38px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;color:var(--text-2);flex:none}
+.lrow .li .ic{width:19px;height:19px}
+.lrow .lt{flex:1;min-width:0}.lrow .lt b{font-size:13.5px;font-weight:700;display:block}.lrow .lt span{font-size:11.5px;color:var(--text-3)}
+.lrow .ra{color:var(--text-3);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px}
+.lrow .ra .ic{transform:scaleX(-1)}
+.toggle{width:42px;height:25px;border-radius:999px;background:var(--accent);position:relative;flex:none}
+.toggle::after{content:"";position:absolute;top:2.5px;right:2.5px;width:20px;height:20px;border-radius:50%;background:#fff}
+.toggle.off{background:var(--surface-2);border:1px solid var(--border)}.toggle.off::after{right:auto;left:2.5px}
+.plan{margin:0 16px 12px;border:1px solid var(--border);border-radius:16px;padding:15px 16px;background:var(--surface)}
+.plan.hot{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.plan .pt{display:flex;align-items:center;justify-content:space-between}
+.plan .pn{font-weight:800;font-size:15px}
+.plan .pb{font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#fff;background:var(--grad);padding:3px 9px;border-radius:999px}
+.plan .pp{font-size:23px;font-weight:800;margin:8px 0 2px}.plan .pp span{font-size:12px;color:var(--text-3);font-weight:600}
+.plan ul{margin:8px 0 12px;padding:0;list-style:none;font-size:12.5px;color:var(--text-2)}
+.plan li{display:flex;gap:8px;align-items:center;padding:3px 0}.plan li .ic{width:15px;height:15px;color:var(--ok);flex:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 16px}
+.stat{border:1px solid var(--border);border-radius:14px;padding:13px;background:var(--surface)}
+.stat .sv{font-size:21px;font-weight:800;letter-spacing:-.02em}
+.stat .sl{font-size:11px;color:var(--text-3);font-weight:600;margin-top:1px}
+.stat .sd{font-size:11px;font-weight:700;color:var(--ok);margin-top:4px}
+.status{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+.st-ok{background:var(--ok-soft);color:var(--ok)}.st-wait{background:#fff3e3;color:#c77700}.st-no{background:#fde7e5;color:var(--danger)}
+:root[data-theme="dark"] .st-wait{background:#3a2a12}:root[data-theme="dark"] .st-no{background:#3a1c1a}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;box-shadow:0 -12px 34px rgba(0,0,0,.22);padding:6px 0 14px;z-index:20;border-top:1px solid var(--border)}
+.sheet .grab{width:38px;height:4px;border-radius:9px;background:var(--border);margin:8px auto 4px}
+.sheet .sti{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px}
+.sheet .sti b{font-size:15px;font-weight:800}.sheet .sti a{font-size:12.5px;font-weight:700;color:var(--accent-ink)}
+.fgrp{padding:6px 16px}.fgrp .fl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:8px}
+.fopts{display:flex;flex-wrap:wrap;gap:7px}
+.fopt{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:700;color:var(--text-2)}
+.fopt.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.scrim{position:absolute;inset:0;background:rgba(10,6,12,.4);z-index:15}
+.prog{width:118px;height:118px;border-radius:50%;background:conic-gradient(var(--accent) 68%, var(--surface-2) 0);display:grid;place-items:center;margin:26px auto 6px}
+.prog .in{width:94px;height:94px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:22px;font-weight:800}
+.field2{margin:0 16px 11px}.field2 label{font-size:11.5px;font-weight:700;color:var(--text-2);display:block;margin-bottom:5px}
+.field2 .in{min-height:44px;border:1px solid var(--border);border-radius:11px;background:var(--surface);display:flex;align-items:center;gap:8px;padding:9px 12px;color:var(--text);font-size:13.5px}
+.field2 .in.ta{align-items:flex-start;min-height:64px}
+.field2 .in .ph{color:var(--text-3)}
+.dashed{border:2px dashed var(--border);border-radius:14px;margin:4px 16px 12px;padding:24px;text-align:center;color:var(--text-3);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.dashed .ic{width:26px;height:26px;color:var(--accent)}
+.hint{padding:8px 16px;color:var(--text-3);font-size:11.5px}
+.card{margin:0 16px 12px;border:1px solid var(--border);border-radius:14px;background:var(--surface);overflow:hidden}
+.card .ch{padding:12px 14px;border-bottom:1px solid var(--border);font-weight:800;font-size:13.5px;display:flex;align-items:center;justify-content:space-between}
+.card .cr{display:flex;align-items:center;gap:11px;padding:11px 14px;border-bottom:1px solid var(--border)}.card .cr:last-child{border-bottom:0}
+.card .cr .thm{width:44px;height:56px;border-radius:8px;flex:none}
+.card .cr .ci{flex:1;min-width:0}.card .cr .ci b{font-size:13px;font-weight:700;display:block}.card .cr .ci span{font-size:11px;color:var(--text-3)}
+.bignum{text-align:center;padding:16px}.bignum .n{font-size:30px;font-weight:800;letter-spacing:-.02em}.bignum .l{font-size:12px;color:var(--text-2);margin-top:2px}
+.notif{display:flex;gap:11px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.notif .nd{width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:5px;flex:none}
+.notif.read .nd{background:var(--border)}
+.notif .nb b{font-size:13px;font-weight:700}.notif .nb p{margin:2px 0 0;font-size:12px;color:var(--text-2)}.notif .nb .nt{font-size:10.5px;color:var(--text-3);margin-top:3px}
+
+/* ===== Web (browser frame + desktop UI) ===== */
+.browser{width:540px;max-width:100%;background:#0b0a0c;border-radius:16px;box-shadow:var(--sh-lg);overflow:hidden;border:1px solid var(--border)}
+.bbar{height:40px;background:var(--surface-2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;padding:0 13px}
+.bdot{display:flex;gap:6px}.bdot i{width:11px;height:11px;border-radius:50%;background:#d9d6de;display:block}
+:root[data-theme="dark"] .bdot i{background:#3a353f}
+.burl{flex:1;height:24px;border-radius:7px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:7px;padding:0 11px;font-size:11px;color:var(--text-3);font-weight:600}
+.burl .ic{width:12px;height:12px}
+.bbody{height:600px;overflow:hidden;background:var(--bg);position:relative;display:flex;flex-direction:column}
+.wnav{height:56px;flex:none;display:flex;align-items:center;gap:14px;padding:0 22px;border-bottom:1px solid var(--border);background:var(--surface)}
+.wnav .wl{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px}
+.wnav .wl .lg{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;color:#fff}.wnav .wl .lg .ic{width:17px;height:17px}
+.wnav .wlinks{display:flex;gap:16px;font-size:13px;font-weight:600;color:var(--text-2);margin-left:6px}
+.wnav .wr{margin-left:auto;display:flex;gap:9px;align-items:center}
+.wbtn{border-radius:10px;font-weight:700;font-size:13px;padding:8px 15px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;white-space:nowrap}
+.wbtn.pri{background:var(--grad);color:#fff;border:0}
+.wscroll{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.whero{padding:34px 26px 24px;text-align:center;position:relative}
+.whero .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink)}
+.whero h1{font-size:33px;font-weight:800;letter-spacing:-.03em;margin:12px 0 10px;line-height:1.06}
+.whero p{color:var(--text-2);font-size:14px;max-width:42ch;margin:0 auto 18px}
+.wcta{display:flex;gap:10px;justify-content:center}
+.wsec{padding:18px 26px}
+.wsec .wh{font-size:18px;font-weight:800;letter-spacing:-.02em;margin:0 0 14px;text-align:center}
+.wgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+.wgrid .tpl .thumb{aspect-ratio:9/16;padding:7px}
+.wgrid .tpl .meta{padding:7px 9px}.wgrid .tpl .nm{font-size:11px}
+.wfeat{display:flex;gap:12px;justify-content:center}
+.wstep{flex:1;text-align:center;padding:0 4px}.wstep .wc{width:44px;height:44px;border-radius:13px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;margin:0 auto 8px}.wstep b{font-size:13px}.wstep p{font-size:11px;color:var(--text-2);margin:3px 0 0}
+.wfoot{margin-top:auto;padding:15px 26px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;color:var(--text-3);font-size:11.5px;background:var(--surface)}
+.ptable{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;padding:4px 26px 26px}
+.wcheckout{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;padding:22px 26px}
+.qr{width:150px;height:150px;border-radius:12px;background:repeating-conic-gradient(var(--text) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;margin:6px auto;border:6px solid var(--surface);box-shadow:var(--sh-sm)}
+.wapp{display:flex;height:100%}
+.wside{width:176px;flex:none;border-right:1px solid var(--border);background:var(--surface);padding:16px 10px;display:flex;flex-direction:column;gap:3px}
+.wside .wbrand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;padding:2px 8px 12px}
+.wside .wbrand .lg{width:26px;height:26px;border-radius:8px;background:var(--grad);display:grid;place-items:center;color:#fff}.wside .wbrand .lg .ic{width:15px;height:15px}
+.wsl{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;font-size:12.5px;font-weight:700;color:var(--text-2)}
+.wsl.on{background:var(--accent-soft);color:var(--accent-ink)}
+.wsl .ic{width:17px;height:17px}
+.wmain{flex:1;overflow:hidden;padding:20px 22px;background:var(--bg)}
+.wmain h2{font-size:19px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+.wmain .sub{color:var(--text-2);font-size:12.5px;margin-bottom:16px}
+.wrowcard{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:15px 16px;margin-bottom:12px}
+.wtable{width:100%;border-collapse:collapse;font-size:12px}
+.wtable th{text-align:left;color:var(--text-3);font-weight:800;padding:8px 6px;border-bottom:1px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.wtable td{padding:11px 6px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text)}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="clip" viewBox="0 0 24 24"><path d="M5 4h14v16l-7-4-7 4z"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z"/></symbol>
+<symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+<symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></symbol>
+<symbol id="play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+<symbol id="heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.4-9C1.1 9 2.6 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.4 0 4.9 4 3.4 7-2.4 4.4-9.4 9-9.4 9z"/></symbol>
+<symbol id="save" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z"/></symbol>
+<symbol id="share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></symbol>
+<symbol id="music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></symbol>
+<symbol id="type" viewBox="0 0 24 24"><path d="M4 6h16M12 6v14M8 20h8"/></symbol>
+<symbol id="img" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></symbol>
+<symbol id="palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1 0 1.5-1 1-2-.4-.8 0-2 1-2h2a4 4 0 004-4c0-4.5-4-8-8-8z"/></symbol>
+<symbol id="magic" viewBox="0 0 24 24"><path d="M6 18L16 8M14 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1zM5 11l.7 2 2 .7-2 .7L5 17l-.7-2-2-.7 2-.7z"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="chev-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+<symbol id="lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></symbol>
+<symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+<symbol id="sig" viewBox="0 0 24 24"><path d="M4 13v3M9 10v6M14 7v9M19 4v12"/></symbol>
+<symbol id="wifi" viewBox="0 0 24 24"><path d="M5 12a10 10 0 0114 0M8 15a6 6 0 018 0M12 18h0"/></symbol>
+<symbol id="batt" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/></symbol>
+<symbol id="dl" viewBox="0 0 24 24"><path d="M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4M12 4v12M8 12l4 4 4-4"/></symbol>
+<symbol id="sticker" viewBox="0 0 24 24"><path d="M4 4h16v10l-6 6H4z"/><path d="M14 20v-6h6"/></symbol>
+<symbol id="google" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3h3.9c2.3-2.1 3.6-5.2 3.6-8.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1C3.3 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C18 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l4 3.1c.9-2.9 3.6-5 6.7-5z"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 6"/></symbol>
+<symbol id="filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></symbol>
+<symbol id="phone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></symbol>
+<symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8"/></symbol>
+<symbol id="coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3H10a1.5 1.5 0 000 3h4.5"/></symbol>
+<symbol id="logout" viewBox="0 0 24 24"><path d="M15 12H4M8 8l-4 4 4 4M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4"/></symbol>
+<symbol id="edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></symbol>
+<symbol id="star" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.3.9-4.5 4.4 1 6.1L12 17.8 6.5 20l1-6.1L3 9.5l6.3-.9z"/></symbol>
+<symbol id="chart" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6"/></symbol>
+<symbol id="calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16M8 3v4M16 3v4"/></symbol>
+<symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+<symbol id="upload" viewBox="0 0 24 24"><path d="M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4M12 16V4M8 8l4-4 4 4"/></symbol>
+<symbol id="film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M17 9h4M3 15h4M17 15h4"/></symbol>
+<symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="plus2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 013.9-2c1.3.8 1.1 2.3 0 3-.6.4-1.4.8-1.4 1.8M12 17h0"/></symbol>
+<symbol id="users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M16 4.5a3.2 3.2 0 010 6.4M21 20c0-2.6-1.5-4.3-4-4.8"/></symbol>
+<symbol id="tag" viewBox="0 0 24 24"><path d="M3 12l9-9h8v8l-9 9z"/><circle cx="16" cy="8" r="1.4"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="head">
+    <div>
+      <div class="tag">New Design · v2 · Sunset Coral</div>
+      <div class="brand"><div class="logo"><svg class="ic"><use href="#clip"/></svg></div>
+        <div><h1>ClipCart</h1><p>Subscription marketplace for funny movie clips — customize &amp; export on device</p></div>
+      </div>
+    </div>
+    <div class="hbtns"><button class="pill" id="themeBtn">🌙 Dark</button></div>
+  </div>
+  <div class="legend">
+    <span class="dotc"><i style="background:var(--accent)"></i><b>Accent</b> Sunset Coral</span>
+    <span class="dotc"><i style="background:var(--gold)"></i><b>Pro</b></span>
+    <span class="dotc"><i style="background:var(--ok)"></i><b>Free</b></span>
+    <span>Gallery browse → tap clip → full-screen swipe player · light + dark</span>
+  </div>
+
+  <div class="section"><span class="sc">Mobile</span><h2>Customer app</h2><p>Browse · customize · export on device</p></div>
+
+  <div class="rail">
+
+    <!-- Onboarding -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="position:relative">
+          <div style="position:absolute;inset:0;background:linear-gradient(160deg,#ff8a3d,#ff2d6b 58%,#b81d54)"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55),transparent 60%)"></div>
+          <div class="onb">
+            <div class="k">Browse · Customize · Export</div>
+            <h2>Funny clips, made your brand</h2>
+            <p>Browse trending meme &amp; movie clips, drop in your text, logo &amp; subtitles, and export in seconds.</p>
+            <div class="dots"><i class="on"></i><i></i><i></i></div>
+            <button class="btn btn-a">Get started</button>
+            <button class="btn btn-w" style="margin-top:10px"><svg class="gic"><use href="#google"/></svg>Continue with Google</button>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">01</span><b>Onboarding</b> — brand + Get started + Google</div>
+    </div>
+
+    <!-- Home (RenderForest-style gallery) -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>Discover</h2><div style="display:flex;gap:8px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#bell"/></svg></span><span class="avatar">A</span></div></div>
+          <div class="search"><svg class="ic ic-sm"><use href="#search"/></svg>Search clips, movies, creators…</div>
+          <div class="chips"><span class="chip on">All</span><span class="chip">Trending</span><span class="chip">Comedy</span><span class="chip">Reactions</span><span class="chip">Movie edits</span></div>
+          <div class="scroll">
+            <div class="feat" style="background:var(--grad)"><span class="play"><svg class="ic"><use href="#play"/></svg></span><div class="z"><span class="k">Featured</span><h4>Editor's picks this week</h4></div></div>
+            <div class="sh"><h3>Popular clips</h3><a>See all</a></div>
+            <div class="grid">
+              <div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Monday Mood</div><div class="by">by maria.k · 2.1k</div></div></div>
+              <div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:08</span></div><div class="meta"><div class="nm">Reaction Pack</div><div class="by">by rahul.fx · 1.4k</div></div></div>
+              <div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:15</span></div><div class="meta"><div class="nm">Movie Dialogue</div><div class="by">by zoya · 980</div></div></div>
+              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Comedy Cut</div><div class="by">by maria.k · 3.0k</div></div></div>
+            </div>
+          </div>
+          <div class="nav"><a class="on"><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#search"/></svg>Search</a><a><svg class="ic"><use href="#heart"/></svg>Saved</a><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">02</span><b>Home</b> — RenderForest-style clip gallery + categories + bottom nav</div>
+    </div>
+
+    <!-- Clip Player (full-screen, opens on tap from gallery; swipe = next) -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="reel">
+          <div class="bg g7"></div><div class="gt"></div><div class="gb"></div>
+          <div class="sb" style="position:absolute;top:0;left:0;right:0;z-index:7;color:#fff"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+          <div class="ptop"><span class="pclose"><svg class="ic"><use href="#chev-down"/></svg></span><span class="pchip">Comedy · Movie edit</span><span class="pclose"><svg class="ic ic-sm"><use href="#more"/></svg></span></div>
+          <div class="rail">
+            <div class="rav">M</div>
+            <div class="act lk"><div class="o"><svg class="ic"><use href="#heart"/></svg></div>12.4k</div>
+            <div class="act"><div class="o"><svg class="ic"><use href="#save"/></svg></div>Save</div>
+            <div class="act"><div class="o"><svg class="ic"><use href="#share"/></svg></div>Share</div>
+            <div class="act"><div class="o" style="background:linear-gradient(135deg,#333,#111)"><svg class="ic ic-sm"><use href="#music"/></svg></div></div>
+          </div>
+          <div class="info"><div class="hn">@maria.k <span class="badge b-pro" style="position:static">PRO</span></div><div class="tt">When Monday hits different 😭 — add your subtitles &amp; logo</div><div class="tg"><span>#comedy</span><span>#movieedit</span><span>0:12</span></div></div>
+          <div class="swipe">▲ Swipe up · next clip</div>
+          <div class="use"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use template</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">03</span><b>Clip Player</b> — full-screen (opens on tap from gallery), swipe ↑ = next clip</div>
+    </div>
+
+    <!-- Clip Detail -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top" style="padding-top:2px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#back"/></svg></span><span class="iconbtn"><svg class="ic ic-sm"><use href="#share"/></svg></span></div>
+          <div class="scroll">
+            <div class="dhero g6"><span class="play"><svg class="ic"><use href="#play"/></svg></span></div>
+            <div class="drow"><span class="avatar" style="width:34px;height:34px">M</span><div style="flex:1"><div style="font-weight:800;font-size:15px">Monday Mood</div><div style="font-size:12px;color:var(--text-3)">by maria.k</div></div><span class="badge b-pro" style="position:static">Pro</span></div>
+            <div class="metaline"><span><b>Movie:</b> 3 Idiots</span>·<span><b>Genre:</b> Comedy</span>·<span><b>Lang:</b> English</span>·<span>0:12</span>·<span>1080p</span>·<span>9:16</span>·<span>2.1k uses</span></div>
+            <div style="font-size:11px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;padding:14px 16px 2px">You can customize</div>
+            <div class="efields"><span>Subtitle</span><span>Font</span><span>Color</span><span>Stroke</span><span>Logo</span><span>Username</span><span>CTA</span><span>Ending</span><span>Aspect</span></div>
+          </div>
+          <div class="pad" style="padding-bottom:16px"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use template</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">04</span><b>Clip Detail</b> — preview, movie/genre/language, customizable fields</div>
+    </div>
+
+    <!-- Editor (CapCut) -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top" style="padding:2px 16px 8px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#back"/></svg></span><span style="font-weight:800;color:#fff">Editor</span><button class="btn btn-a btn-sm"><svg class="ic ic-sm"><use href="#dl"/></svg>Export</button></div>
+          <div class="ecanvas g7"><span class="lg">LOGO</span><span class="sub">i cried… she's literally a victim</span></div>
+          <div class="eplay"><span class="p"><svg class="ic"><use href="#play"/></svg></span><span class="tm"><span style="color:#fff">00:03</span> / 00:12</span></div>
+          <div class="etl">
+            <div class="ph" style="left:38%"></div>
+            <div class="etrack"><span class="lb"><svg class="ic"><use href="#img"/></svg></span><div class="bd"><span class="th g6"></span><span class="th g8"></span><span class="th g7"></span><span class="th g5"></span><span class="th g6"></span></div></div>
+            <div class="etrack"><span class="lb"><svg class="ic"><use href="#type"/></svg></span><div class="bd"><div class="seg" style="left:2%;width:26%">Sub 1</div><div class="seg on" style="left:32%;width:34%">i cried…</div><div class="seg" style="left:70%;width:28%">Sub 3</div></div></div>
+          </div>
+          <div class="etools"><span class="etool on"><span class="c"><svg class="ic ic-sm"><use href="#type"/></svg></span>Text</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#img"/></svg></span>Logo</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#user"/></svg></span>Username</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#palette"/></svg></span>Style</span><span class="etool"><span class="c"><svg class="ic ic-sm"><use href="#sticker"/></svg></span>CTA</span></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">05</span><b>Editor</b> — CapCut-style: canvas + timeline + timed subtitle track + tools</div>
+    </div>
+
+    <!-- Login -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="justify-content:center;padding-bottom:20px">
+          <div style="text-align:center;margin-bottom:20px"><div class="logo" style="margin:0 auto 14px"><svg class="ic"><use href="#clip"/></svg></div><div style="font-size:22px;font-weight:800;letter-spacing:-.02em">Welcome back</div><div style="color:var(--text-2);font-size:13.5px;margin-top:3px">Log in to continue creating</div></div>
+          <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#mail"/></svg><span class="v">clip@studio.com</span></div></div>
+          <div class="field"><label>Password</label><div class="input f"><svg class="ic ic-sm"><use href="#lock"/></svg><span class="v">••••••••••</span></div></div>
+          <div class="pad"><button class="btn btn-a">Log in</button></div>
+          <div class="ordiv">OR</div>
+          <div class="pad"><button class="btn btn-w"><svg class="gic"><use href="#google"/></svg>Continue with Google</button></div>
+          <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent-ink)">Create account</b></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">06</span><b>Login</b> — clean, real inputs, Google</div>
+    </div>
+
+    <!-- Splash -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="body" style="position:relative;align-items:center;justify-content:center">
+          <div style="position:absolute;inset:0;background:linear-gradient(160deg,#ff8a3d,#ff2d6b 60%,#b81d54)"></div>
+          <div style="position:relative;text-align:center;color:#fff">
+            <div class="logo" style="width:74px;height:74px;border-radius:22px;margin:0 auto 16px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3)"><svg class="ic" style="width:38px;height:38px"><use href="#clip"/></svg></div>
+            <div style="font-size:30px;font-weight:800;letter-spacing:-.03em">ClipCart</div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;opacity:.85;margin-top:6px">Funny movie clips</div>
+            <div style="margin-top:22px;font-size:12.5px;opacity:.85">Securing device · loading library…</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">07</span><b>Splash</b> — device security check → auth</div>
+    </div>
+
+    <!-- Register -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="justify-content:center;padding-bottom:16px">
+          <div style="text-align:center;margin-bottom:16px"><div class="logo" style="margin:0 auto 12px"><svg class="ic"><use href="#clip"/></svg></div><div style="font-size:21px;font-weight:800;letter-spacing:-.02em">Create account</div><div style="color:var(--text-2);font-size:13px;margin-top:3px">Free clips to start — upgrade anytime</div></div>
+          <div class="field"><label>Name</label><div class="input"><svg class="ic ic-sm"><use href="#user"/></svg><span class="v">Aditya Rao</span></div></div>
+          <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#mail"/></svg><span class="v">aditya@studio.com</span></div></div>
+          <div class="field"><label>Password</label><div class="input f"><svg class="ic ic-sm"><use href="#lock"/></svg><span class="v">••••••••</span></div></div>
+          <div class="pad"><button class="btn btn-a">Create account</button></div>
+          <div class="ordiv">OR</div>
+          <div class="pad"><button class="btn btn-w"><svg class="gic"><use href="#google"/></svg>Sign up with Google</button></div>
+          <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-2)">Have an account? <b style="color:var(--accent-ink)">Log in</b></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">08</span><b>Register</b> — name/email/password + Google</div>
+    </div>
+
+    <!-- Search results -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><div class="search" style="margin:0;flex:1"><svg class="ic ic-sm"><use href="#search"/></svg><span style="color:var(--text)">monday</span></div><span class="bk"><svg class="ic ic-sm"><use href="#filter"/></svg></span></div>
+          <div class="hint" style="display:flex;justify-content:space-between"><span><b style="color:var(--text)">48</b> clips</span><span>Sort: Trending</span></div>
+          <div class="scroll">
+            <div class="grid">
+              <div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Monday Mood</div><div class="by">Comedy · 2.1k</div></div></div>
+              <div class="tpl"><div class="thumb g6"><span class="badge b-free">Free</span><span class="dur">0:09</span></div><div class="meta"><div class="nm">Monday Cry</div><div class="by">Reaction · 1.1k</div></div></div>
+              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Office Monday</div><div class="by">Comedy · 870</div></div></div>
+              <div class="tpl"><div class="thumb g8"><span class="badge b-pro">Pro</span><span class="dur">0:14</span></div><div class="meta"><div class="nm">Monday Boss</div><div class="by">Movie edit · 640</div></div></div>
+            </div>
+          </div>
+          <div class="nav"><a><svg class="ic"><use href="#home"/></svg>Home</a><a class="on"><svg class="ic"><use href="#search"/></svg>Search</a><a><svg class="ic"><use href="#heart"/></svg>Saved</a><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">09</span><b>Search</b> — results grid + sort + filter entry</div>
+    </div>
+
+    <!-- Filters sheet -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="position:relative">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><div class="search" style="margin:0;flex:1"><svg class="ic ic-sm"><use href="#search"/></svg><span style="color:var(--text-3)">Search clips…</span></div></div>
+          <div class="grid" style="opacity:.5"><div class="tpl"><div class="thumb g2"></div><div class="meta"><div class="nm">Monday Mood</div></div></div><div class="tpl"><div class="thumb g6"></div><div class="meta"><div class="nm">Monday Cry</div></div></div></div>
+          <div class="scrim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sti"><b>Filters</b><a>Reset</a></div>
+            <div class="fgrp"><div class="fl">Sort by</div><div class="fopts"><span class="fopt on">Trending</span><span class="fopt">Newest</span><span class="fopt">Most used</span></div></div>
+            <div class="fgrp"><div class="fl">Category</div><div class="fopts"><span class="fopt on">Comedy</span><span class="fopt">Reactions</span><span class="fopt">Movie edits</span></div></div>
+            <div class="fgrp"><div class="fl">Genre · Language · Type</div><div class="fopts"><span class="fopt">Drama</span><span class="fopt on">English</span><span class="fopt">Hindi</span><span class="fopt on">Free</span><span class="fopt">Pro</span></div></div>
+            <div class="pad" style="margin-top:8px"><button class="btn btn-a">Show 48 clips</button></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">10</span><b>Filters</b> — sort · category · genre · language · free/pro</div>
+    </div>
+
+    <!-- Export progress -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="align-items:center;justify-content:center;text-align:center;padding:0 20px">
+          <div class="prog"><div class="in" style="background:#18151b;color:#fff">68%</div></div>
+          <div style="font-size:17px;font-weight:800;margin-top:8px">Exporting your clip…</div>
+          <div style="color:var(--text-2);font-size:12.5px;margin-top:4px">Rendering on your device · 1080p · MP4</div>
+          <div style="color:var(--text-3);font-size:11.5px;margin-top:18px">Keep the app open — this stays private on your phone</div>
+          <div class="pad" style="margin-top:20px"><button class="btn btn-2">Cancel</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">11</span><b>Export</b> — on-device render progress</div>
+    </div>
+
+    <!-- Export done -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="align-items:center;justify-content:center;text-align:center;padding:0 18px">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--ok-soft);display:grid;place-items:center;color:var(--ok)"><svg class="ic" style="width:34px;height:34px;stroke-width:2.6"><use href="#check"/></svg></div>
+          <div style="font-size:19px;font-weight:800;margin-top:14px">Export saved! 🎉</div>
+          <div style="color:var(--text-2);font-size:13px;margin-top:4px">MondayMood_v1.mp4 · 1080p · 4.2 MB</div>
+          <div style="width:120px;aspect-ratio:9/16;border-radius:14px;margin:16px 0" class="g6"></div>
+          <div class="pad" style="width:100%"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#share"/></svg>Share to Instagram</button></div>
+          <div class="pad" style="width:100%;margin-top:9px"><button class="btn btn-2"><svg class="ic ic-sm"><use href="#dl"/></svg>Save to gallery</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">12</span><b>Export done</b> — share / save MP4</div>
+    </div>
+
+    <!-- Saved -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>Saved</h2><span class="iconbtn"><svg class="ic ic-sm"><use href="#search"/></svg></span></div>
+          <div class="scroll">
+            <div class="grid">
+              <div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Monday Mood</div><div class="by">Comedy</div></div></div>
+              <div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span><span class="dur">0:08</span></div><div class="meta"><div class="nm">Reaction Pack</div><div class="by">Reaction</div></div></div>
+              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Comedy Cut</div><div class="by">Comedy</div></div></div>
+              <div class="tpl"><div class="thumb g8"><span class="badge b-pro">Pro</span><span class="dur">0:14</span></div><div class="meta"><div class="nm">Movie Dialogue</div><div class="by">Movie edit</div></div></div>
+            </div>
+          </div>
+          <div class="nav"><a><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#search"/></svg>Search</a><a class="on"><svg class="ic"><use href="#heart"/></svg>Saved</a><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">13</span><b>Saved</b> — favorited clips</div>
+    </div>
+
+    <!-- Exports history -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>My exports</h2></div>
+          <div class="scroll">
+            <div class="card"><div class="ch">This week</div>
+              <div class="cr"><div class="thm g6"></div><div class="ci"><b>MondayMood_v1.mp4</b><span>1080p · 4.2 MB · 2h ago</span></div><span class="bk" style="width:32px;height:32px"><svg class="ic ic-sm"><use href="#share"/></svg></span></div>
+              <div class="cr"><div class="thm g5"></div><div class="ci"><b>ComedyCut_final.mp4</b><span>1080p · 3.8 MB · Yesterday</span></div><span class="bk" style="width:32px;height:32px"><svg class="ic ic-sm"><use href="#share"/></svg></span></div>
+            </div>
+            <div class="card"><div class="ch">Earlier</div>
+              <div class="cr"><div class="thm g3"></div><div class="ci"><b>Reaction_v2.mp4</b><span>720p · 2.1 MB · 3d ago</span></div><span class="bk" style="width:32px;height:32px"><svg class="ic ic-sm"><use href="#share"/></svg></span></div>
+            </div>
+          </div>
+          <div class="nav"><a><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#search"/></svg>Search</a><a><svg class="ic"><use href="#heart"/></svg>Saved</a><a class="on"><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">14</span><b>Exports</b> — download history (on-device files)</div>
+    </div>
+
+    <!-- Plans -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>Choose a plan</h2></div>
+          <div class="scroll">
+            <div class="plan"><div class="pt"><span class="pn">Basic</span></div><div class="pp">$4<span>/mo</span></div><ul><li><svg class="ic"><use href="#check"/></svg>30 exports / month</li><li><svg class="ic"><use href="#check"/></svg>1080p · no watermark</li></ul></div>
+            <div class="plan hot"><div class="pt"><span class="pn">Professional</span><span class="pb">Popular</span></div><div class="pp">$9<span>/mo</span></div><ul><li><svg class="ic"><use href="#check"/></svg>Unlimited exports</li><li><svg class="ic"><use href="#check"/></svg>All Pro clips</li><li><svg class="ic"><use href="#check"/></svg>2 devices</li></ul><button class="btn btn-a">Subscribe on web</button></div>
+            <div class="hint">💳 Payment is crypto (Binance Pay) on the website — mobile stays read-only.</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">15</span><b>Plans</b> — tiers; purchase on web (Binance Pay)</div>
+    </div>
+
+    <!-- My subscription -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>My subscription</h2></div>
+          <div class="scroll">
+            <div class="plan hot"><div class="pt"><span class="pn">Professional</span><span class="status st-ok">Active</span></div><div class="pp">$9<span>/mo · renews manually</span></div><div style="font-size:12px;color:var(--text-2);margin-top:4px">Expires 12 Sep 2026 · 21 days left</div><button class="btn btn-a" style="margin-top:12px">Renew on web</button></div>
+            <div class="list">
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#coin"/></svg></span><div class="lt"><b>Payment history</b><span>Invoices &amp; receipts</span></div><span class="ra"><svg class="ic ic-sm"><use href="#back"/></svg></span></div>
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#dl"/></svg></span><div class="lt"><b>Export usage</b><span>Unlimited · 12 this month</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">16</span><b>Subscription</b> — status, manual renewal, usage</div>
+    </div>
+
+    <!-- Account -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>Me</h2><span class="iconbtn"><svg class="ic ic-sm"><use href="#gear"/></svg></span></div>
+          <div class="scroll">
+            <div style="display:flex;align-items:center;gap:13px;padding:4px 16px 14px"><span class="avatar" style="width:56px;height:56px;font-size:20px">A</span><div><div style="font-weight:800;font-size:16px">Aditya Rao</div><div style="font-size:12px;color:var(--text-3)">aditya@studio.com</div><span class="status st-ok" style="margin-top:5px;display:inline-block">Professional</span></div></div>
+            <div class="list">
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#star"/></svg></span><div class="lt"><b>Subscription</b><span>Professional · 21 days left</span></div><span class="ra"><svg class="ic ic-sm"><use href="#back"/></svg></span></div>
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#coin"/></svg></span><div class="lt"><b>Payment history</b></div><span class="ra"><svg class="ic ic-sm"><use href="#back"/></svg></span></div>
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#phone"/></svg></span><div class="lt"><b>Devices</b><span>2 of 2 active</span></div><span class="ra"><svg class="ic ic-sm"><use href="#back"/></svg></span></div>
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#bell"/></svg></span><div class="lt"><b>Notifications</b></div><span class="ra"><svg class="ic ic-sm"><use href="#back"/></svg></span></div>
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#help"/></svg></span><div class="lt"><b>Help &amp; support</b></div><span class="ra"><svg class="ic ic-sm"><use href="#back"/></svg></span></div>
+              <div class="lrow"><span class="li"><svg class="ic"><use href="#logout"/></svg></span><div class="lt"><b style="color:var(--danger)">Log out</b></div></div>
+            </div>
+          </div>
+          <div class="nav"><a><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#search"/></svg>Search</a><a><svg class="ic"><use href="#heart"/></svg>Saved</a><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a class="on"><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">17</span><b>Account</b> — profile + settings entry points</div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>Notifications</h2><a style="font-size:12px;font-weight:700;color:var(--accent-ink)">Mark read</a></div>
+          <div class="scroll">
+            <div class="notif"><span class="nd"></span><div class="nb"><b>New clips in Comedy 🎬</b><p>12 fresh templates just dropped.</p><div class="nt">2h ago</div></div></div>
+            <div class="notif"><span class="nd"></span><div class="nb"><b>Subscription renews soon</b><p>Your Professional plan expires in 21 days.</p><div class="nt">1d ago</div></div></div>
+            <div class="notif read"><span class="nd"></span><div class="nb"><b>Export ready</b><p>MondayMood_v1.mp4 saved to your device.</p><div class="nt">3d ago</div></div></div>
+            <div class="notif read"><span class="nd"></span><div class="nb"><b>Welcome to ClipCart 👋</b><p>Grab your first free clip.</p><div class="nt">5d ago</div></div></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">18</span><b>Notifications</b> — new clips, renewal, exports</div>
+    </div>
+
+    <!-- Devices -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>Devices</h2></div>
+          <div class="hint">2 of 2 device slots used. Remove one to log in on a new device, or buy an extra slot.</div>
+          <div class="list">
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#phone"/></svg></span><div class="lt"><b>iPhone 14 · This device</b><span>iOS 17 · India · Active now</span></div><span class="status st-ok">Current</span></div>
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#phone"/></svg></span><div class="lt"><b>Pixel 7</b><span>Android 14 · India · 2d ago</span></div><a style="font-size:12px;font-weight:700;color:var(--danger)">Remove</a></div>
+          </div>
+          <div class="pad" style="margin-top:8px"><button class="btn btn-2"><svg class="ic ic-sm"><use href="#plus2"/></svg>Buy extra device slot</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">19</span><b>Devices</b> — max 2, remove / buy slot (device binding)</div>
+    </div>
+
+  </div>
+
+  <div class="section"><span class="sc">Mobile</span><h2>Creator mode (Editor)</h2><p>In-app: upload base clip · author template · track earnings · admin-approved</p></div>
+
+  <div class="rail">
+
+    <!-- Creator dashboard -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>Creator</h2><span class="iconbtn"><svg class="ic ic-sm"><use href="#bell"/></svg></span></div>
+          <div class="scroll">
+            <div class="grid2">
+              <div class="stat"><div class="sv">18</div><div class="sl">Approved clips</div></div>
+              <div class="stat"><div class="sv">3</div><div class="sl">In review</div></div>
+              <div class="stat"><div class="sv">$142</div><div class="sl">Earnings</div><div class="sd">+$28 this week</div></div>
+              <div class="stat"><div class="sv">6.4k</div><div class="sl">Downloads</div></div>
+            </div>
+            <div class="pad" style="margin:6px 0 12px"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#upload"/></svg>Upload new clip</button></div>
+            <div class="sh"><h3>Recent uploads</h3><a>See all</a></div>
+            <div class="card">
+              <div class="cr"><div class="thm g6"></div><div class="ci"><b>Monday Mood</b><span>Comedy · 2.1k downloads</span></div><span class="status st-ok">Approved</span></div>
+              <div class="cr"><div class="thm g8"></div><div class="ci"><b>Boss Reaction</b><span>Reaction · submitted 1d ago</span></div><span class="status st-wait">In review</span></div>
+              <div class="cr"><div class="thm g5"></div><div class="ci"><b>Exam Fear</b><span>Needs a cleaner base clip</span></div><span class="status st-no">Changes</span></div>
+            </div>
+          </div>
+          <div class="nav"><a class="on"><svg class="ic"><use href="#grid"/></svg>Dashboard</a><a><svg class="ic"><use href="#film"/></svg>Uploads</a><span style="width:1px"></span><a><svg class="ic"><use href="#coin"/></svg>Earnings</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">20</span><b>Creator dashboard</b> — stats · earnings · upload status</div>
+    </div>
+
+    <!-- Upload clip -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>Upload clip</h2></div>
+          <div class="scroll">
+            <div class="dashed"><svg class="ic"><use href="#upload"/></svg><div><b style="color:var(--text)">Add base clip (MP4)</b><br>Fixed clip — customers add layers on top</div></div>
+            <div class="field2"><label>Title</label><div class="in"><span class="ph">e.g. Monday Mood</span></div></div>
+            <div class="field2"><label>Movie · Genre · Language</label><div class="in"><span class="ph">3 Idiots · Comedy · English</span></div></div>
+            <div class="field2"><label>Category</label><div class="in">Comedy <svg class="ic ic-sm" style="margin-left:auto;color:var(--text-3)"><use href="#chev-down"/></svg></div></div>
+            <div class="field2"><label>Tags</label><div class="in"><span class="ph">#monday #office #funny</span></div></div>
+            <div class="field2"><label>Access</label><div class="fopts"><span class="fopt on">Free</span><span class="fopt">Pro</span></div></div>
+          </div>
+          <div class="pad" style="padding-bottom:14px"><button class="btn btn-a">Next: author template →</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">21</span><b>Upload clip</b> — base MP4 + metadata (movie/genre/language)</div>
+    </div>
+
+    <!-- Author template -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>Author template</h2></div>
+          <div class="hint">Pick which layers the customer can customize. Subtitles are a <b style="color:var(--text)">timed track</b> (multiple lines).</div>
+          <div class="ecanvas g8" style="margin:2px 16px 10px"><span class="lg">LOGO</span><span class="sub">your subtitle here</span></div>
+          <div class="list">
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#type"/></svg></span><div class="lt"><b>Subtitle track (timed)</b><span>Multiple lines · per-line style</span></div><span class="toggle"></span></div>
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#img"/></svg></span><div class="lt"><b>Logo / watermark</b></div><span class="toggle"></span></div>
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#user"/></svg></span><div class="lt"><b>Username</b></div><span class="toggle"></span></div>
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#sticker"/></svg></span><div class="lt"><b>CTA · Ending screen</b></div><span class="toggle off"></span></div>
+            <div class="lrow"><span class="li"><svg class="ic"><use href="#grid"/></svg></span><div class="lt"><b>Aspect ratio choice</b><span>9:16 · 1:1 · 4:5</span></div><span class="toggle"></span></div>
+          </div>
+          <div class="pad" style="padding-bottom:14px"><button class="btn btn-a">Submit for review</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">22</span><b>Author template</b> — define customizable layers (Option B)</div>
+    </div>
+
+    <!-- Earnings & payout -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="appbar"><span class="bk"><svg class="ic ic-sm"><use href="#back"/></svg></span><h2>Earnings</h2></div>
+          <div class="scroll">
+            <div class="plan hot"><div class="pt"><span class="pn">Available balance</span></div><div class="pp">$142.00<span></span></div><button class="btn btn-a" style="margin-top:10px"><svg class="ic ic-sm"><use href="#coin"/></svg>Request payout</button><div style="font-size:11px;color:var(--text-3);margin-top:8px">Admin approves &amp; settles manually (USDT).</div></div>
+            <div class="sh"><h3>History</h3></div>
+            <div class="card">
+              <div class="cr"><span class="li"><svg class="ic"><use href="#coin"/></svg></span><div class="ci"><b>Payout · $80</b><span>12 Aug · USDT</span></div><span class="status st-ok">Paid</span></div>
+              <div class="cr"><span class="li"><svg class="ic"><use href="#coin"/></svg></span><div class="ci"><b>Payout · $50</b><span>2 Aug · requested</span></div><span class="status st-wait">Pending</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">23</span><b>Earnings</b> — balance · request payout · history</div>
+    </div>
+
+    <!-- My uploads -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>My uploads</h2></div>
+          <div class="chips"><span class="chip on">All</span><span class="chip">Approved</span><span class="chip">In review</span><span class="chip">Changes</span></div>
+          <div class="scroll">
+            <div class="card">
+              <div class="cr"><div class="thm g6"></div><div class="ci"><b>Monday Mood</b><span>2.1k downloads · $42 earned</span></div><span class="status st-ok">Approved</span></div>
+              <div class="cr"><div class="thm g5"></div><div class="ci"><b>Comedy Cut</b><span>3.0k downloads · $61 earned</span></div><span class="status st-ok">Approved</span></div>
+              <div class="cr"><div class="thm g8"></div><div class="ci"><b>Boss Reaction</b><span>Submitted 1d ago</span></div><span class="status st-wait">In review</span></div>
+              <div class="cr"><div class="thm g3"></div><div class="ci"><b>Exam Fear</b><span>“Base clip too low-res”</span></div><span class="status st-no">Changes</span></div>
+            </div>
+          </div>
+          <div class="nav"><a><svg class="ic"><use href="#grid"/></svg>Dashboard</a><a class="on"><svg class="ic"><use href="#film"/></svg>Uploads</a><span style="width:1px"></span><a><svg class="ic"><use href="#coin"/></svg>Earnings</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">24</span><b>My uploads</b> — approval status · downloads · earnings</div>
+    </div>
+
+  </div>
+
+  <div class="section"><span class="sc">Web</span><h2>Website + account</h2><p>Marketplace, plans, crypto checkout, account — no edit/export (locked)</p></div>
+
+  <div class="rail">
+
+    <!-- Landing -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app</span></div>
+        <div class="bbody">
+          <div class="wnav"><span class="wl"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</span><span class="wlinks"><span>Browse</span><span>Pricing</span><span>Creators</span></span><span class="wr"><button class="wbtn">Log in</button><button class="wbtn pri">Subscribe</button></span></div>
+          <div class="wscroll">
+            <div class="whero"><div class="k">Funny movie clips · ready to post</div><h1>Turn viral clips into<br>your brand</h1><p>Browse trending meme &amp; movie clips, customize in the app, and export MP4 on your phone.</p><div class="wcta"><button class="wbtn pri" style="padding:11px 20px">Start free</button><button class="wbtn" style="padding:11px 20px">See pricing</button></div></div>
+            <div class="wsec"><div class="wh">Trending this week</div><div class="wgrid"><div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span></div><div class="meta"><div class="nm">Monday Mood</div></div></div><div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span></div><div class="meta"><div class="nm">Reaction</div></div></div><div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span></div><div class="meta"><div class="nm">Dialogue</div></div></div><div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span></div><div class="meta"><div class="nm">Comedy</div></div></div></div></div>
+            <div class="wfoot"><span>© 2026 ClipCart</span><span>Terms · Privacy · Contact</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">25</span><b>Landing</b> — hero, trending clips, pricing CTA, footer</div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/pricing</span></div>
+        <div class="bbody">
+          <div class="wnav"><span class="wl"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</span><span class="wlinks"><span>Browse</span><span style="color:var(--accent-ink)">Pricing</span></span><span class="wr"><button class="wbtn">Log in</button><button class="wbtn pri">Subscribe</button></span></div>
+          <div class="wscroll">
+            <div class="whero" style="padding-bottom:6px"><h1 style="font-size:26px">Simple plans</h1><p>Crypto only · Binance Pay · manual renewal, no auto-charge.</p></div>
+            <div class="ptable">
+              <div class="plan"><div class="pt"><span class="pn">Free</span></div><div class="pp">$0</div><ul><li><svg class="ic"><use href="#check"/></svg>Free clips</li><li><svg class="ic"><use href="#check"/></svg>Watermark</li></ul><button class="wbtn" style="width:100%">Current</button></div>
+              <div class="plan"><div class="pt"><span class="pn">Basic</span></div><div class="pp">$4<span>/mo</span></div><ul><li><svg class="ic"><use href="#check"/></svg>30 exports</li><li><svg class="ic"><use href="#check"/></svg>1080p</li></ul><button class="wbtn pri" style="width:100%">Choose</button></div>
+              <div class="plan hot"><div class="pt"><span class="pn">Pro</span><span class="pb">Popular</span></div><div class="pp">$9<span>/mo</span></div><ul><li><svg class="ic"><use href="#check"/></svg>Unlimited</li><li><svg class="ic"><use href="#check"/></svg>All Pro clips</li><li><svg class="ic"><use href="#check"/></svg>2 devices</li></ul><button class="wbtn pri" style="width:100%">Choose</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">26</span><b>Pricing</b> — Free/Basic/Pro/Agency, crypto note</div>
+    </div>
+
+    <!-- Login (web) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/login</span></div>
+        <div class="bbody" style="display:grid;place-items:center;background:var(--surface-2)">
+          <div style="width:340px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:26px;box-shadow:var(--sh)">
+            <div style="text-align:center;margin-bottom:16px"><div class="logo" style="margin:0 auto 12px"><svg class="ic"><use href="#clip"/></svg></div><div style="font-size:20px;font-weight:800">Welcome back</div></div>
+            <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#mail"/></svg><span class="v">clip@studio.com</span></div></div>
+            <div class="field"><label>Password</label><div class="input f"><svg class="ic ic-sm"><use href="#lock"/></svg><span class="v">••••••••</span></div></div>
+            <button class="btn btn-a">Log in</button>
+            <div class="ordiv" style="margin:14px 0">OR</div>
+            <button class="btn btn-w"><svg class="gic"><use href="#google"/></svg>Continue with Google</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">27</span><b>Login (web)</b> — email + Google</div>
+    </div>
+
+    <!-- Register (web) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/signup</span></div>
+        <div class="bbody" style="display:grid;place-items:center;background:var(--surface-2)">
+          <div style="width:340px;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:26px;box-shadow:var(--sh)">
+            <div style="text-align:center;margin-bottom:16px"><div class="logo" style="margin:0 auto 12px"><svg class="ic"><use href="#clip"/></svg></div><div style="font-size:20px;font-weight:800">Create account</div></div>
+            <div class="field"><label>Name</label><div class="input"><svg class="ic ic-sm"><use href="#user"/></svg><span class="v">Aditya Rao</span></div></div>
+            <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#mail"/></svg><span class="v">aditya@studio.com</span></div></div>
+            <div class="field"><label>Password</label><div class="input f"><svg class="ic ic-sm"><use href="#lock"/></svg><span class="v">••••••••</span></div></div>
+            <button class="btn btn-a">Create account</button>
+            <div class="ordiv" style="margin:14px 0">OR</div>
+            <button class="btn btn-w"><svg class="gic"><use href="#google"/></svg>Sign up with Google</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">28</span><b>Register (web)</b> — signup + Google</div>
+    </div>
+
+    <!-- Browse library -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/browse</span></div>
+        <div class="bbody">
+          <div class="wnav"><span class="wl"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</span><span class="search" style="margin:0;flex:1;max-width:240px;height:38px"><svg class="ic ic-sm"><use href="#search"/></svg>Search clips…</span><span class="wr"><span class="avatar" style="width:32px;height:32px;font-size:12px">A</span></span></div>
+          <div class="wsec" style="padding-top:14px"><div class="chips" style="padding:0 0 12px"><span class="chip on">All</span><span class="chip">Comedy</span><span class="chip">Reactions</span><span class="chip">Movie edits</span><span class="chip">Free</span><span class="chip">Pro</span></div>
+            <div class="wgrid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Monday Mood</div></div></div>
+              <div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span><span class="dur">0:08</span></div><div class="meta"><div class="nm">Reaction Pack</div></div></div>
+              <div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span><span class="dur">0:15</span></div><div class="meta"><div class="nm">Dialogue</div></div></div>
+              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Comedy Cut</div></div></div>
+              <div class="tpl"><div class="thumb g8"><span class="badge b-pro">Pro</span><span class="dur">0:14</span></div><div class="meta"><div class="nm">Boss</div></div></div>
+              <div class="tpl"><div class="thumb g7"><span class="badge b-free">Free</span><span class="dur">0:09</span></div><div class="meta"><div class="nm">Exam Fear</div></div></div>
+              <div class="tpl"><div class="thumb g1"><span class="badge b-pro">Pro</span><span class="dur">0:11</span></div><div class="meta"><div class="nm">Winning</div></div></div>
+              <div class="tpl"><div class="thumb g4"><span class="badge b-free">Free</span><span class="dur">0:07</span></div><div class="meta"><div class="nm">Night</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">29</span><b>Browse</b> — library grid + filters</div>
+    </div>
+
+    <!-- Clip detail (web) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/clip/monday-mood</span></div>
+        <div class="bbody">
+          <div class="wnav"><span class="wl"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</span><span class="wr"><span class="avatar" style="width:32px;height:32px;font-size:12px">A</span></span></div>
+          <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;padding:22px 26px">
+            <div class="g6" style="aspect-ratio:9/16;border-radius:14px;display:grid;place-items:center"><span class="dhero" style="margin:0;box-shadow:none;background:none"><span class="play"><svg class="ic"><use href="#play"/></svg></span></span></div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px"><h1 style="font-size:22px;font-weight:800;margin:0">Monday Mood</h1><span class="badge b-pro" style="position:static">Pro</span></div>
+              <div style="color:var(--text-2);font-size:12.5px;margin:6px 0 12px">by maria.k · 2.1k uses</div>
+              <div class="metaline" style="padding:0;margin-bottom:14px"><span><b>Movie:</b> 3 Idiots</span>·<span><b>Genre:</b> Comedy</span>·<span><b>Lang:</b> English</span>·<span>0:12</span>·<span>1080p</span></div>
+              <div style="font-size:11px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Customize in the app</div>
+              <div class="efields" style="padding:0 0 14px"><span>Subtitle</span><span>Logo</span><span>Font</span><span>Color</span><span>CTA</span></div>
+              <button class="btn btn-a" style="max-width:260px"><svg class="ic ic-sm"><use href="#phone"/></svg>Open in app to customize</button>
+              <div class="hint" style="padding:8px 0 0">Editing &amp; export happen in the mobile app (on-device).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">30</span><b>Clip detail (web)</b> — preview, metadata, "open in app"</div>
+    </div>
+
+    <!-- Checkout (Binance Pay) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/checkout</span></div>
+        <div class="bbody">
+          <div class="wnav"><span class="wl"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</span><span class="wr" style="font-size:12px;color:var(--text-3)">Secure checkout</span></div>
+          <div class="wcheckout">
+            <div class="wrowcard"><div style="font-weight:800;font-size:14px;margin-bottom:12px">Order summary</div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0"><span style="color:var(--text-2)">Professional · monthly</span><b>$9.00</b></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--border);margin-top:6px"><span style="color:var(--text-2)">Total</span><b>$9.00 ≈ 9 USDT</b></div>
+              <div class="hint" style="padding:10px 0 0">Manual renewal · no auto-charge · access unlocks on confirmation.</div>
+            </div>
+            <div class="wrowcard" style="text-align:center"><div style="font-weight:800;font-size:14px;margin-bottom:2px">Pay with Binance Pay</div><div style="font-size:11px;color:var(--text-3)">USDT · BEP20</div><div class="qr"></div><button class="btn btn-a"><svg class="ic ic-sm"><use href="#coin"/></svg>Pay 9 USDT</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">31</span><b>Checkout</b> — Binance Pay (USDT/BEP20), order summary</div>
+    </div>
+
+    <!-- Payment processing -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/pay/processing</span></div>
+        <div class="bbody" style="display:grid;place-items:center;text-align:center">
+          <div style="max-width:300px">
+            <div class="prog" style="background:conic-gradient(var(--accent) 40%, var(--surface-2) 0)"><div class="in"><svg class="ic" style="width:34px;height:34px;color:var(--accent)"><use href="#coin"/></svg></div></div>
+            <div style="font-size:18px;font-weight:800;margin-top:10px">Waiting for confirmation…</div>
+            <div style="color:var(--text-2);font-size:12.5px;margin-top:5px">We verify the signed Binance Pay webhook — your access unlocks automatically. Don't refresh.</div>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">32</span><b>Payment processing</b> — awaiting signed webhook (never trusts frontend)</div>
+    </div>
+
+    <!-- Payment success -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/pay/success</span></div>
+        <div class="bbody" style="display:grid;place-items:center;text-align:center">
+          <div style="max-width:320px">
+            <div style="width:66px;height:66px;border-radius:50%;background:var(--ok-soft);display:grid;place-items:center;color:var(--ok);margin:0 auto"><svg class="ic" style="width:36px;height:36px;stroke-width:2.6"><use href="#check"/></svg></div>
+            <div style="font-size:21px;font-weight:800;margin-top:14px">Professional is active! 🎉</div>
+            <div style="color:var(--text-2);font-size:13px;margin-top:5px">Renews manually · expires 12 Sep 2026. A receipt is in your email &amp; payment history.</div>
+            <button class="btn btn-a" style="max-width:240px;margin:18px auto 0">Go to account</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap caption"><span class="id">33</span><b>Payment success</b> — subscription activated + receipt</div>
+    </div>
+
+    <!-- Account dashboard -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/account</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</div><div class="wsl on"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Subscription</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payments</div><div class="wsl"><svg class="ic"><use href="#phone"/></svg>Devices</div><div class="wsl"><svg class="ic"><use href="#user"/></svg>Profile</div></div>
+          <div class="wmain"><h2>Welcome, Aditya</h2><div class="sub">Professional plan · 21 days left</div>
+            <div class="wrowcard" style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:12px;color:var(--text-3)">Current plan</div><div style="font-size:17px;font-weight:800">Professional <span class="status st-ok">Active</span></div><div style="font-size:12px;color:var(--text-2);margin-top:3px">Expires 12 Sep 2026 · manual renewal</div></div><button class="wbtn pri">Renew</button></div>
+            <div class="grid2" style="padding:0"><div class="stat"><div class="sv">Unlimited</div><div class="sl">Exports (app)</div></div><div class="stat"><div class="sv">2 / 2</div><div class="sl">Devices</div></div></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">34</span><b>Account dashboard</b> — plan status + quick stats</div>
+    </div>
+
+    <!-- Subscription (web) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/account/subscription</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl on"><svg class="ic"><use href="#star"/></svg>Subscription</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payments</div><div class="wsl"><svg class="ic"><use href="#phone"/></svg>Devices</div><div class="wsl"><svg class="ic"><use href="#user"/></svg>Profile</div></div>
+          <div class="wmain"><h2>Subscription</h2><div class="sub">Manage your plan · crypto · manual renewal</div>
+            <div class="wrowcard"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:17px;font-weight:800">Professional</div><div style="font-size:12px;color:var(--text-2)">$9/mo · expires 12 Sep 2026 (21 days)</div></div><span class="status st-ok">Active</span></div><div style="display:flex;gap:9px;margin-top:14px"><button class="wbtn pri">Renew now</button><button class="wbtn">Change plan</button></div></div>
+            <div class="wrowcard"><div style="font-weight:800;font-size:13px;margin-bottom:4px">Auto-renew</div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--text-2)">Off — you renew manually with crypto</span><span class="toggle off"></span></div></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">35</span><b>Subscription (web)</b> — plan, renew, change</div>
+    </div>
+
+    <!-- Payment history -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/account/payments</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Subscription</div><div class="wsl on"><svg class="ic"><use href="#coin"/></svg>Payments</div><div class="wsl"><svg class="ic"><use href="#phone"/></svg>Devices</div><div class="wsl"><svg class="ic"><use href="#user"/></svg>Profile</div></div>
+          <div class="wmain"><h2>Payment history</h2><div class="sub">Invoices &amp; receipts</div>
+            <table class="wtable"><thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+              <tr><td>12 Aug 2026</td><td>Professional</td><td>9 USDT</td><td><span class="status st-ok">Paid</span></td><td style="color:var(--accent-ink);font-weight:700">Invoice</td></tr>
+              <tr><td>12 Jul 2026</td><td>Professional</td><td>9 USDT</td><td><span class="status st-ok">Paid</span></td><td style="color:var(--accent-ink);font-weight:700">Invoice</td></tr>
+              <tr><td>12 Jun 2026</td><td>Basic</td><td>4 USDT</td><td><span class="status st-ok">Paid</span></td><td style="color:var(--accent-ink);font-weight:700">Invoice</td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">36</span><b>Payment history</b> — invoices (USDT)</div>
+    </div>
+
+    <!-- Devices (web) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/account/devices</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Subscription</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payments</div><div class="wsl on"><svg class="ic"><use href="#phone"/></svg>Devices</div><div class="wsl"><svg class="ic"><use href="#user"/></svg>Profile</div></div>
+          <div class="wmain"><h2>Devices</h2><div class="sub">2 of 2 active · max 2 per account</div>
+            <div class="wrowcard" style="display:flex;align-items:center;gap:12px"><span class="li"><svg class="ic"><use href="#phone"/></svg></span><div style="flex:1"><b style="font-size:13px">iPhone 14</b><div style="font-size:11px;color:var(--text-3)">iOS 17 · India · active now</div></div><span class="status st-ok">Current</span></div>
+            <div class="wrowcard" style="display:flex;align-items:center;gap:12px"><span class="li"><svg class="ic"><use href="#phone"/></svg></span><div style="flex:1"><b style="font-size:13px">Pixel 7</b><div style="font-size:11px;color:var(--text-3)">Android 14 · India · 2d ago</div></div><button class="wbtn" style="color:var(--danger)">Remove</button></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">37</span><b>Devices (web)</b> — binding, remove device</div>
+    </div>
+
+    <!-- Profile (web) -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>clipcart.app/account/profile</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>ClipCart</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Subscription</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payments</div><div class="wsl"><svg class="ic"><use href="#phone"/></svg>Devices</div><div class="wsl on"><svg class="ic"><use href="#user"/></svg>Profile</div></div>
+          <div class="wmain"><h2>Profile</h2><div class="sub">Account &amp; security</div>
+            <div style="display:flex;align-items:center;gap:13px;margin-bottom:16px"><span class="avatar" style="width:52px;height:52px;font-size:19px">A</span><button class="wbtn">Change photo</button></div>
+            <div class="field2"><label>Name</label><div class="in">Aditya Rao</div></div>
+            <div class="field2"><label>Email</label><div class="in">aditya@studio.com</div></div>
+            <div class="field2"><label>Password</label><div class="in"><span class="ph">••••••••</span><span style="margin-left:auto;color:var(--accent-ink);font-weight:700;font-size:12px">Change</span></div></div>
+            <button class="btn btn-a" style="max-width:180px;margin-top:6px">Save changes</button>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">38</span><b>Profile (web)</b> — name, email, password</div>
+    </div>
+
+  </div>
+
+  <div class="section"><span class="sc">Admin</span><h2>Admin panel</h2><p>Approvals · clips · categories · plans · payouts · users · analytics · settings</p></div>
+
+  <div class="rail">
+
+    <!-- Admin dashboard -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl on"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Overview</h2><div class="sub">This month at a glance</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px"><div class="stat"><div class="sv">$4.2k</div><div class="sl">MRR</div><div class="sd">+12%</div></div><div class="stat"><div class="sv">862</div><div class="sl">Active subs</div><div class="sd">+34</div></div><div class="stat"><div class="sv">3</div><div class="sl">Pending approvals</div></div><div class="stat"><div class="sv">2</div><div class="sl">Payout requests</div></div></div>
+            <div class="wrowcard"><div style="font-weight:800;font-size:13px;margin-bottom:8px">Revenue (last 8 weeks)</div><div style="display:flex;align-items:flex-end;gap:8px;height:96px"><div style="flex:1;height:38%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:52%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:46%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:64%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:58%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:74%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:82%;background:var(--accent-soft);border-radius:6px 6px 0 0"></div><div style="flex:1;height:96%;background:var(--grad);border-radius:6px 6px 0 0"></div></div></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">39</span><b>Admin dashboard</b> — MRR, subs, approvals, revenue chart</div>
+    </div>
+
+    <!-- Approvals queue -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/approvals</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl on"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Approvals <span class="status st-wait" style="vertical-align:middle">3 pending</span></h2><div class="sub">Every editor upload needs review</div>
+            <table class="wtable"><thead><tr><th>Clip</th><th>Editor</th><th>Category</th><th>Actions</th></tr></thead><tbody>
+              <tr><td><div style="display:flex;align-items:center;gap:8px"><span class="thm g8" style="width:26px;height:34px;border-radius:5px"></span>Boss Reaction</div></td><td>maria.k</td><td>Reaction</td><td><span style="color:var(--ok);font-weight:800">Approve</span> · <span style="color:var(--danger);font-weight:800">Reject</span> · <span style="color:var(--accent-ink);font-weight:800">View</span></td></tr>
+              <tr><td><div style="display:flex;align-items:center;gap:8px"><span class="thm g5" style="width:26px;height:34px;border-radius:5px"></span>Exam Fear</div></td><td>rahul.fx</td><td>Comedy</td><td><span style="color:var(--ok);font-weight:800">Approve</span> · <span style="color:var(--danger);font-weight:800">Reject</span> · <span style="color:var(--accent-ink);font-weight:800">View</span></td></tr>
+              <tr><td><div style="display:flex;align-items:center;gap:8px"><span class="thm g3" style="width:26px;height:34px;border-radius:5px"></span>Night Vibes</div></td><td>zoya</td><td>Movie edit</td><td><span style="color:var(--ok);font-weight:800">Approve</span> · <span style="color:var(--danger);font-weight:800">Reject</span> · <span style="color:var(--accent-ink);font-weight:800">View</span></td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">40</span><b>Approvals</b> — queue: approve / reject / request changes</div>
+    </div>
+
+    <!-- Approval detail -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/approvals/boss-reaction</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl on"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Review clip</h2><div class="sub">Boss Reaction · by maria.k</div>
+            <div style="display:grid;grid-template-columns:130px 1fr;gap:16px">
+              <div class="g8" style="aspect-ratio:9/16;border-radius:12px;display:grid;place-items:center"><span class="dhero" style="margin:0;box-shadow:none;background:none"><span class="play"><svg class="ic"><use href="#play"/></svg></span></span></div>
+              <div><div class="metaline" style="padding:0;margin-bottom:12px"><span><b>Movie:</b> Office</span>·<span><b>Genre:</b> Reaction</span>·<span><b>Lang:</b> English</span>·<span>0:11</span></div>
+                <div style="font-size:11px;font-weight:800;color:var(--text-3);text-transform:uppercase;margin-bottom:6px">Customizable layers</div>
+                <div class="efields" style="padding:0 0 14px"><span>Subtitle</span><span>Logo</span><span>Username</span><span>CTA</span></div>
+                <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btn btn-a" style="width:auto;background:var(--ok);box-shadow:none"><svg class="ic ic-sm"><use href="#check"/></svg>Approve</button><button class="wbtn">Request changes</button><button class="wbtn" style="color:var(--danger)">Reject</button></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">41</span><b>Approval detail</b> — preview + decision (approve/changes/reject)</div>
+    </div>
+
+    <!-- Clips management -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/clips</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl on"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Clips</h2><div class="sub">218 published · feature &amp; manage</div>
+            <table class="wtable"><thead><tr><th>Clip</th><th>Category</th><th>Access</th><th>Downloads</th><th>Featured</th></tr></thead><tbody>
+              <tr><td>Monday Mood</td><td>Comedy</td><td><span class="status st-ok" style="background:var(--gold);color:#3a2600">Pro</span></td><td>2.1k</td><td><span class="toggle"></span></td></tr>
+              <tr><td>Reaction Pack</td><td>Reaction</td><td><span class="status" style="background:var(--ok);color:#fff">Free</span></td><td>1.4k</td><td><span class="toggle off"></span></td></tr>
+              <tr><td>Comedy Cut</td><td>Comedy</td><td><span class="status" style="background:var(--ok);color:#fff">Free</span></td><td>3.0k</td><td><span class="toggle"></span></td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">42</span><b>Clips</b> — manage, feature toggle, access</div>
+    </div>
+
+    <!-- Categories -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/categories</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl on"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><div style="display:flex;align-items:center;justify-content:space-between"><h2>Categories</h2><button class="wbtn pri"><svg class="ic ic-sm" style="vertical-align:middle"><use href="#plus2"/></svg> New</button></div><div class="sub">Movie · genre · language taxonomy</div>
+            <table class="wtable"><thead><tr><th>Category</th><th>Clips</th><th></th></tr></thead><tbody>
+              <tr><td>Comedy</td><td>84</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+              <tr><td>Reactions</td><td>52</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+              <tr><td>Movie edits</td><td>61</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+              <tr><td>Trending</td><td>21</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">43</span><b>Categories</b> — create/edit taxonomy</div>
+    </div>
+
+    <!-- Plans management -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/plans</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl on"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Plans &amp; pricing</h2><div class="sub">Configure tiers · export limit · quality · price</div>
+            <table class="wtable"><thead><tr><th>Plan</th><th>Price</th><th>Exports</th><th>Quality</th><th>Devices</th><th></th></tr></thead><tbody>
+              <tr><td>Free</td><td>$0</td><td>3</td><td>720p</td><td>1</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+              <tr><td>Basic</td><td>$4</td><td>30</td><td>1080p</td><td>1</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+              <tr><td>Professional</td><td>$9</td><td>Unlimited</td><td>1080p</td><td>2</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+              <tr><td>Agency</td><td>$29</td><td>Unlimited</td><td>4K</td><td>5</td><td style="color:var(--accent-ink);font-weight:700">Edit</td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">44</span><b>Plans</b> — tiers, limits, quality, price</div>
+    </div>
+
+    <!-- Payouts -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/payouts</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl on"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Editor payouts <span class="status st-wait" style="vertical-align:middle">2 requests</span></h2><div class="sub">Manual settlement (USDT)</div>
+            <table class="wtable"><thead><tr><th>Editor</th><th>Amount</th><th>Requested</th><th>Status</th><th>Action</th></tr></thead><tbody>
+              <tr><td>maria.k</td><td>$50</td><td>2 Aug</td><td><span class="status st-wait">Pending</span></td><td><span style="color:var(--ok);font-weight:800">Approve &amp; mark paid</span></td></tr>
+              <tr><td>rahul.fx</td><td>$34</td><td>1 Aug</td><td><span class="status st-wait">Pending</span></td><td><span style="color:var(--ok);font-weight:800">Approve &amp; mark paid</span></td></tr>
+              <tr><td>zoya</td><td>$80</td><td>12 Jul</td><td><span class="status st-ok">Paid</span></td><td style="color:var(--text-3)">—</td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">45</span><b>Payouts</b> — approve editor withdrawals, mark paid</div>
+    </div>
+
+    <!-- Users -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/users</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl on"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Users</h2><div class="sub">1,204 total · customers &amp; editors</div>
+            <table class="wtable"><thead><tr><th>User</th><th>Role</th><th>Plan</th><th>Devices</th><th></th></tr></thead><tbody>
+              <tr><td>Aditya Rao</td><td>Customer</td><td>Professional</td><td>2/2</td><td style="color:var(--accent-ink);font-weight:700">Manage</td></tr>
+              <tr><td>maria.k</td><td><span class="status" style="background:var(--accent-soft);color:var(--accent-ink)">Editor</span></td><td>—</td><td>1/2</td><td style="color:var(--accent-ink);font-weight:700">Manage</td></tr>
+              <tr><td>Sana P</td><td>Customer</td><td>Basic</td><td>1/1</td><td style="color:var(--accent-ink);font-weight:700">Manage</td></tr>
+            </tbody></table>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">46</span><b>Users</b> — roles, plan, devices (revoke)</div>
+    </div>
+
+    <!-- Analytics -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/analytics</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl on"><svg class="ic"><use href="#chart"/></svg>Analytics</div></div>
+          <div class="wmain"><h2>Analytics</h2><div class="sub">Growth, revenue, top editors</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px"><div class="stat"><div class="sv">$4.2k</div><div class="sl">MRR</div><div class="sd">+12%</div></div><div class="stat"><div class="sv">18.6k</div><div class="sl">Downloads</div></div><div class="stat"><div class="sv">4.1%</div><div class="sl">Free→Pro</div></div></div>
+            <div class="wrowcard"><div style="font-weight:800;font-size:13px;margin-bottom:8px">Top editors</div><table class="wtable"><tbody><tr><td>maria.k</td><td>6.4k downloads</td><td style="text-align:right;font-weight:800">$142</td></tr><tr><td>rahul.fx</td><td>4.1k downloads</td><td style="text-align:right;font-weight:800">$96</td></tr><tr><td>zoya</td><td>2.8k downloads</td><td style="text-align:right;font-weight:800">$61</td></tr></tbody></table></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">47</span><b>Analytics</b> — MRR, downloads, conversion, top editors</div>
+    </div>
+
+    <!-- Settings -->
+    <div class="fig">
+      <div class="browser">
+        <div class="bbar"><span class="bdot"><i></i><i></i><i></i></span><span class="burl"><svg class="ic"><use href="#lock"/></svg>admin.clipcart.app/settings</span></div>
+        <div class="bbody"><div class="wapp">
+          <div class="wside"><div class="wbrand"><span class="lg"><svg class="ic"><use href="#clip"/></svg></span>Admin</div><div class="wsl"><svg class="ic"><use href="#grid"/></svg>Dashboard</div><div class="wsl"><svg class="ic"><use href="#check"/></svg>Approvals</div><div class="wsl"><svg class="ic"><use href="#film"/></svg>Clips</div><div class="wsl"><svg class="ic"><use href="#tag"/></svg>Categories</div><div class="wsl"><svg class="ic"><use href="#star"/></svg>Plans</div><div class="wsl"><svg class="ic"><use href="#coin"/></svg>Payouts</div><div class="wsl"><svg class="ic"><use href="#users"/></svg>Users</div><div class="wsl"><svg class="ic"><use href="#gear"/></svg>Settings</div></div>
+          <div class="wmain"><h2>Settings</h2><div class="sub">Payments &amp; platform config</div>
+            <div class="wrowcard"><div style="font-weight:800;font-size:13px;margin-bottom:8px">Binance Pay</div><div class="field2" style="margin:0 0 8px"><label>Merchant ID</label><div class="in"><span class="ph">••••••4821</span></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--text-2)">Webhook signature verification</span><span class="toggle"></span></div></div>
+            <div class="wrowcard"><div style="display:flex;justify-content:space-between;align-items:center"><div><b style="font-size:13px">Payout rate</b><div style="font-size:11px;color:var(--text-3)">Editor share per download</div></div><div class="in" style="width:80px;min-height:36px">$0.02</div></div></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="cap caption"><span class="id">48</span><b>Settings</b> — Binance Pay, webhook, payout rate</div>
+    </div>
+
+  </div>
+
+  <div class="footnote">
+    <b>ClipCart — complete design · Sunset Coral · 48 screens.</b><br>
+    📱 Mobile customer (19) + Creator mode (5) · 🌐 Web (14) · 🛠 Admin (10) — one cohesive system.<br>
+    Aligned to client requirements: meme/movie clips, on-device export, device binding, crypto Binance Pay, multi-plan, editor approval + payouts, categories/analytics.
+  </div>
+</div>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('themeBtn');
+b.onclick=function(){var d=r.getAttribute('data-theme')==='dark'?'':'dark';r.setAttribute('data-theme',d);b.textContent=d?'☀ Light':'🌙 Dark';};})();
+</script>
+<style>
+.cc-fab{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9998;background:#171226;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 16px;font:600 13px/1 'Segoe UI',system-ui,sans-serif;box-shadow:0 12px 34px rgba(0,0,0,.45);display:flex;gap:10px;align-items:center;max-width:92vw}
+.cc-fab b{color:#a78bfa}
+.cc-fab .x{background:none;border:0;color:#8a84a0;cursor:pointer;font-size:15px;line-height:1}
+.cc-btn{margin-left:8px;border:1px solid rgba(123,97,255,.5);background:rgba(123,97,255,.14);color:#8f78ff;border-radius:999px;padding:3px 10px;font:700 11px/1 'Segoe UI',system-ui,sans-serif;cursor:pointer;vertical-align:middle}
+.cc-btn:hover{background:rgba(123,97,255,.26)}
+.cc-modal{position:fixed;inset:0;z-index:9999;background:rgba(6,4,12,.62);backdrop-filter:blur(4px);display:none;place-items:center;padding:20px}
+.cc-modal.cc-open{display:grid}
+.cc-card{position:relative;width:430px;max-width:100%;background:#17131f;color:#f2f0fa;border:1px solid #2a2740;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6);padding:20px;font-family:'Segoe UI',system-ui,sans-serif}
+.cc-card h4{margin:0 0 2px;font-size:17px;font-weight:800}
+.cc-sub{color:#a78bfa;font-size:12.5px;font-weight:700;margin-bottom:14px}
+.cc-card input,.cc-card textarea{width:100%;background:#0f0d1a;border:1px solid #2a2740;border-radius:11px;color:#f2f0fa;padding:11px 13px;font:14px 'Segoe UI',system-ui,sans-serif;margin-bottom:10px}
+.cc-card textarea{min-height:100px;resize:vertical}
+.cc-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.cc-send{background:linear-gradient(135deg,#7B61FF,#5A57F0);color:#fff;border:0;border-radius:11px;padding:11px 20px;font:700 14px 'Segoe UI',system-ui,sans-serif;cursor:pointer}
+.cc-mail{color:#a78bfa;font-size:12.5px;text-decoration:none;font-weight:600}
+.cc-x{position:absolute;top:14px;right:16px;background:none;border:0;color:#8a84a0;font-size:19px;cursor:pointer;line-height:1}
+.cc-status{font-size:12.5px;margin-top:10px;min-height:16px}
+.cc-ok{color:#3ee6b0}.cc-err{color:#ff7b7f}
+@media(max-width:520px){.cc-fab{font-size:11.5px;padding:9px 13px}}
+</style>
+
+<div class="cc-fab" id="ccFab">💬&nbsp;<span>Review mode — click <b>Comment</b> on any screen</span> <button class="x" id="ccFabX" title="Hide">✕</button></div>
+
+<div class="cc-modal" id="ccModal">
+  <div class="cc-card">
+    <button class="cc-x" id="ccClose">✕</button>
+    <h4>Leave a comment</h4>
+    <div class="cc-sub" id="ccScreen">Screen</div>
+    <input id="ccName" placeholder="Your name (optional)">
+    <textarea id="ccText" placeholder="What should change on this screen?"></textarea>
+    <div class="cc-row"><a class="cc-mail" id="ccMail" href="#">Email instead</a><button class="cc-send" id="ccSend">Send comment</button></div>
+    <div class="cc-status" id="ccStatus"></div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function(){
+  var RECEIVE_EMAIL = "clipxcart@gmail.com"; /* <-- client comments are emailed here. */
+  var modal=document.getElementById('ccModal'), scr=document.getElementById('ccScreen'),
+      nm=document.getElementById('ccName'), tx=document.getElementById('ccText'),
+      st=document.getElementById('ccStatus'), mail=document.getElementById('ccMail'), cur='';
+  function setMail(){ mail.href='mailto:'+RECEIVE_EMAIL+'?subject='+encodeURIComponent('ClipCart feedback — '+cur)+'&body='+encodeURIComponent((tx.value||'')+'\n\n— '+(nm.value||'client')); }
+  function openM(label){ cur=label; scr.textContent=label; st.textContent=''; st.className='cc-status'; tx.value=''; modal.classList.add('cc-open'); setMail(); setTimeout(function(){tx.focus();},50); }
+  function closeM(){ modal.classList.remove('cc-open'); }
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeM(); });
+  tx.addEventListener('input',setMail); nm.addEventListener('input',setMail);
+  document.getElementById('ccClose').onclick=closeM;
+  modal.addEventListener('click',function(e){ if(e.target===modal) closeM(); });
+  document.getElementById('ccFabX').onclick=function(){ document.getElementById('ccFab').style.display='none'; };
+  document.querySelectorAll('.caption').forEach(function(cap){
+    var idEl=cap.querySelector('.id'); var id=idEl?idEl.textContent.trim():'';
+    var b0=cap.querySelector('b'); var title=b0?b0.textContent.trim():'';
+    var label=(id?id+' · ':'')+title;
+    var b=document.createElement('button'); b.className='cc-btn'; b.type='button'; b.textContent='💬 Comment';
+    b.onclick=function(){ openM(label||id||'Screen'); };
+    cap.appendChild(b);
+  });
+  document.getElementById('ccSend').onclick=function(){
+    var c=tx.value.trim(); if(!c){ st.textContent='Please write a comment first.'; st.className='cc-status cc-err'; return; }
+    st.textContent='Sending…'; st.className='cc-status';
+    fetch('https://formsubmit.co/ajax/'+RECEIVE_EMAIL,{
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({ _subject:'ClipCart feedback — '+cur, screen:cur, name:(nm.value||'(anonymous)'), comment:c })
+    }).then(function(r){return r.json();}).then(function(){
+      st.textContent='✓ Sent! Thank you.'; st.className='cc-status cc-ok'; setTimeout(closeM,1200);
+    }).catch(function(){
+      st.innerHTML='Auto-send unavailable — please tap <a class="cc-mail" href="'+mail.href+'">Email instead</a>.'; st.className='cc-status cc-err';
+    });
+  };
+});
+</script>
+</body></html>
