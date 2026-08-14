@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipCart — Funny movie clips</title>
+<style>
+:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f6f5f7;--surface:#fff;--border:#eae8ee;--text:#191521;--muted:#6f6a79;--ok:#12b76a;--gold:#f5a623;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d)}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+a{color:inherit;text-decoration:none;cursor:pointer}button{font:inherit;cursor:pointer}
+.btn{border:0;border-radius:10px;padding:10px 18px;font-weight:800;font-size:14px;background:var(--grad);color:#fff}
+.btn.sec{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn.sm{padding:7px 13px;font-size:13px}
+input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:11px;font:inherit;margin-bottom:10px;background:var(--surface)}
+/* nav */
+nav{position:sticky;top:0;z-index:10;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:18px;padding:12px 22px}
+nav .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px}
+nav .logo .lg{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900}
+nav .links{display:flex;gap:16px;font-weight:700;font-size:14px;color:var(--muted)}
+nav .sp{flex:1}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 22px 60px}
+/* hero */
+.hero{text-align:center;padding:48px 20px 30px}
+.hero .k{color:var(--ink);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
+.hero h1{font-size:40px;font-weight:800;letter-spacing:-.03em;margin:12px 0}
+.hero p{color:var(--muted);font-size:16px;max-width:52ch;margin:0 auto 20px}
+.center{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+h2.sec{font-size:22px;font-weight:800;margin:26px 0 14px}
+/* grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
+.tpl{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(30,20,40,.04)}
+.tpl .thumb{aspect-ratio:3/4;position:relative;display:flex;align-items:flex-end;padding:9px}
+.tpl .badge{position:absolute;top:9px;left:9px;font-size:9.5px;font-weight:900;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.b-pro{background:var(--gold);color:#3a2600}.b-free{background:var(--ok);color:#fff}
+.tpl .dur{color:#fff;font-size:10px;font-weight:800;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:6px;position:relative;z-index:2}
+.tpl .m{padding:9px 11px}.tpl .nm{font-weight:700;font-size:13px}.tpl .by{color:var(--muted);font-size:11px}
+/* chips + search */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:8px 15px;font-size:13px;font-weight:700;color:var(--muted)}
+.chip.on{background:var(--text);border-color:var(--text);color:#fff}
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:14px}
+.plan{border:1px solid var(--border);border-radius:16px;padding:18px;background:var(--surface)}
+.plan.hot{border-color:var(--accent);box-shadow:0 0 0 3px #ffe9ec}
+.plan .p{font-size:26px;font-weight:800}.plan ul{list-style:none;padding:0;margin:10px 0;color:var(--muted);font-size:13px}
+.plan li{padding:3px 0}.plan li:before{content:"✓ ";color:var(--ok);font-weight:900}
+.cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.pill{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.p-ok{background:#e7f7ef;color:var(--ok)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--border);font-size:13px}th{color:var(--muted);font-size:11px;text-transform:uppercase}
+.qr{width:150px;height:150px;margin:10px 0;background:repeating-conic-gradient(#191521 0% 25%,#fff 0% 50%) 50%/16px 16px;border:6px solid #fff}
+.err{color:var(--accent);font-size:13px}.muted{color:var(--muted)}
+.center-box{max-width:360px;margin:40px auto}
+.tabs{display:flex;gap:8px;margin-bottom:16px}.tabs .chip{cursor:pointer}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" onclick="go('home')"><span class="lg">C</span>ClipCart</a>
+  <div class="links">
+    <a onclick="go('browse')">Browse</a>
+    <a onclick="go('pricing')">Pricing</a>
+  </div>
+  <div class="sp"></div>
+  <div id="navauth"></div>
+</nav>
+<div class="wrap" id="view">Loading…</div>
+
+<script>
+let API=(new URLSearchParams(location.search).get('api')||localStorage.getItem('cc_api')||'http://localhost:8000/api/v1').replace(/\/$/,'');
+localStorage.setItem('cc_api',API);
+let TOKEN=localStorage.getItem('cc_web')||'';
+let ME=null;
+
+function h(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+const GRAD=[['#ff7a59','#ff4d8d'],['#12c7a0','#3b9eff'],['#ff9247','#ff2d6b'],['#f5a623','#ff4d6d'],['#7b61ff','#4c9aff'],['#1a2740','#c0304a']];
+function g(id){let n=0;for(const c of id)n=(n+c.charCodeAt(0))%GRAD.length;return GRAD[n];}
+async function api(path,method='GET',body){
+  const r=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(TOKEN?{'Authorization':'Bearer '+TOKEN}:{})},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){let d;try{d=await r.json()}catch(e){}throw new Error((d&&(d.detail?.message||d.detail))||('HTTP '+r.status));}
+  return r.status===204?null:r.json();
+}
+const view=html=>document.getElementById('view').innerHTML=html;
+
+async function boot(){
+  if(TOKEN){try{ME=await api('/auth/me');}catch(e){TOKEN='';localStorage.removeItem('cc_web');}}
+  renderNav(); go(location.hash.slice(2)||'home');
+}
+function renderNav(){
+  document.getElementById('navauth').innerHTML = ME
+    ? `<a onclick="go('account')" style="font-weight:700">${h(ME.name)}</a> &nbsp; <button class="btn sm sec" onclick="logout()">Log out</button>`
+    : `<button class="btn sm sec" onclick="go('login')">Log in</button> <button class="btn sm" onclick="go('register')">Subscribe</button>`;
+}
+function logout(){TOKEN='';ME=null;localStorage.removeItem('cc_web');renderNav();go('home');}
+function go(v){location.hash='#/'+v;({home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount}[v]||vHome)();}
+
+function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" onclick="clipDetail('${c.slug}')">
+  <div class="thumb" style="background:linear-gradient(150deg,${a},${b})">
+    <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span>
+    <span class="dur">${dur(c.duration_sec)}</span></div>
+  <div class="m"><div class="nm">${h(c.title)}</div><div class="by">${h(c.category||c.genre||c.language)} · ${c.downloads}</div></div></div>`;}
+function dur(s){s=s||0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+
+async function vHome(){
+  view('<div class="hero"><div class="k">Funny movie clips · ready to post</div><h1>Turn viral clips<br>into your brand</h1><p>Browse trending meme & movie clips, customize in the app, and export MP4 on your phone.</p><div class="center"><button class="btn" onclick="go(\'register\')">Start free</button><button class="btn sec" onclick="go(\'pricing\')">See pricing</button></div></div><h2 class="sec">Trending this week</h2><div class="grid" id="tr">Loading…</div>');
+  try{const r=await api('/clips?sort=trending&limit=10');document.getElementById('tr').innerHTML=(r.items||[]).map(clipCard).join('')||'<p class="muted">No clips yet.</p>';}
+  catch(e){document.getElementById('tr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+}
+
+let _cat=null,_q='';
+async function vBrowse(){
+  view(`<h2 class="sec">Browse clips</h2>
+   <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}" style="max-width:360px">
+   <div class="chips" id="ch"></div><div class="grid" id="gr">Loading…</div>`);
+  const cats=[['All',null],['Comedy','comedy'],['Reactions','reactions'],['Movie edits','movie-edits']];
+  document.getElementById('ch').innerHTML=cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${l}</span>`).join('');
+  loadBrowse();
+}
+async function loadBrowse(){
+  vBrowseChips();
+  try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('limit','40');
+    const r=await api('/clips?'+qs.toString());document.getElementById('gr').innerHTML=(r.items||[]).map(clipCard).join('')||'<p class="muted">No results.</p>';}
+  catch(e){document.getElementById('gr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+}
+function vBrowseChips(){const cats=[['All',null],['Comedy','comedy'],['Reactions','reactions'],['Movie edits','movie-edits']];const el=document.getElementById('ch');if(el)el.innerHTML=cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${l}</span>`).join('');}
+
+async function clipDetail(slug){
+  location.hash='#/browse';
+  try{const c=await api('/clips/'+slug);const[a,b]=g(c.id);
+    view(`<div style="display:grid;grid-template-columns:220px 1fr;gap:24px;padding-top:10px">
+      <div style="aspect-ratio:9/16;border-radius:16px;background:linear-gradient(150deg,${a},${b})"></div>
+      <div><h1 style="margin:0 0 4px">${h(c.title)} <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span></h1>
+      <p class="muted">by ${h(c.editor_name||'creator')} · ${c.downloads} uses</p>
+      <p><b>Movie:</b> ${h(c.movie_name||'—')} &nbsp; <b>Genre:</b> ${h(c.genre||'—')} &nbsp; <b>Language:</b> ${h(c.language)} &nbsp; ${dur(c.duration_sec)}</p>
+      <p class="muted" style="font-size:12px;text-transform:uppercase;font-weight:800">Customize in the app</p>
+      <p>${(c.layers||[]).map(l=>`<span class="chip" style="display:inline-block;margin:2px">${h(l)}</span>`).join('')}</p>
+      <button class="btn" onclick="alert('Editing & export happen in the mobile app (on-device).')">📱 Open in app to customize</button>
+      </div></div>`);
+  }catch(e){view('<p class="err">'+h(e.message)+'</p>');}
+}
+
+async function vPricing(){
+  view('<h2 class="sec">Simple plans</h2><p class="muted">Crypto only · Binance Pay · manual renewal.</p><div class="cols3" id="pl">Loading…</div>');
+  try{const plans=await api('/billing/plans');
+    document.getElementById('pl').innerHTML=plans.map((p,i)=>`<div class="plan ${i===plans.length-1?'hot':''}">
+      <div style="font-weight:800;font-size:16px">${h(p.name)}</div>
+      <div class="p">$${p.price_usd}<span class="muted" style="font-size:13px">/mo</span></div>
+      <ul><li>${p.export_limit==null?'Unlimited exports':p.export_limit+' exports/mo'}</li><li>${h(p.quality)} · ${p.max_devices} devices</li>${(p.features||[]).map(f=>'<li>'+h(f)+'</li>').join('')}</ul>
+      ${p.price_usd>0?`<button class="btn" style="width:100%" onclick="subscribe('${p.id}')">Subscribe</button>`:'<div class="muted">Free</div>'}</div>`).join('')||'<p class="muted">No plans.</p>';
+  }catch(e){document.getElementById('pl').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+}
+async function subscribe(planId){
+  if(!TOKEN){alert('Please log in first');return go('login');}
+  try{const o=await api('/billing/checkout','POST',{plan_id:planId});
+    view(`<div class="center-box card" style="text-align:center"><h2>Pay ${o.amount} ${o.currency}</h2>
+      <p class="muted">Binance Pay · USDT · BEP20</p><div class="qr" style="margin:10px auto"></div>
+      <p style="font-size:12px;word-break:break-all">${h(o.qr_content||o.checkout_url)}</p>
+      <p class="muted" style="font-size:13px">Pay in the Binance app — your plan unlocks automatically once confirmed. No need to refresh.</p>
+      <button class="btn" onclick="go('account')">Go to account</button></div>`);
+  }catch(e){alert(e.message);}
+}
+
+async function vLogin(){
+  view(`<div class="center-box card"><h2 style="text-align:center">Welcome back</h2>
+   <input id="e" placeholder="Email" type="email"><input id="p" placeholder="Password" type="password">
+   <button class="btn" style="width:100%" onclick="doAuth('login')">Log in</button>
+   <div class="err" id="ae" style="margin-top:8px"></div>
+   <p class="muted" style="text-align:center;margin-top:12px">New here? <a class="link" style="color:var(--ink)" onclick="go('register')">Create account</a></p></div>`);
+}
+async function vRegister(){
+  view(`<div class="center-box card"><h2 style="text-align:center">Create account</h2>
+   <input id="n" placeholder="Name"><input id="e" placeholder="Email" type="email"><input id="p" placeholder="Password (min 8)" type="password">
+   <button class="btn" style="width:100%" onclick="doAuth('register')">Create account</button>
+   <div class="err" id="ae" style="margin-top:8px"></div>
+   <p class="muted" style="text-align:center;margin-top:12px">Have an account? <a class="link" style="color:var(--ink)" onclick="go('login')">Log in</a></p></div>`);
+}
+async function doAuth(kind){
+  const email=document.getElementById('e').value,password=document.getElementById('p').value;
+  const body=kind==='register'?{name:document.getElementById('n').value,email,password}:{email,password};
+  try{const r=await api('/auth/'+kind,'POST',body);TOKEN=r.tokens.access_token;localStorage.setItem('cc_web',TOKEN);ME=r.user;renderNav();go('account');}
+  catch(e){document.getElementById('ae').textContent=e.message;}
+}
+
+let _acctab='sub';
+async function vAccount(){
+  if(!TOKEN)return go('login');
+  view(`<h2 class="sec">Hi, ${h(ME?.name||'')}</h2>
+   <div class="tabs"><span class="chip ${_acctab==='sub'?'on':''}" onclick="_acctab='sub';vAccount()">Subscription</span>
+   <span class="chip ${_acctab==='pay'?'on':''}" onclick="_acctab='pay';vAccount()">Payments</span>
+   <span class="chip ${_acctab==='dev'?'on':''}" onclick="_acctab='dev';vAccount()">Devices</span></div>
+   <div id="ac">Loading…</div>`);
+  try{
+    if(_acctab==='sub'){const s=await api('/billing/subscription');
+      document.getElementById('ac').innerHTML=s?`<div class="card"><b style="font-size:17px">${h(s.plan_name)}</b> <span class="pill p-ok">${h(s.status)}</span>
+        <p class="muted">Expires ${h((s.expires_at||'').split('T')[0])} · manual renewal</p>
+        <button class="btn sm" onclick="go('pricing')">Renew / change</button></div>`
+        :`<div class="card"><p class="muted">No active subscription.</p><button class="btn sm" onclick="go('pricing')">See plans</button></div>`;
+    } else if(_acctab==='pay'){const ps=await api('/billing/payments');
+      document.getElementById('ac').innerHTML='<div class="card"><table><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th></tr>'+
+        (ps.map(p=>`<tr><td>${h((p.created_at||'').split('T')[0])}</td><td>${h(p.plan_name)}</td><td>${p.amount} ${h(p.currency)}</td><td><span class="pill p-ok">${h(p.status)}</span></td></tr>`).join('')||'<tr><td colspan=4 class="muted">No payments</td></tr>')+'</table></div>';
+    } else {const ds=await api('/auth/devices');
+      document.getElementById('ac').innerHTML='<div class="card">'+(ds.map(d=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><b>${h(d.os||'Device')}</b><span class="muted" style="flex:1">${h(d.country||'')} · ${h((d.last_active||'').split('T')[0])}</span><button class="btn sm sec" onclick="rmDev('${d.id}')">Remove</button></div>`).join('')||'<p class="muted">No devices</p>')+'</div>';
+    }
+  }catch(e){document.getElementById('ac').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+}
+async function rmDev(id){try{await api('/auth/devices/'+id,'DELETE');vAccount();}catch(e){alert(e.message);}}
+
+window.addEventListener('hashchange',()=>{const v=location.hash.slice(2);if(v&&v!=='browse')return;});
+boot();
+</script>
+</body>
+</html>
