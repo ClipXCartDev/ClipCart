@@ -11,6 +11,7 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import Category, Clip, ClipStatus, Download, Favorite, User
 from app.schemas.catalog import CategoryOut, ClipListOut, ClipOut, DownloadOut
+from app.services.billing import assert_can_export
 from app.services.catalog import SORTS, browse_query, clip_to_out
 
 router = APIRouter(tags=["catalog"])
@@ -92,8 +93,8 @@ def record_download(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    # NOTE: subscription/access gate (Pro clips, export quota) enforced in S3-Billing.
     clip = _approved_clip(db, clip_id)
+    assert_can_export(db, user, clip)  # Pro-access + monthly quota gate (§2, §11.3)
     db.add(Download(user_id=user.id, clip_id=clip_id, resolution=resolution))
     clip.downloads += 1
     db.commit()

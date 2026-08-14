@@ -23,5 +23,11 @@ class Settings(BaseSettings):
     # Google Sign-In
     GOOGLE_CLIENT_ID: str = ""
 
+    # Binance Pay (decisions §2) — crypto-only payment
+    BINANCE_PAY_KEY: str = ""
+    BINANCE_PAY_SECRET: str = ""
+    BINANCE_PAY_BASE_URL: str = "https://bpay.binanceapi.com"
+    SUBSCRIPTION_DAYS: int = 30
+
 
 settings = Settings()

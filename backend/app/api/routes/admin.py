@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.db.session import get_db
-from app.models import Category, Clip, ClipStatus, Role, User
+from app.models import Category, Clip, ClipStatus, Plan, Role, User
+from app.schemas.billing import PlanCreate, PlanOut, PlanUpdate
 from app.schemas.catalog import CategoryCreate, CategoryOut, ClipOut, ReviewIn
 from app.services.catalog import clip_to_out
 
@@ -86,3 +87,37 @@ def create_category(body: CategoryCreate, _: User = Depends(admin_only), db: Ses
     db.commit()
     db.refresh(cat)
     return CategoryOut.model_validate(cat)
+
+
+# --- Plans & pricing (§11.3) ---
+
+@router.get("/plans", response_model=list[PlanOut])
+def admin_list_plans(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> list[PlanOut]:
+    return [PlanOut.model_validate(p) for p in db.scalars(select(Plan).order_by(Plan.sort_order)).all()]
+
+
+@router.post("/plans", response_model=PlanOut, status_code=status.HTTP_201_CREATED)
+def create_plan(body: PlanCreate, _: User = Depends(admin_only), db: Session = Depends(get_db)) -> PlanOut:
+    slug = re.sub(r"[^a-z0-9]+", "-", body.name.lower()).strip("-")
+    if db.scalar(select(Plan).where(Plan.slug == slug)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Plan exists")
+    plan = Plan(
+        name=body.name, slug=slug, price_usd=body.price_usd, export_limit=body.export_limit,
+        quality=body.quality, max_devices=body.max_devices, features=body.features, sort_order=body.sort_order,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return PlanOut.model_validate(plan)
+
+
+@router.put("/plans/{plan_id}", response_model=PlanOut)
+def update_plan(plan_id: uuid.UUID, body: PlanUpdate, _: User = Depends(admin_only), db: Session = Depends(get_db)) -> PlanOut:
+    plan = db.get(Plan, plan_id)
+    if not plan:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Plan not found")
+    for k, v in body.model_dump(exclude_unset=True).items():
+        setattr(plan, k, v)
+    db.commit()
+    db.refresh(plan)
+    return PlanOut.model_validate(plan)
