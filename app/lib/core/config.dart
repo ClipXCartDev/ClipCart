@@ -11,7 +11,7 @@ class AppConfig {
   /// Used only until remote config loads (or if network + cache are both unavailable).
   static const String fallbackApiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://38.9.96.250/api/v1',
+    defaultValue: 'https://38.9.96.250.nip.io/api/v1',
   );
 
   static const String googleServerClientId = String.fromEnvironment(
