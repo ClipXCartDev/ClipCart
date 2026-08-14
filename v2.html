@@ -1,0 +1,445 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClipCart — New Design v2</title></head><body><style>
+:root{
+  --bg:#f5f6fb; --surface:#ffffff; --surface-2:#f0f1f7; --panel:#f6f7fb;
+  --border:#e8e9f2; --border-2:#f0f1f7;
+  --text:#141428; --text-2:#6a6d84; --text-3:#9b9db4;
+  --accent:#6c5cff; --accent-2:#8f82ff; --accent-soft:#efedff; --accent-press:#5a49f0;
+  --ok:#12b76a; --ok-soft:#e7f7ef; --warn:#f79009; --danger:#f04438;
+  --gold:#f5a623;
+  --sh-sm:0 1px 2px rgba(20,20,40,.05);
+  --sh:0 4px 16px -6px rgba(20,20,40,.14), 0 1px 3px rgba(20,20,40,.05);
+  --sh-lg:0 24px 48px -20px rgba(30,25,90,.28);
+  --r:16px; --r-sm:12px; --r-pill:999px;
+  --font:'Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#0d0d14; --surface:#16161f; --surface-2:#1c1c27; --panel:#14141c;
+  --border:#26263340; --border:#282833; --border-2:#20202a;
+  --text:#f3f3f8; --text-2:#a2a3b8; --text-3:#6b6c80;
+  --accent-soft:#221f45;
+  --sh:0 8px 24px -10px rgba(0,0,0,.6); --sh-sm:0 1px 2px rgba(0,0,0,.4); --sh-lg:0 30px 60px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.45;letter-spacing:-.006em}
+.ic{width:22px;height:22px;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:18px;height:18px}
+.wrap{max-width:1200px;margin:0 auto;padding:40px 24px 100px}
+
+/* header */
+.head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+.brand{display:flex;align-items:center;gap:13px}
+.logo{width:46px;height:46px;border-radius:14px;background:var(--accent);display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px -6px rgba(108,92,255,.6)}
+.logo .ic{width:24px;height:24px;stroke-width:2.2}
+.brand h1{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:0}
+.brand p{margin:3px 0 0;color:var(--text-2);font-size:13.5px}
+.tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.hbtns{display:flex;gap:10px}
+.pill{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-pill);padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:var(--sh-sm)}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin:22px 2px 34px;font-size:12.5px;color:var(--text-2)}
+.legend b{color:var(--text)}
+.dotc{display:inline-flex;align-items:center;gap:7px}.dotc i{width:12px;height:12px;border-radius:4px;display:block}
+
+.rail{display:flex;flex-wrap:wrap;gap:44px 34px}
+.fig{display:flex;flex-direction:column;gap:13px}
+.cap{font-size:12.5px;color:var(--text-2);max-width:300px}
+.cap b{color:var(--text);font-weight:700}
+.cap .id{color:#fff;background:var(--accent);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:800;margin-right:6px}
+
+/* phone */
+.ph{width:300px;background:#0b0b12;border-radius:44px;padding:11px;box-shadow:var(--sh-lg),inset 0 1px 1px rgba(255,255,255,.14)}
+.scr{position:relative;width:100%;height:632px;background:var(--surface);border-radius:33px;overflow:hidden;display:flex;flex-direction:column}
+.isl{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:25px;background:#05050a;border-radius:999px;z-index:40}
+.sb{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:14px 22px 0;font-size:12.5px;font-weight:800;color:var(--text)}
+.sb .r{display:flex;gap:5px;align-items:center}.sb .r .ic{width:15px;height:15px;stroke-width:2.3}
+.body{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.scroll{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.pad{padding:0 16px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;gap:10px}
+.top h2{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0}
+.iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--text);background:var(--surface-2);border:1px solid var(--border)}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px}
+
+/* search */
+.search{display:flex;align-items:center;gap:10px;height:46px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);padding:0 14px;color:var(--text-3);font-size:14px;font-weight:500;margin:0 16px 12px}
+
+/* chips */
+.chips{display:flex;gap:8px;overflow:hidden;padding:0 16px 14px}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:var(--r-pill);padding:8px 15px;font-size:12.5px;font-weight:700;color:var(--text-2);white-space:nowrap}
+.chip.on{background:var(--text);border-color:var(--text);color:var(--surface)}
+
+/* buttons */
+.btn{border:0;border-radius:14px;font:inherit;font-weight:800;font-size:14.5px;padding:14px 18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;width:100%}
+.btn-a{background:var(--accent);color:#fff;box-shadow:0 10px 22px -10px rgba(108,92,255,.7)}
+.btn-2{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.btn-w{background:#fff;color:#1f1f1f;border:1px solid var(--border);box-shadow:var(--sh-sm)}
+.btn-sm{padding:9px 15px;font-size:13px;border-radius:11px;width:auto}
+
+/* section head */
+.sh{display:flex;align-items:center;justify-content:space-between;padding:2px 16px 10px}
+.sh h3{font-size:16px;font-weight:800;letter-spacing:-.01em;margin:0}
+.sh a{font-size:12.5px;font-weight:700;color:var(--accent)}
+
+/* featured carousel */
+.feat{flex:none;margin:12px 16px 6px;border-radius:18px;overflow:hidden;position:relative;height:150px;display:flex;align-items:flex-end;padding:16px;color:#fff;box-shadow:var(--sh)}
+.feat::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(0,0,0,.15),rgba(0,0,0,.5))}
+.feat .z{position:relative;z-index:2}
+.feat .k{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;background:rgba(255,255,255,.25);padding:4px 9px;border-radius:999px;backdrop-filter:blur(4px)}
+.feat h4{font-size:21px;font-weight:800;margin:9px 0 0;letter-spacing:-.02em;max-width:80%}
+.feat .play{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:2}
+.feat .play .ic{fill:#fff;stroke:#fff;margin-left:3px}
+
+/* template grid (RenderForest style) */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:12px 16px 16px}
+.tpl{border-radius:16px;overflow:hidden;background:var(--surface);border:1px solid var(--border);box-shadow:var(--sh-sm)}
+.tpl .thumb{aspect-ratio:3/4;position:relative;display:flex;align-items:flex-end;padding:10px}
+.tpl .thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.35))}
+.tpl .badge{position:absolute;top:9px;left:9px;z-index:3;font-size:9.5px;font-weight:900;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
+.b-pro{background:var(--gold);color:#3a2600}.b-free{background:var(--ok);color:#fff}
+.tpl .play{position:absolute;top:9px;right:9px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.25);backdrop-filter:blur(4px);display:grid;place-items:center}
+.tpl .play .ic{fill:#fff;stroke:#fff;width:12px;margin-left:1px}
+.tpl .dur{position:relative;z-index:2;color:#fff;font-size:10px;font-weight:800;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:6px}
+.tpl .meta{padding:9px 11px}
+.tpl .nm{font-size:12.5px;font-weight:700}
+.tpl .by{font-size:10.5px;color:var(--text-3);margin-top:1px}
+
+.g1{background:linear-gradient(150deg,#7b61ff,#4c9aff)}.g2{background:linear-gradient(150deg,#ff7a59,#ff4d8d)}
+.g3{background:linear-gradient(150deg,#12c7a0,#3b9eff)}.g4{background:linear-gradient(150deg,#2b2350,#7b61ff)}
+.g5{background:linear-gradient(150deg,#f5a623,#ff4d8d)}.g6{background:linear-gradient(150deg,#3b9eff,#7b61ff)}
+.g7{background:linear-gradient(150deg,#0f2f4a,#12c7a0)}.g8{background:linear-gradient(150deg,#c0304a,#2b1236)}
+
+/* bottom nav (Instagram-style) */
+.nav{height:64px;flex:none;border-top:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-around;padding-bottom:4px}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--text-3)}
+.nav a.on{color:var(--accent)}
+.nav a .ic{width:23px;height:23px}
+.nav .create{width:48px;height:48px;border-radius:16px;background:var(--accent);display:grid;place-items:center;color:#fff;margin-top:-16px;box-shadow:0 10px 22px -8px rgba(108,92,255,.7)}
+.nav .create .ic{width:24px;height:24px;stroke-width:2.3}
+
+/* dark screen variant — remap neutral tokens so children go fully dark & cohesive */
+.scr.dark{background:#0b0b12;color:#fff;
+  --surface:#16161f;--surface-2:#1c1c27;--panel:#14141c;--border:#282833;--border-2:#20202a;
+  --text:#f3f3f8;--text-2:#a2a3b8;--text-3:#7a7b90;--accent-soft:#241f4a;}
+.dark .sb{color:#fff}
+
+/* reels */
+.reel{position:absolute;inset:0;overflow:hidden}
+.reel .bg{position:absolute;inset:0}
+.reel .gt{position:absolute;top:0;left:0;right:0;height:130px;background:linear-gradient(180deg,rgba(0,0,0,.5),transparent);z-index:2}
+.reel .gb{position:absolute;bottom:0;left:0;right:0;height:280px;background:linear-gradient(0deg,rgba(0,0,0,.82),transparent);z-index:2}
+.reel .tabs{position:absolute;top:46px;left:0;right:0;display:flex;justify-content:center;gap:20px;z-index:6;color:rgba(255,255,255,.6);font-weight:800;font-size:14px}
+.reel .tabs .on{color:#fff}
+.reel .rail{position:absolute;right:12px;bottom:104px;display:flex;flex-direction:column;gap:17px;align-items:center;z-index:5;color:#fff}
+.reel .rav{width:44px;height:44px;border-radius:50%;background:var(--accent);border:2px solid #fff;display:grid;place-items:center;font-weight:800;color:#fff}
+.reel .act{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:700}
+.reel .act .o{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);display:grid;place-items:center}
+.reel .act.lk .o{background:#f04438;border-color:transparent}.reel .act.lk .o .ic{fill:#fff;stroke:#fff}
+.reel .info{position:absolute;left:16px;right:78px;bottom:120px;color:#fff;z-index:5}
+.reel .hn{font-weight:800;font-size:15px;display:flex;gap:8px;align-items:center}
+.reel .tt{font-size:12.5px;opacity:.95;margin-top:5px}
+.reel .tg{display:flex;gap:6px;margin-top:8px}.reel .tg span{font-size:11px;font-weight:700;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:6px}
+.reel .use{position:absolute;left:16px;right:16px;bottom:64px;z-index:6}
+.reel .use .btn{border-radius:13px}
+
+/* detail */
+.dhero{position:relative;aspect-ratio:4/5;margin:12px 16px 0;border-radius:18px;overflow:hidden;display:grid;place-items:center;box-shadow:var(--sh)}
+.dhero .play{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.24);backdrop-filter:blur(8px);display:grid;place-items:center}
+.dhero .play .ic{fill:#fff;stroke:#fff;width:22px;margin-left:3px}
+.drow{display:flex;align-items:center;gap:9px;padding:14px 16px 4px}
+.metaline{display:flex;flex-wrap:wrap;gap:5px 10px;color:var(--text-2);font-size:12px;padding:0 16px}
+.efields{display:flex;flex-wrap:wrap;gap:7px;padding:12px 16px}
+.efields span{background:var(--accent-soft);color:var(--accent);font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:8px}
+
+/* editor (CapCut) */
+.ecanvas{margin:8px 16px 0;border-radius:14px;overflow:hidden;position:relative;aspect-ratio:16/11}
+.ecanvas .sub{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);color:#fff;font-weight:800;font-size:13px;text-shadow:0 1px 6px rgba(0,0,0,.8);outline:1.5px dashed rgba(255,255,255,.9);outline-offset:5px;border-radius:3px;padding:0 2px}
+.ecanvas .lg{position:absolute;top:9px;left:9px;background:rgba(255,255,255,.9);color:#111;border-radius:7px;padding:2px 7px;font-size:9px;font-weight:900}
+.eplay{display:flex;align-items:center;gap:10px;padding:8px 16px 4px;color:var(--text-2)}
+.eplay .p{width:30px;height:30px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;color:var(--text)}
+.eplay .p .ic{fill:currentColor;stroke:currentColor;width:14px;margin-left:2px}
+.eplay .tm{font-size:11px;font-weight:800}.eplay .tm b{color:var(--text)}
+.etl{background:var(--panel);border-top:1px solid var(--border);padding:8px 0;position:relative}
+.etl .ph{position:absolute;top:6px;bottom:8px;left:38%;width:2px;background:var(--accent);z-index:4}
+.etrack{display:flex;align-items:center;gap:8px;padding:4px 16px}
+.etrack .lb{width:16px;color:var(--text-3);display:grid;place-items:center}.etrack .lb .ic{width:14px;height:14px}
+.etrack .bd{flex:1;height:30px;position:relative;display:flex;gap:2px}
+.etrack .bd .th{flex:1;border-radius:4px}
+.seg{position:absolute;top:0;height:30px;border-radius:7px;background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);font-size:9.5px;font-weight:800;display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden}
+.seg.on{background:var(--accent);color:#fff}
+.etools{display:flex;gap:10px;padding:10px 16px;overflow:hidden;border-top:1px solid var(--border)}
+.etool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;font-weight:700;color:var(--text-2)}
+.etool .c{width:38px;height:38px;border-radius:11px;background:var(--surface-2);display:grid;place-items:center;color:var(--text-2)}
+.etool.on{color:var(--accent)}.etool.on .c{background:var(--accent);color:#fff}
+
+/* onboarding */
+.onb{flex:1;display:flex;flex-direction:column;justify-content:flex-end;position:relative;color:#fff;padding:24px}
+.onb .k{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+.onb h2{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:10px 0 8px;line-height:1.05}
+.onb p{font-size:14px;opacity:.9;margin:0 0 18px;max-width:26ch}
+.dots{display:flex;gap:6px;margin-bottom:16px}.dots i{width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.4)}.dots i.on{width:20px;background:#fff}
+
+.field{margin:0 16px 12px}
+.field label{display:block;font-size:12.5px;font-weight:700;color:var(--text-2);margin-bottom:6px}
+.input{height:48px;border-radius:13px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 14px;color:var(--text-3);font-size:14px}
+.input.f{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.input .v{color:var(--text)}
+.ordiv{display:flex;align-items:center;gap:12px;margin:14px 16px;color:var(--text-3);font-size:11px;font-weight:700}
+.ordiv::before,.ordiv::after{content:"";flex:1;height:1px;background:var(--border)}
+.gic{width:18px;height:18px;flex:none}
+.footnote{margin-top:60px;padding:24px;border-radius:18px;background:var(--surface);border:1px solid var(--border);text-align:center;color:var(--text-2);font-size:13px;box-shadow:var(--sh-sm)}
+.footnote b{color:var(--text)}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="clip" viewBox="0 0 24 24"><path d="M5 4h14v16l-7-4-7 4z"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z"/></symbol>
+<symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></symbol>
+<symbol id="reel" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 8h18M9 3l2.5 5M15 3l2.5 5M10 12l5 2.5-5 2.5z"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></symbol>
+<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></symbol>
+<symbol id="play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+<symbol id="heart" viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.4-9C1.1 9 2.6 5 6 5c2 0 3.2 1.2 4 2.4C10.8 6.2 12 5 14 5c3.4 0 4.9 4 3.4 7-2.4 4.4-9.4 9-9.4 9z"/></symbol>
+<symbol id="save" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z"/></symbol>
+<symbol id="share" viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></symbol>
+<symbol id="music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></symbol>
+<symbol id="type" viewBox="0 0 24 24"><path d="M4 6h16M12 6v14M8 20h8"/></symbol>
+<symbol id="img" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5L5 20"/></symbol>
+<symbol id="palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 100 18c1 0 1.5-1 1-2-.4-.8 0-2 1-2h2a4 4 0 004-4c0-4.5-4-8-8-8z"/></symbol>
+<symbol id="magic" viewBox="0 0 24 24"><path d="M6 18L16 8M14 4l1 3 3 1-3 1-1 3-1-3-3-1 3-1zM5 11l.7 2 2 .7-2 .7L5 17l-.7-2-2-.7 2-.7z"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></symbol>
+<symbol id="mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></symbol>
+<symbol id="sig" viewBox="0 0 24 24"><path d="M4 13v3M9 10v6M14 7v9M19 4v12"/></symbol>
+<symbol id="wifi" viewBox="0 0 24 24"><path d="M5 12a10 10 0 0114 0M8 15a6 6 0 018 0M12 18h0"/></symbol>
+<symbol id="batt" viewBox="0 0 24 24"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2"/></symbol>
+<symbol id="dl" viewBox="0 0 24 24"><path d="M4 15v4a1 1 0 001 1h14a1 1 0 001-1v-4M12 4v12M8 12l4 4 4-4"/></symbol>
+<symbol id="sticker" viewBox="0 0 24 24"><path d="M4 4h16v10l-6 6H4z"/><path d="M14 20v-6h6"/></symbol>
+<symbol id="google" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3h3.9c2.3-2.1 3.6-5.2 3.6-8.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1C3.3 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C18 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l4 3.1c.9-2.9 3.6-5 6.7-5z"/></symbol>
+</svg>
+
+<div class="wrap">
+  <div class="head">
+    <div>
+      <div class="tag">New Design · v2 · from scratch</div>
+      <div class="brand"><div class="logo"><svg class="ic"><use href="#clip"/></svg></div>
+        <div><h1>ClipCart</h1><p>RenderForest × Instagram × CapCut — clean, real UI</p></div>
+      </div>
+    </div>
+    <div class="hbtns"><button class="pill" id="themeBtn">🌙 Dark</button></div>
+  </div>
+  <div class="legend">
+    <span class="dotc"><i style="background:var(--accent)"></i><b>Accent</b> #6C5CFF</span>
+    <span class="dotc"><i style="background:var(--gold)"></i><b>Pro</b></span>
+    <span class="dotc"><i style="background:var(--ok)"></i><b>Free</b></span>
+    <span>Soft depth · rounded cards · pill buttons · real bottom-nav</span>
+  </div>
+
+  <div class="rail">
+
+    <!-- Onboarding -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="position:relative">
+          <div class="g4" style="position:absolute;inset:0"></div>
+          <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.7),transparent 60%)"></div>
+          <div class="onb">
+            <div class="k">Create · Customize · Export</div>
+            <h2>Turn templates into your brand</h2>
+            <p>Browse trending clip templates, drop in your text, logo & subtitles, and export in seconds.</p>
+            <div class="dots"><i class="on"></i><i></i><i></i></div>
+            <button class="btn btn-a">Get started</button>
+            <button class="btn btn-w" style="margin-top:10px"><svg class="gic"><use href="#google"/></svg>Continue with Google</button>
+          </div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">01</span><b>Onboarding</b> — brand + Get started + Google</div>
+    </div>
+
+    <!-- Home (RenderForest) -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top"><h2>Discover</h2><div style="display:flex;gap:8px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#bell"/></svg></span><span class="avatar">A</span></div></div>
+          <div class="search"><svg class="ic ic-sm"><use href="#search"/></svg>Search templates, creators…</div>
+          <div class="chips"><span class="chip on">All</span><span class="chip">Trending</span><span class="chip">Reactions</span><span class="chip">Movie edits</span></div>
+          <div class="scroll">
+            <div class="feat g1"><span class="play"><svg class="ic"><use href="#play"/></svg></span><div class="z"><span class="k">Featured</span><h4>Editor's picks this week</h4></div></div>
+            <div class="sh"><h3>Popular templates</h3><a>See all</a></div>
+            <div class="grid">
+              <div class="tpl"><div class="thumb g2"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:12</span></div><div class="meta"><div class="nm">Neon Promo</div><div class="by">by maria.k · 2.1k</div></div></div>
+              <div class="tpl"><div class="thumb g3"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:08</span></div><div class="meta"><div class="nm">Fresh Reel</div><div class="by">by rahul.fx · 1.4k</div></div></div>
+              <div class="tpl"><div class="thumb g6"><span class="badge b-pro">Pro</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:15</span></div><div class="meta"><div class="nm">Cinematic</div><div class="by">by zoya · 980</div></div></div>
+              <div class="tpl"><div class="thumb g5"><span class="badge b-free">Free</span><span class="play"><svg class="ic"><use href="#play"/></svg></span><span class="dur">0:10</span></div><div class="meta"><div class="nm">Sunset Sale</div><div class="by">by maria.k · 3.0k</div></div></div>
+            </div>
+          </div>
+          <div class="nav"><a class="on"><svg class="ic"><use href="#home"/></svg>Home</a><a><svg class="ic"><use href="#reel"/></svg>Reels</a><span class="create"><svg class="ic"><use href="#plus"/></svg></span><a><svg class="ic"><use href="#dl"/></svg>Exports</a><a><svg class="ic"><use href="#user"/></svg>Me</a></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">02</span><b>Home</b> — RenderForest-style template gallery + categories + bottom nav</div>
+    </div>
+
+    <!-- Reels (Instagram) -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="reel">
+          <div class="bg g7"></div><div class="gt"></div><div class="gb"></div>
+          <div class="sb" style="position:absolute;top:0;left:0;right:0;z-index:7;color:#fff"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+          <div class="tabs"><span>Following</span><span class="on">For you</span><span>Trending</span></div>
+          <div class="rail">
+            <div class="rav">M</div>
+            <div class="act lk"><div class="o"><svg class="ic"><use href="#heart"/></svg></div>12.4k</div>
+            <div class="act"><div class="o"><svg class="ic"><use href="#save"/></svg></div>Save</div>
+            <div class="act"><div class="o"><svg class="ic"><use href="#share"/></svg></div>Share</div>
+            <div class="act"><div class="o" style="background:linear-gradient(135deg,#333,#111)"><svg class="ic ic-sm"><use href="#music"/></svg></div></div>
+          </div>
+          <div class="info"><div class="hn">@maria.k <span class="badge b-pro" style="position:static">PRO</span></div><div class="tt">Cinematic movie-edit — add your subtitles &amp; logo</div><div class="tg"><span>#reels</span><span>#cinematic</span><span>4K</span></div></div>
+          <div class="use"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use this template</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">03</span><b>Reels Discover</b> — Instagram-style full-screen feed (swipe ↑ next)</div>
+    </div>
+
+    <!-- Template Detail -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top" style="padding-top:2px"><span class="iconbtn"><svg class="ic ic-sm"><use href="#back"/></svg></span><span class="iconbtn"><svg class="ic ic-sm"><use href="#share"/></svg></span></div>
+          <div class="scroll">
+            <div class="dhero g6"><span class="play"><svg class="ic"><use href="#play"/></svg></span></div>
+            <div class="drow"><span class="avatar" style="width:34px;height:34px">M</span><div style="flex:1"><div style="font-weight:800;font-size:15px">Cinematic Promo</div><div style="font-size:12px;color:var(--text-3)">by maria.k</div></div><span class="badge b-pro" style="position:static">Pro</span></div>
+            <div class="metaline"><span>0:12</span>·<span>1080p</span>·<span>9:16</span>·<span>2.1k uses</span>·<span>Added 3d ago</span></div>
+            <div style="font-size:11px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;padding:14px 16px 2px">You can edit</div>
+            <div class="efields"><span>Subtitle</span><span>Logo</span><span>Font</span><span>Color</span><span>Username</span><span>CTA</span></div>
+          </div>
+          <div class="pad" style="padding-bottom:16px"><button class="btn btn-a"><svg class="ic ic-sm"><use href="#magic"/></svg>Use this template</button></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">04</span><b>Template Detail</b> — preview, creator, metadata, editable fields</div>
+    </div>
+
+    <!-- Editor (CapCut) -->
+    <div class="fig">
+      <div class="ph"><div class="scr dark"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body">
+          <div class="top" style="padding:2px 16px 8px"><span class="iconbtn" style="background:#1c1c27;border-color:#282833;color:#fff"><svg class="ic ic-sm"><use href="#back"/></svg></span><span style="font-weight:800;color:#fff">Editor</span><button class="btn btn-a btn-sm"><svg class="ic ic-sm"><use href="#dl"/></svg>Export</button></div>
+          <div class="ecanvas g7"><span class="lg">LOGO</span><span class="sub">i cried… she's literally a victim</span></div>
+          <div class="eplay"><span class="p"><svg class="ic"><use href="#play"/></svg></span><span class="tm"><b style="color:#fff">00:03</b> / 00:12</span></div>
+          <div class="etl">
+            <div class="ph" style="left:38%"></div>
+            <div class="etrack"><span class="lb"><svg class="ic"><use href="#img"/></svg></span><div class="bd"><span class="th g1"></span><span class="th g6"></span><span class="th g4"></span><span class="th g2"></span><span class="th g7"></span></div></div>
+            <div class="etrack"><span class="lb"><svg class="ic"><use href="#type"/></svg></span><div class="bd"><div class="seg" style="left:2%;width:26%">Sub 1</div><div class="seg on" style="left:32%;width:34%">i cried…</div><div class="seg" style="left:70%;width:28%">Sub 3</div></div></div>
+          </div>
+          <div class="etools"><span class="etool on"><span class="c" style="background:var(--accent);color:#fff"><svg class="ic ic-sm"><use href="#type"/></svg></span>Text</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#img"/></svg></span>Logo</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#user"/></svg></span>Username</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#palette"/></svg></span>Style</span><span class="etool"><span class="c" style="background:#1c1c27;color:#a2a3b8"><svg class="ic ic-sm"><use href="#sticker"/></svg></span>Sticker</span></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">05</span><b>Editor</b> — CapCut-style: canvas + timeline + timed subtitle track + tools</div>
+    </div>
+
+    <!-- Login -->
+    <div class="fig">
+      <div class="ph"><div class="scr"><div class="isl"></div>
+        <div class="sb"><span>9:41</span><span class="r"><svg class="ic"><use href="#sig"/></svg><svg class="ic"><use href="#wifi"/></svg><svg class="ic"><use href="#batt"/></svg></span></div>
+        <div class="body" style="justify-content:center;padding-bottom:20px">
+          <div style="text-align:center;margin-bottom:20px"><div class="logo" style="margin:0 auto 14px"><svg class="ic"><use href="#clip"/></svg></div><div style="font-size:22px;font-weight:800;letter-spacing:-.02em">Welcome back</div><div style="color:var(--text-2);font-size:13.5px;margin-top:3px">Log in to continue creating</div></div>
+          <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#mail"/></svg><span class="v">clip@studio.com</span></div></div>
+          <div class="field"><label>Password</label><div class="input f"><svg class="ic ic-sm"><use href="#lock"/></svg><span class="v">••••••••••</span></div></div>
+          <div class="pad"><button class="btn btn-a">Log in</button></div>
+          <div class="ordiv">OR</div>
+          <div class="pad"><button class="btn btn-w"><svg class="gic"><use href="#google"/></svg>Continue with Google</button></div>
+          <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent)">Create account</b></div>
+        </div>
+      </div></div>
+      <div class="cap caption"><span class="id">06</span><b>Login</b> — clean, real inputs, Google</div>
+    </div>
+
+  </div>
+
+  <div class="footnote">
+    <b>New from-scratch design system — 6 core screens.</b><br>
+    RenderForest (template gallery) × Instagram (Reels + nav) × CapCut (editor) · clean · real buttons · light + dark.<br>
+    Look approve karo → main <b>saare pages (mobile + web + admin)</b> isi exact system me bana dunga.
+  </div>
+</div>
+<script>
+(function(){var r=document.documentElement,b=document.getElementById('themeBtn');
+b.onclick=function(){var d=r.getAttribute('data-theme')==='dark'?'':'dark';r.setAttribute('data-theme',d);b.textContent=d?'☀ Light':'🌙 Dark';};})();
+</script>
+<style>
+.cc-fab{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9998;background:#171226;color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:10px 16px;font:600 13px/1 'Segoe UI',system-ui,sans-serif;box-shadow:0 12px 34px rgba(0,0,0,.45);display:flex;gap:10px;align-items:center;max-width:92vw}
+.cc-fab b{color:#a78bfa}
+.cc-fab .x{background:none;border:0;color:#8a84a0;cursor:pointer;font-size:15px;line-height:1}
+.cc-btn{margin-left:8px;border:1px solid rgba(123,97,255,.5);background:rgba(123,97,255,.14);color:#8f78ff;border-radius:999px;padding:3px 10px;font:700 11px/1 'Segoe UI',system-ui,sans-serif;cursor:pointer;vertical-align:middle}
+.cc-btn:hover{background:rgba(123,97,255,.26)}
+.cc-modal{position:fixed;inset:0;z-index:9999;background:rgba(6,4,12,.62);backdrop-filter:blur(4px);display:none;place-items:center;padding:20px}
+.cc-modal.cc-open{display:grid}
+.cc-card{position:relative;width:430px;max-width:100%;background:#17131f;color:#f2f0fa;border:1px solid #2a2740;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.6);padding:20px;font-family:'Segoe UI',system-ui,sans-serif}
+.cc-card h4{margin:0 0 2px;font-size:17px;font-weight:800}
+.cc-sub{color:#a78bfa;font-size:12.5px;font-weight:700;margin-bottom:14px}
+.cc-card input,.cc-card textarea{width:100%;background:#0f0d1a;border:1px solid #2a2740;border-radius:11px;color:#f2f0fa;padding:11px 13px;font:14px 'Segoe UI',system-ui,sans-serif;margin-bottom:10px}
+.cc-card textarea{min-height:100px;resize:vertical}
+.cc-row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.cc-send{background:linear-gradient(135deg,#7B61FF,#5A57F0);color:#fff;border:0;border-radius:11px;padding:11px 20px;font:700 14px 'Segoe UI',system-ui,sans-serif;cursor:pointer}
+.cc-mail{color:#a78bfa;font-size:12.5px;text-decoration:none;font-weight:600}
+.cc-x{position:absolute;top:14px;right:16px;background:none;border:0;color:#8a84a0;font-size:19px;cursor:pointer;line-height:1}
+.cc-status{font-size:12.5px;margin-top:10px;min-height:16px}
+.cc-ok{color:#3ee6b0}.cc-err{color:#ff7b7f}
+@media(max-width:520px){.cc-fab{font-size:11.5px;padding:9px 13px}}
+</style>
+
+<div class="cc-fab" id="ccFab">💬&nbsp;<span>Review mode — click <b>Comment</b> on any screen</span> <button class="x" id="ccFabX" title="Hide">✕</button></div>
+
+<div class="cc-modal" id="ccModal">
+  <div class="cc-card">
+    <button class="cc-x" id="ccClose">✕</button>
+    <h4>Leave a comment</h4>
+    <div class="cc-sub" id="ccScreen">Screen</div>
+    <input id="ccName" placeholder="Your name (optional)">
+    <textarea id="ccText" placeholder="What should change on this screen?"></textarea>
+    <div class="cc-row"><a class="cc-mail" id="ccMail" href="#">Email instead</a><button class="cc-send" id="ccSend">Send comment</button></div>
+    <div class="cc-status" id="ccStatus"></div>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function(){
+  var RECEIVE_EMAIL = "clipxcart@gmail.com"; /* <-- client comments are emailed here. */
+  var modal=document.getElementById('ccModal'), scr=document.getElementById('ccScreen'),
+      nm=document.getElementById('ccName'), tx=document.getElementById('ccText'),
+      st=document.getElementById('ccStatus'), mail=document.getElementById('ccMail'), cur='';
+  function setMail(){ mail.href='mailto:'+RECEIVE_EMAIL+'?subject='+encodeURIComponent('ClipCart feedback — '+cur)+'&body='+encodeURIComponent((tx.value||'')+'\n\n— '+(nm.value||'client')); }
+  function openM(label){ cur=label; scr.textContent=label; st.textContent=''; st.className='cc-status'; tx.value=''; modal.classList.add('cc-open'); setMail(); setTimeout(function(){tx.focus();},50); }
+  function closeM(){ modal.classList.remove('cc-open'); }
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeM(); });
+  tx.addEventListener('input',setMail); nm.addEventListener('input',setMail);
+  document.getElementById('ccClose').onclick=closeM;
+  modal.addEventListener('click',function(e){ if(e.target===modal) closeM(); });
+  document.getElementById('ccFabX').onclick=function(){ document.getElementById('ccFab').style.display='none'; };
+  document.querySelectorAll('.caption').forEach(function(cap){
+    var idEl=cap.querySelector('.id'); var id=idEl?idEl.textContent.trim():'';
+    var b0=cap.querySelector('b'); var title=b0?b0.textContent.trim():'';
+    var label=(id?id+' · ':'')+title;
+    var b=document.createElement('button'); b.className='cc-btn'; b.type='button'; b.textContent='💬 Comment';
+    b.onclick=function(){ openM(label||id||'Screen'); };
+    cap.appendChild(b);
+  });
+  document.getElementById('ccSend').onclick=function(){
+    var c=tx.value.trim(); if(!c){ st.textContent='Please write a comment first.'; st.className='cc-status cc-err'; return; }
+    st.textContent='Sending…'; st.className='cc-status';
+    fetch('https://formsubmit.co/ajax/'+RECEIVE_EMAIL,{
+      method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({ _subject:'ClipCart feedback — '+cur, screen:cur, name:(nm.value||'(anonymous)'), comment:c })
+    }).then(function(r){return r.json();}).then(function(){
+      st.textContent='✓ Sent! Thank you.'; st.className='cc-status cc-ok'; setTimeout(closeM,1200);
+    }).catch(function(){
+      st.innerHTML='Auto-send unavailable — please tap <a class="cc-mail" href="'+mail.href+'">Email instead</a>.'; st.className='cc-status cc-err';
+    });
+  };
+});
+</script>
+</body></html>
