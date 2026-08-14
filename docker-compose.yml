@@ -25,6 +25,8 @@ services:
         condition: service_healthy
     expose:
       - "8000"
+    volumes:
+      - clip_storage:/app/storage   # persist uploaded/base clips (local storage mode)
 
   caddy:
     image: caddy:2-alpine
@@ -42,5 +44,6 @@ services:
 
 volumes:
   pgdata:
+  clip_storage:
   caddy_data:
   caddy_config:
