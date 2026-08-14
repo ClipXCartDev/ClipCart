@@ -68,7 +68,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;bord
 <div class="wrap" id="view">Loading…</div>
 
 <script>
-let API=(new URLSearchParams(location.search).get('api')||localStorage.getItem('cc_api')||'http://localhost:8000/api/v1').replace(/\/$/,'');
+let API=(new URLSearchParams(location.search).get('api')||localStorage.getItem('cc_api')||(location.protocol.indexOf('http')===0?location.origin+'/api/v1':'http://localhost:8000/api/v1')).replace(/\/$/,'');
 localStorage.setItem('cc_api',API);
 let TOKEN=localStorage.getItem('cc_web')||'';
 let ME=null;

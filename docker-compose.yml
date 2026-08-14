@@ -31,6 +31,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./:/srv:ro           # serve static SPAs (/, /admin/, /web/)
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

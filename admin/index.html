@@ -197,8 +197,12 @@ function table(cols,rows){
     rows.map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
 }
 
-// restore session
-(function(){const s=localStorage.getItem('cc_admin');if(s){try{const o=JSON.parse(s);API=o.API;TOKEN=o.TOKEN;enter();}catch(e){}}})();
+// default API base = same origin when served over http(s), else localhost
+(function(){
+  var def = location.protocol.indexOf('http')===0 ? location.origin+'/api/v1' : 'http://localhost:8000/api/v1';
+  document.getElementById('api').value = def;
+  const s=localStorage.getItem('cc_admin');if(s){try{const o=JSON.parse(s);API=o.API;TOKEN=o.TOKEN;enter();}catch(e){}}
+})();
 </script>
 </body>
 </html>

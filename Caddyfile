@@ -1,8 +1,18 @@
-# Reverse proxy + automatic HTTPS (decisions §4.2).
-# Local dev: http://localhost. Prod: replace :80 with your domain for auto-TLS.
+# ClipCart — reverse proxy + static hosting.
+# HTTP on :80 (no domain yet). When you point a domain at 38.9.96.250, replace
+# `:80` with `your-domain.com` and Caddy will get automatic HTTPS.
 :80 {
-	handle_path /api/* {
+	encode gzip
+
+	# API + health -> FastAPI container (path preserved, app is mounted at /api/v1)
+	@api path /api/* /health
+	handle @api {
 		reverse_proxy api:8000
 	}
-	respond /health "ok" 200
+
+	# Everything else -> static files (design deck at /, /admin/, /web/)
+	handle {
+		root * /srv
+		file_server
+	}
 }
