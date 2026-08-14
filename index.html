@@ -537,6 +537,18 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
 .le-tool{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9px;font-weight:700;color:var(--text-2)}
 .le-tool .cir{width:36px;height:36px;border-radius:11px;background:var(--panel);display:grid;place-items:center;color:var(--text-2)}
 .le-tool.on{color:var(--accent)}.le-tool.on .cir{background:var(--grad);color:#fff}
+
+/* ===== rich ambient backgrounds (mobile app) + Google login ===== */
+.phone .screen{background:
+  radial-gradient(560px 320px at 12% -6%, rgba(123,97,255,.20), transparent 60%),
+  radial-gradient(480px 300px at 100% 6%, rgba(255,77,141,.14), transparent 58%),
+  radial-gradient(520px 360px at 55% 106%, rgba(18,199,224,.12), transparent 62%),
+  var(--bg-2)}
+.gic{width:18px;height:18px;display:inline-block;vertical-align:middle;flex:none}
+.btn-google{background:#fff;color:#1f1f1f;border:1px solid var(--border);border-radius:14px;font:700 14px 'Segoe UI',system-ui,sans-serif;padding:13px 18px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:var(--shadow-sm)}
+:root[data-theme="dark"] .btn-google{background:#fff;color:#1f1f1f}
+.ordiv{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--text-3);font-size:11px;font-weight:700;letter-spacing:.04em}
+.ordiv::before,.ordiv::after{content:"";flex:1;height:1px;background:var(--border)}
 </style>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -580,6 +592,7 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
   <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5c-.6-1-4-1.4-4 .6s4 .9 4 2.6-3.4 1.4-4 .4"/></symbol>
   <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 3h8l10 10-8 8L3 11z"/><circle cx="7.5" cy="7.5" r="1.5"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></symbol>
+  <symbol id="i-google" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.7 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.6c-.3 1.5-1.1 2.8-2.4 3.7v3h3.9c2.3-2.1 3.6-5.2 3.6-8.9z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1C3.3 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.2-.7-.4-1.5-.4-2.3s.1-1.6.4-2.3V6.6H1.3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l4-3.1z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4C18 1.2 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l4 3.1c.9-2.9 3.6-5 6.7-5z"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -640,6 +653,8 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
             <div class="field"><label>Password</label><div class="input focus"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••••</span><span style="margin-left:auto"><svg class="ic ic-sm"><use href="#i-eye"/></svg></span></div></div>
             <div style="text-align:right;margin:2px 0 16px"><span style="color:var(--accent);font-size:12.5px;font-weight:800">Forgot password?</span></div>
             <button class="btn btn-primary btn-lg">Log in</button>
+            <div class="ordiv">OR</div>
+            <button class="btn-google"><svg class="gic"><use href="#i-google"/></svg>Continue with Google</button>
             <div style="text-align:center;margin-top:18px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent)">Create account</b></div>
           </div>
         </div></div>
@@ -976,11 +991,12 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
           <div class="bbody"><div class="wauth"><div class="wauthcard">
             <div class="wordmark" style="justify-content:center;font-size:22px;margin-bottom:18px"><span class="wm-badge"><svg class="ic"><use href="#i-clip"/></svg></span>ClipCart</div>
             <div class="card" style="padding:28px">
-              <div style="text-align:center;font-size:32px">😎</div>
-              <div class="h-title" style="text-align:center;margin-top:4px">Welcome back</div><div class="muted" style="text-align:center;font-size:13.5px;margin:4px 0 18px">Log in to keep making memes</div>
+              <div class="h-title" style="text-align:center;margin-top:4px">Welcome back</div><div class="muted" style="text-align:center;font-size:13.5px;margin:4px 0 18px">Log in to continue</div>
               <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">clip@studio.com</span></div></div>
               <div class="field"><label>Password</label><div class="input focus"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••••</span></div></div>
               <button class="btn btn-primary btn-lg" style="margin-top:6px">Log in</button>
+              <div class="ordiv">OR</div>
+              <button class="btn-google"><svg class="gic"><use href="#i-google"/></svg>Continue with Google</button>
               <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-2)">New here? <b style="color:var(--accent)">Create account</b></div>
             </div>
           </div></div></div>
@@ -994,11 +1010,13 @@ body{margin:0;color:var(--text);background:var(--mesh),var(--bg);font-family:'Se
           <div class="bbody"><div class="wauth"><div class="wauthcard">
             <div class="card" style="padding:28px">
               <span class="badge badge-free" style="margin:0 auto 12px;display:table">🆓 Free to start</span>
-              <div class="h-title" style="text-align:center">Create your account</div><div class="muted" style="text-align:center;font-size:13.5px;margin:4px 0 18px">Start with free memes, upgrade anytime</div>
+              <div class="h-title" style="text-align:center">Create your account</div><div class="muted" style="text-align:center;font-size:13.5px;margin:4px 0 18px">Start free, upgrade anytime</div>
               <div class="field"><label>Full name</label><div class="input"><svg class="ic ic-sm"><use href="#i-user"/></svg><span class="val">Aarav Sharma</span></div></div>
               <div class="field"><label>Email</label><div class="input"><svg class="ic ic-sm"><use href="#i-mail"/></svg><span class="val">aarav@studio.com</span></div></div>
               <div class="field"><label>Password</label><div class="input"><svg class="ic ic-sm"><use href="#i-lock"/></svg><span class="val">••••••••</span></div></div>
               <button class="btn btn-primary btn-lg" style="margin-top:6px">Create account</button>
+              <div class="ordiv">OR</div>
+              <button class="btn-google"><svg class="gic"><use href="#i-google"/></svg>Sign up with Google</button>
               <div class="muted tiny" style="text-align:center;margin-top:14px">We'll email a verification link before first login.</div>
             </div>
           </div></div></div>
