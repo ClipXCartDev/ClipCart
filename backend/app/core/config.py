@@ -42,5 +42,8 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET: str = "clipcart"
 
+    # CORS — allowed web/admin origins ("*" for dev, comma-separated for prod).
+    CORS_ORIGINS: str = "*"
+
 
 settings = Settings()

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClipCart Admin</title>
+<style>
+:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f6f5f7;--surface:#fff;--border:#eae8ee;--text:#191521;--muted:#6f6a79;--ok:#12b76a;--warn:#c77700;--danger:#f04438;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d)}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+button{font:inherit;cursor:pointer}
+.btn{border:0;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;background:var(--grad);color:#fff}
+.btn.sec{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn.ok{background:var(--ok)}.btn.dan{background:var(--danger)}.btn.sm{padding:5px 10px;font-size:12px}
+.link{color:var(--ink);font-weight:700;cursor:pointer}
+input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit;margin-bottom:10px;background:var(--surface);color:var(--text)}
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;box-shadow:0 10px 30px rgba(30,20,40,.08)}
+.logo{width:44px;height:44px;border-radius:12px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900;margin:0 auto 12px}
+h1{font-size:20px;margin:0 0 4px;text-align:center}.sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:18px}
+/* app */
+#app{display:none;grid-template-columns:210px 1fr;min-height:100vh}
+.side{background:var(--surface);border-right:1px solid var(--border);padding:16px 12px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;padding:4px 8px 16px}
+.brand .lg{width:28px;height:28px;border-radius:8px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900;font-size:13px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{padding:9px 12px;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
+.nav a.on{background:#ffe9ec;color:var(--ink)}
+.side .out{margin-top:18px;color:var(--danger);font-size:13px;font-weight:700;cursor:pointer;padding:9px 12px}
+.main{padding:22px 26px;overflow:auto}
+.main h2{margin:0 0 14px;font-size:20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px}
+.stat .v{font-size:24px;font-weight:800}.stat .l{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:10px;border-bottom:1px solid var(--border)}
+td{padding:10px;border-bottom:1px solid var(--border);font-size:13px}
+tr:last-child td{border-bottom:0}
+.pill{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.p-ok{background:#e7f7ef;color:var(--ok)}.p-wait{background:#fff3e3;color:var(--warn)}.p-no{background:#fde7e5;color:var(--danger)}
+.err{color:var(--danger);font-size:13px;min-height:18px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toggle{display:inline-block;width:40px;height:23px;border-radius:99px;background:var(--border);position:relative;cursor:pointer;vertical-align:middle}
+.toggle.on{background:var(--accent)}
+.toggle i{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:.15s}
+.toggle.on i{left:19px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="card" style="width:340px">
+    <div class="logo">C</div>
+    <h1>ClipCart Admin</h1>
+    <div class="sub">Sign in with an admin account</div>
+    <input id="api" placeholder="API base URL" value="http://localhost:8000/api/v1">
+    <input id="email" placeholder="Email" type="email">
+    <input id="pass" placeholder="Password" type="password">
+    <button class="btn" style="width:100%" onclick="doLogin()">Log in</button>
+    <div class="err" id="loginErr" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="side">
+    <div class="brand"><span class="lg">C</span>Admin</div>
+    <div class="nav" id="nav"></div>
+    <div class="out" onclick="logout()">Log out</div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+const NAV = [['dashboard','Dashboard'],['approvals','Approvals'],['clips','Clips'],['plans','Plans'],['payouts','Payouts'],['users','Users']];
+let API='', TOKEN='';
+
+function h(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function api(path,method='GET',body){
+  const r=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(TOKEN?{'Authorization':'Bearer '+TOKEN}:{})},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){let d;try{d=await r.json()}catch(e){}throw new Error((d&&(d.detail?.message||d.detail))||('HTTP '+r.status));}
+  return r.status===204?null:r.json();
+}
+
+async function doLogin(){
+  API=document.getElementById('api').value.replace(/\/$/,'');
+  const email=document.getElementById('email').value, password=document.getElementById('pass').value;
+  const err=document.getElementById('loginErr'); err.textContent='';
+  try{
+    const res=await api('/auth/login','POST',{email,password});
+    TOKEN=res.tokens.access_token;
+    const me=await api('/auth/me');
+    if(me.role!=='admin'){TOKEN='';err.textContent='Not an admin account.';return;}
+    localStorage.setItem('cc_admin',JSON.stringify({API,TOKEN}));
+    enter();
+  }catch(e){err.textContent=e.message;}
+}
+function logout(){TOKEN='';localStorage.removeItem('cc_admin');document.getElementById('app').style.display='none';document.getElementById('login').style.display='grid';}
+function enter(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='grid';
+  document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<a id="nav-${k}" onclick="go('${k}')">${l}</a>`).join('');
+  go('dashboard');
+}
+function go(k){
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));
+  document.getElementById('nav-'+k).classList.add('on');
+  ({dashboard:vDash,approvals:vApprovals,clips:vClips,plans:vPlans,payouts:vPayouts,users:vUsers}[k])();
+}
+const main=html=>document.getElementById('main').innerHTML=html;
+
+async function vDash(){
+  main('<h2>Overview</h2><div id="s">Loading…</div>');
+  try{const s=await api('/admin/stats');
+    document.getElementById('s').innerHTML='<div class="stats">'+[
+      ['MRR-eligible',s.active_subscriptions,'Active subscriptions'],
+      ['Users',s.users,'Total users'],
+      ['Approvals',s.pending_approvals,'Pending review'],
+      ['Payouts',s.pending_payouts,'Pending requests'],
+      ['Live',s.approved_clips,'Approved clips'],
+    ].map(([_,v,l])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')+'</div>';
+  }catch(e){document.getElementById('s').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+
+function statusPill(s){const c=s==='approved'?'p-ok':(s==='pending'?'p-wait':'p-no');return `<span class="pill ${c}">${h(s)}</span>`;}
+
+async function vApprovals(){
+  main('<h2>Approvals</h2><div id="t">Loading…</div>');
+  try{const rows=await api('/admin/clips?status_filter=pending');
+    document.getElementById('t').innerHTML=rows.length?table(['Clip','Editor','Category','Actions'],rows.map(c=>[
+      h(c.title),h(c.editor_name),h(c.category||c.genre||'-'),
+      `<div class="row"><button class="btn ok sm" onclick="act('${c.id}','approve')">Approve</button>
+       <button class="btn sec sm" onclick="actNote('${c.id}','request-changes')">Changes</button>
+       <button class="btn dan sm" onclick="actNote('${c.id}','reject')">Reject</button></div>`
+    ])):'<p style="color:var(--muted)">No pending clips 🎉</p>';
+  }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+async function act(id,a){try{await api(`/admin/clips/${id}/${a}`,'POST',{});vApprovals();}catch(e){alert(e.message);}}
+async function actNote(id,a){const note=prompt('Note for the editor:');if(note===null)return;try{await api(`/admin/clips/${id}/${a}`,'POST',{note});vApprovals();}catch(e){alert(e.message);}}
+
+async function vClips(){
+  main('<h2>Clips</h2><div id="t">Loading…</div>');
+  try{const rows=await api('/admin/clips');
+    document.getElementById('t').innerHTML=table(['Clip','Status','Access','Downloads','Featured'],rows.map(c=>[
+      h(c.title),statusPill(c.status),h(c.access),c.downloads,
+      `<span class="toggle ${c.is_featured?'on':''}" onclick="feature('${c.id}')"><i></i></span>`
+    ]));
+  }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+async function feature(id){try{await api(`/admin/clips/${id}/feature`,'POST',{});vClips();}catch(e){alert(e.message);}}
+
+async function vPlans(){
+  main(`<h2>Plans</h2>
+   <div class="card" style="margin-bottom:16px"><div class="row">
+     <input id="pn" placeholder="Name" style="width:140px">
+     <input id="pp" placeholder="Price USD" type="number" style="width:110px">
+     <input id="pl" placeholder="Export limit (blank=∞)" type="number" style="width:160px">
+     <input id="pq" placeholder="Quality" value="1080p" style="width:100px">
+     <input id="pd" placeholder="Devices" type="number" value="2" style="width:90px">
+     <button class="btn" onclick="createPlan()">Add plan</button>
+   </div><div class="err" id="pe"></div></div>
+   <div id="t">Loading…</div>`);
+  try{const rows=await api('/admin/plans');
+    document.getElementById('t').innerHTML=table(['Plan','Price','Exports','Quality','Devices','Active'],rows.map(p=>[
+      h(p.name),'$'+p.price_usd,(p.export_limit??'∞'),h(p.quality),p.max_devices,p.is_active?'✓':'—'
+    ]));
+  }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+async function createPlan(){
+  const b={name:pn.value,price_usd:parseFloat(pp.value||'0'),export_limit:pl.value===''?null:parseInt(pl.value),quality:pq.value,max_devices:parseInt(pd.value||'2')};
+  try{await api('/admin/plans','POST',b);vPlans();}catch(e){document.getElementById('pe').textContent=e.message;}
+}
+
+async function vPayouts(){
+  main('<h2>Payouts</h2><div id="t">Loading…</div>');
+  try{const rows=await api('/admin/payouts');
+    document.getElementById('t').innerHTML=table(['Editor','Amount','Status','Action'],rows.map(p=>[
+      h(p.editor_name),'$'+p.amount,statusPill(p.status),
+      p.status==='pending'?`<div class="row"><button class="btn ok sm" onclick="payout('${p.id}','mark-paid')">Mark paid</button><button class="btn dan sm" onclick="payoutNote('${p.id}')">Reject</button></div>`:'-'
+    ]));
+  }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+async function payout(id,a){try{await api(`/admin/payouts/${id}/${a}`,'POST',{});vPayouts();}catch(e){alert(e.message);}}
+async function payoutNote(id){const note=prompt('Reason:');if(note===null)return;try{await api(`/admin/payouts/${id}/reject`,'POST',{note});vPayouts();}catch(e){alert(e.message);}}
+
+async function vUsers(){
+  main('<h2>Users</h2><div id="t">Loading…</div>');
+  try{const rows=await api('/admin/users');
+    document.getElementById('t').innerHTML=table(['Name','Email','Role','Joined'],rows.map(u=>[
+      h(u.name),h(u.email),`<span class="pill ${u.role==='admin'?'p-no':(u.role==='editor'?'p-wait':'p-ok')}">${h(u.role)}</span>`,h((u.created_at||'').split('T')[0])
+    ]));
+  }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+
+function table(cols,rows){
+  return '<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+}
+
+// restore session
+(function(){const s=localStorage.getItem('cc_admin');if(s){try{const o=JSON.parse(s);API=o.API;TOKEN=o.TOKEN;enter();}catch(e){}}})();
+</script>
+</body>
+</html>

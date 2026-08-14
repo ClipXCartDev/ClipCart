@@ -6,12 +6,23 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.db.session import get_db
-from app.models import Category, Clip, ClipStatus, Payout, PayoutStatus, Plan, Role, User
+from app.models import (
+    Category,
+    Clip,
+    ClipStatus,
+    Payout,
+    PayoutStatus,
+    Plan,
+    Role,
+    Subscription,
+    SubStatus,
+    User,
+)
 from app.schemas.billing import PlanCreate, PlanOut, PlanUpdate
 from app.schemas.catalog import CategoryCreate, CategoryOut, ClipOut, ReviewIn
 from app.schemas.payout import PayoutOut
@@ -170,3 +181,31 @@ def reject_payout(payout_id: uuid.UUID, body: ReviewIn, _: User = Depends(admin_
     db.refresh(p)
     editor = db.get(User, p.editor_id)
     return _payout_out(p, editor.name if editor else None)
+
+
+# --- Users + dashboard stats ---
+
+@router.get("/users")
+def list_users(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> list[dict]:
+    rows = db.scalars(select(User).order_by(User.created_at.desc())).all()
+    return [
+        {"id": str(u.id), "name": u.name, "email": u.email, "role": u.role.value, "created_at": u.created_at.isoformat()}
+        for u in rows
+    ]
+
+
+@router.get("/stats")
+def stats(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> dict:
+    def count(model, *where) -> int:
+        stmt = select(func.count()).select_from(model)
+        for w in where:
+            stmt = stmt.where(w)
+        return db.scalar(stmt) or 0
+
+    return {
+        "users": count(User),
+        "active_subscriptions": count(Subscription, Subscription.status == SubStatus.active),
+        "pending_approvals": count(Clip, Clip.status == ClipStatus.pending),
+        "pending_payouts": count(Payout, Payout.status == PayoutStatus.pending),
+        "approved_clips": count(Clip, Clip.status == ClipStatus.approved),
+    }
