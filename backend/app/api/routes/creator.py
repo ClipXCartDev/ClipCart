@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.db.session import get_db
-from app.models import Access, Clip, ClipStatus, Role, User
+from app.models import Access, Clip, ClipStatus, Payout, PayoutStatus, Role, User
 from app.schemas.catalog import ClipCreate, ClipOut, ClipUpdate
+from app.schemas.payout import EarningsOut, PayoutCreate, PayoutOut
 from app.services.catalog import clip_to_out, slugify
+from app.services.payouts import compute_earnings
 
 router = APIRouter(prefix="/creator", tags=["creator"])
 editor_or_admin = require_role(Role.editor, Role.admin)
@@ -84,3 +86,41 @@ def submit_clip(clip_id: uuid.UUID, user: User = Depends(editor_or_admin), db: S
 def my_uploads(user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> list[ClipOut]:
     rows = db.scalars(select(Clip).where(Clip.editor_id == user.id).order_by(Clip.created_at.desc())).all()
     return [clip_to_out(c) for c in rows]
+
+
+# --- Earnings & payouts (§11.4) ---
+
+@router.get("/earnings", response_model=EarningsOut)
+def my_earnings(user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> EarningsOut:
+    return EarningsOut(**compute_earnings(db, user))
+
+
+@router.post("/payouts", response_model=PayoutOut, status_code=status.HTTP_201_CREATED)
+def request_payout(body: PayoutCreate, user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> PayoutOut:
+    available = compute_earnings(db, user)["available"]
+    if body.amount > available:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail={"code": "insufficient_balance", "available": available},
+        )
+    payout = Payout(editor_id=user.id, amount=body.amount, status=PayoutStatus.pending)
+    db.add(payout)
+    db.commit()
+    db.refresh(payout)
+    return PayoutOut(
+        id=payout.id, editor_id=payout.editor_id, editor_name=user.name,
+        amount=float(payout.amount), status=payout.status.value,
+        note=payout.note, created_at=payout.created_at, paid_at=payout.paid_at,
+    )
+
+
+@router.get("/payouts", response_model=list[PayoutOut])
+def my_payouts(user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> list[PayoutOut]:
+    rows = db.scalars(select(Payout).where(Payout.editor_id == user.id).order_by(Payout.created_at.desc())).all()
+    return [
+        PayoutOut(
+            id=p.id, editor_id=p.editor_id, editor_name=user.name, amount=float(p.amount),
+            status=p.status.value, note=p.note, created_at=p.created_at, paid_at=p.paid_at,
+        )
+        for p in rows
+    ]

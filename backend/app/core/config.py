@@ -29,5 +29,8 @@ class Settings(BaseSettings):
     BINANCE_PAY_BASE_URL: str = "https://bpay.binanceapi.com"
     SUBSCRIPTION_DAYS: int = 30
 
+    # Editor payouts (decisions §11.4) — rate per download (business placeholder).
+    PAYOUT_RATE_PER_DOWNLOAD: float = 0.02
+
 
 settings = Settings()

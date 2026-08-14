@@ -11,9 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_role
 from app.db.session import get_db
-from app.models import Category, Clip, ClipStatus, Plan, Role, User
+from app.models import Category, Clip, ClipStatus, Payout, PayoutStatus, Plan, Role, User
 from app.schemas.billing import PlanCreate, PlanOut, PlanUpdate
 from app.schemas.catalog import CategoryCreate, CategoryOut, ClipOut, ReviewIn
+from app.schemas.payout import PayoutOut
 from app.services.catalog import clip_to_out
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -121,3 +122,51 @@ def update_plan(plan_id: uuid.UUID, body: PlanUpdate, _: User = Depends(admin_on
     db.commit()
     db.refresh(plan)
     return PlanOut.model_validate(plan)
+
+
+# --- Editor payouts (§11.4) — manual settlement ---
+
+def _payout_out(p: Payout, editor_name: str | None) -> PayoutOut:
+    return PayoutOut(
+        id=p.id, editor_id=p.editor_id, editor_name=editor_name, amount=float(p.amount),
+        status=p.status.value, note=p.note, created_at=p.created_at, paid_at=p.paid_at,
+    )
+
+
+@router.get("/payouts", response_model=list[PayoutOut])
+def list_payouts(status_filter: str | None = None, _: User = Depends(admin_only), db: Session = Depends(get_db)) -> list[PayoutOut]:
+    stmt = select(Payout, User.name).join(User, User.id == Payout.editor_id).order_by(Payout.created_at.desc())
+    if status_filter:
+        stmt = stmt.where(Payout.status == PayoutStatus(status_filter))
+    return [_payout_out(p, name) for p, name in db.execute(stmt).all()]
+
+
+def _get_pending_payout(db: Session, payout_id: uuid.UUID) -> Payout:
+    p = db.get(Payout, payout_id)
+    if not p:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Payout not found")
+    if p.status != PayoutStatus.pending:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Payout already processed")
+    return p
+
+
+@router.post("/payouts/{payout_id}/mark-paid", response_model=PayoutOut)
+def mark_paid(payout_id: uuid.UUID, _: User = Depends(admin_only), db: Session = Depends(get_db)) -> PayoutOut:
+    p = _get_pending_payout(db, payout_id)
+    p.status = PayoutStatus.paid
+    p.paid_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(p)
+    editor = db.get(User, p.editor_id)
+    return _payout_out(p, editor.name if editor else None)
+
+
+@router.post("/payouts/{payout_id}/reject", response_model=PayoutOut)
+def reject_payout(payout_id: uuid.UUID, body: ReviewIn, _: User = Depends(admin_only), db: Session = Depends(get_db)) -> PayoutOut:
+    p = _get_pending_payout(db, payout_id)
+    p.status = PayoutStatus.rejected
+    p.note = body.note
+    db.commit()
+    db.refresh(p)
+    editor = db.get(User, p.editor_id)
+    return _payout_out(p, editor.name if editor else None)
