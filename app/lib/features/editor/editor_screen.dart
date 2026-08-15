@@ -41,6 +41,11 @@ class _EditorScreenState extends State<EditorScreen> {
   Object? _selected; // SubtitleSegment | 'logo' | null
   bool _trimMode = false;
 
+  // inline text editing (CapCut-style — video stays visible, live updates)
+  bool _typing = false;
+  final _textCtl = TextEditingController();
+  final _textFocus = FocusNode();
+
   final _undo = <Map<String, dynamic>>[];
   final _redo = <Map<String, dynamic>>[];
 
@@ -124,6 +129,8 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void dispose() {
     _vc?.dispose();
+    _textCtl.dispose();
+    _textFocus.dispose();
     super.dispose();
   }
 
@@ -155,48 +162,138 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
-  // ---------- subtitle ops ----------
-  Future<void> _addSubtitle() async {
-    final start = _t;
-    final seg = SubtitleSegment(text: '', start: start, end: (start + 3).clamp(0, _duration));
-    final res = await _openSheet(seg);
-    if (res != null) {
-      _snapshot();
-      setState(() {
-        _project!.subtitles.add(res);
-        _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
-        _selected = res;
-      });
-    }
+  // ---------- subtitle ops (inline, CapCut-style — video stays visible) ----------
+  void _addSubtitle() {
+    _snapshot();
+    final seg = SubtitleSegment(text: '', start: _t, end: (_t + 3).clamp(0, _duration));
+    setState(() {
+      _project!.subtitles.add(seg);
+      _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
+      _selected = seg;
+    });
+    _startTyping(seg);
   }
 
-  Future<void> _editSelectedSubtitle() async {
+  void _editSelectedSubtitle() {
+    if (_selected is SubtitleSegment) _startTyping(_selected as SubtitleSegment);
+  }
+
+  void _startTyping(SubtitleSegment s) {
+    _vc?.pause();
+    _textCtl.text = s.text;
+    _textCtl.selection = TextSelection.collapsed(offset: s.text.length);
+    setState(() {
+      _selected = s;
+      _typing = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _textFocus.requestFocus());
+  }
+
+  void _doneTyping() {
+    _textFocus.unfocus();
+    setState(() {
+      _typing = false;
+      if (_selected is SubtitleSegment && (_selected as SubtitleSegment).text.trim().isEmpty) {
+        _project!.subtitles.remove(_selected);
+        _selected = null;
+      }
+    });
+  }
+
+  /// Advanced font/timing sheet (opened from the Font tool), not the primary flow.
+  Future<void> _openStyleSheet() async {
     if (_selected is! SubtitleSegment) return;
     final s = _selected as SubtitleSegment;
-    final res = await _openSheet(s);
+    final fonts = context.read<FontService>().fonts;
+    final res = await showModalBottomSheet<SubtitleSegment>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SubtitleEditorSheet(duration: _duration, fonts: fonts, initial: s),
+    );
     if (res != null) {
       _snapshot();
       res.dx = s.dx;
       res.dy = s.dy;
       res.scale = s.scale;
+      res.rotation = s.rotation;
       setState(() {
         final i = _project!.subtitles.indexOf(s);
-        _project!.subtitles[i] = res;
+        if (i >= 0) _project!.subtitles[i] = res;
         _selected = res;
-        _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
       });
     }
   }
 
-  Future<SubtitleSegment?> _openSheet(SubtitleSegment initial) {
-    final fonts = context.read<FontService>().fonts;
-    return showModalBottomSheet<SubtitleSegment>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => SubtitleEditorSheet(duration: _duration, fonts: fonts, initial: initial),
+  // Inline text bar (docked above the keyboard; video + live text stay visible).
+  Widget _inlineTextEditor() {
+    final s = _selected is SubtitleSegment ? _selected as SubtitleSegment : null;
+    const colors = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5];
+    return Container(
+      color: _kPanel,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(
+          height: 34,
+          child: ListView(scrollDirection: Axis.horizontal, children: [
+            for (final c in colors)
+              GestureDetector(
+                onTap: () => setState(() => s?.color = c),
+                child: Container(
+                  width: 30, height: 30, margin: const EdgeInsets.only(right: 10),
+                  decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: s?.color == c ? _kAccent : Colors.white24, width: s?.color == c ? 3 : 1)),
+                ),
+              ),
+            _miniToggle(Icons.border_color, (s?.strokeWidth ?? 0) > 0, () => setState(() => s?.strokeWidth = (s.strokeWidth) > 0 ? 0 : 4)),
+            _miniToggle(Icons.title, s?.bgEnabled ?? false, () => setState(() => s?.bgEnabled = !(s.bgEnabled))),
+            _miniToggle(_alignIcon(s?.align ?? TextAlignH.center), true, () => setState(() => s?.align = TextAlignH.values[((s.align.index) + 1) % 3])),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _textCtl,
+              focusNode: _textFocus,
+              autofocus: true,
+              minLines: 1,
+              maxLines: 2,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              cursorColor: _kAccent,
+              textInputAction: TextInputAction.done,
+              onChanged: (v) => setState(() => s?.text = v),
+              onSubmitted: (_) => _doneTyping(),
+              decoration: InputDecoration(
+                hintText: 'Type your text…',
+                hintStyle: const TextStyle(color: Colors.white38),
+                filled: true, fillColor: Colors.white10, isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _doneTyping,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF7A59), _kAccent]), borderRadius: BorderRadius.circular(12)),
+              child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
+
+  Widget _miniToggle(IconData i, bool on, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 36, height: 30, margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(8)),
+          child: Icon(i, size: 16, color: Colors.white),
+        ),
+      );
 
   void _duplicateSelected() {
     if (_selected is! SubtitleSegment) return;
@@ -342,9 +439,13 @@ class _EditorScreenState extends State<EditorScreen> {
       body: Column(
         children: [
           Expanded(child: _canvas()),
-          _playbar(),
-          _timeline(),
-          _toolbar(),
+          if (_typing)
+            _inlineTextEditor()
+          else ...[
+            _playbar(),
+            _timeline(),
+            _toolbar(),
+          ],
         ],
       ),
     );
@@ -732,6 +833,7 @@ class _EditorScreenState extends State<EditorScreen> {
       final s = _selected as SubtitleSegment;
       tools.addAll([
         _tool(Icons.edit, 'Edit', _editSelectedSubtitle),
+        _tool(Icons.text_format, 'Font', _openStyleSheet),
         _tool(Icons.format_color_text, 'Color', () => _quickColor(s)),
         _tool(s.bgEnabled ? Icons.check_box : Icons.check_box_outline_blank, 'BG', () => _mutate(() => s.bgEnabled = !s.bgEnabled)),
         _tool(Icons.border_color, 'Outline', () => _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3)),

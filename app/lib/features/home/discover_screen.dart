@@ -13,66 +13,104 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
-  List<Clip> _all = [];
+  static const _page = 30;
+  final _scroll = ScrollController();
+  final List<Clip> _grid = [];
   List<Clip> _featured = [];
   List<Map<String, dynamic>> _cats = [];
   String? _cat;
-  bool _loading = true;
+  bool _loading = true, _loadingMore = false, _more = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _scroll.addListener(_onScroll);
+    _boot();
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  CatalogService get _cs => context.read<CatalogService>();
+
+  Future<void> _boot() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final cs = context.read<CatalogService>();
-      final all = await cs.listClips(limit: 60, sort: 'trending');
+      final featured = await _cs.listClips(featured: true, limit: 10, sort: 'trending');
       List<Map<String, dynamic>> cats = [];
       try {
-        cats = await cs.categories();
+        cats = await _cs.categories();
       } catch (_) {}
       if (!mounted) return;
       setState(() {
-        _all = all;
-        _featured = all.where((c) => c.thumb != null).take(6).toList();
+        _featured = featured.where((c) => c.thumb != null).toList();
         _cats = cats;
-        _loading = false;
       });
+      await _reloadGrid();
     } catch (e) {
-      if (mounted) setState(() {
-        _error = '$e';
-        _loading = false;
-      });
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  List<Clip> get _filtered {
-    if (_cat == null) return _all;
-    return _all.where((c) => (c.category ?? '').toLowerCase() == _cat!.toLowerCase()).toList();
+  Future<void> _reloadGrid() async {
+    setState(() {
+      _grid.clear();
+      _more = true;
+    });
+    await _loadMore();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_more) return;
+    setState(() => _loadingMore = true);
+    try {
+      final next = await _cs.listClips(category: _cat, limit: _page, offset: _grid.length, sort: 'trending');
+      if (!mounted) return;
+      setState(() {
+        _grid.addAll(next);
+        if (next.length < _page) _more = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _more = false);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _onScroll() {
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 700) _loadMore();
+  }
+
+  void _selectCat(String? c) {
+    if (_cat == c) return;
+    setState(() => _cat = c);
+    _reloadGrid();
   }
 
   void _open(List<Clip> list, int i) => context.push('/player', extra: {'clips': list, 'index': i});
 
   @override
   Widget build(BuildContext context) {
-    final grid = _filtered;
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: _load,
+          onRefresh: _boot,
           child: _loading
               ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)))
               : _error != null
-                  ? _Message('Could not load clips.', onRetry: _load)
+                  ? _Message('Could not load clips.', onRetry: _boot)
                   : CustomScrollView(
+                      controller: _scroll,
                       slivers: [
                         SliverToBoxAdapter(child: _header()),
                         if (_featured.isNotEmpty) ...[
@@ -80,16 +118,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           SliverToBoxAdapter(child: _featuredRow()),
                         ],
                         SliverToBoxAdapter(child: _catChips()),
-                        SliverToBoxAdapter(child: _sectionTitle(_cat == null ? 'All clips' : _cat!, '${grid.length} ready-to-use templates')),
+                        SliverToBoxAdapter(child: _sectionTitle(_cat == null ? 'All clips' : _cat!, _more ? 'Scroll to load more' : '${_grid.length} templates')),
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                           sliver: SliverGrid(
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.60,
                             ),
                             delegate: SliverChildBuilderDelegate(
-                              (context, i) => ClipCard(clip: grid[i], onTap: () => _open(grid, i)),
-                              childCount: grid.length,
+                              (context, i) => ClipCard(clip: _grid[i], onTap: () => _open(_grid, i)),
+                              childCount: _grid.length,
+                            ),
+                          ),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 8, bottom: 90),
+                            child: Center(
+                              child: _more
+                                  ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFFFF4D6D)))
+                                  : Text('That\'s all ${_grid.length} clips', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                             ),
                           ),
                         ),
@@ -157,9 +205,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         itemCount: chips.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
-          final on = _cat == chips[i].$1 || (i == 0 && _cat == null);
+          final on = _cat == chips[i].$1;
           return GestureDetector(
-            onTap: () => setState(() => _cat = chips[i].$1),
+            onTap: () => _selectCat(chips[i].$1),
             child: Container(
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 16),
