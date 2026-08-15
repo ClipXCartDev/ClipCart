@@ -37,6 +37,7 @@ class ClipOut(BaseModel):
     is_featured: bool
     downloads: int
     review_note: str | None = None
+    thumb: str | None = None
     created_at: datetime
 
 
