@@ -22,11 +22,16 @@ class ExportService {
     final trimmed = p.trimStart > 0.01 || p.outEnd < p.duration - 0.01;
     final off = p.trimStart;
 
-    // Render each subtitle to a PNG at video-pixel size.
+    // Render each VISIBLE subtitle to a PNG at video-pixel size.
+    final texts = <SubtitleSegment>[];
     final textPaths = <String>[];
     for (var i = 0; i < p.subtitles.length; i++) {
-      textPaths.add(await TextRenderService.renderToPng(p.subtitles[i], i));
+      final s = p.subtitles[i];
+      if (s.hidden) continue;
+      texts.add(s);
+      textPaths.add(await TextRenderService.renderToPng(s, i));
     }
+    final hasLogo = p.logoPath != null && !p.logoHidden;
 
     // Aspect crop (center).
     String cropFilter = 'null';
@@ -45,7 +50,7 @@ class ExportService {
     parts.addAll(['-i', '"${p.baseClipPath}"']);
     int idx = 1;
     int? logoIdx;
-    if (p.logoPath != null) {
+    if (hasLogo) {
       parts.addAll(['-i', '"${p.logoPath}"']);
       logoIdx = idx++;
     }
@@ -55,26 +60,33 @@ class ExportService {
       textIdx.add(idx++);
     }
 
+    // Overlay list sorted by z (ascending → highest z composited last = on top).
+    final ovs = <Map<String, dynamic>>[
+      if (hasLogo) {'z': p.logoZ, 'logo': true, 'ii': logoIdx},
+      for (var i = 0; i < texts.length; i++) {'z': texts[i].z, 'logo': false, 'ii': textIdx[i], 'seg': texts[i]},
+    ]..sort((a, b) => (a['z'] as double).compareTo(b['z'] as double));
+
     // Filtergraph (no spaces; commas inside filter args escaped as \,).
     final fc = StringBuffer()
       ..write('[0:v]')
       ..write(cropFilter)
       ..write('[bg];');
     String cur = 'bg';
-    if (logoIdx != null) {
-      fc.write("[$logoIdx:v][$cur]scale2ref=w='main_w*${_f(0.18 * p.logoScale)}':h=-1[lg][bg2];");
-      fc.write('[lg]rotate=${_f(p.logoRotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[lgr];');
-      fc.write("[bg2][lgr]overlay=x='main_w*${_f(p.logoDx)}-overlay_w/2':y='main_h*${_f(p.logoDy)}-overlay_h/2'[lo];");
-      cur = 'lo';
-    }
-    for (var i = 0; i < textIdx.length; i++) {
-      final s = p.subtitles[i];
-      final ii = textIdx[i];
-      final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
-      final en = (s.end - off) < st ? st : (s.end - off);
-      fc.write('[$ii:v]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[t$i];');
-      fc.write("[$cur][t$i]overlay=x='main_w*${_f(s.dx)}-overlay_w/2':y='main_h*${_f(s.dy)}-overlay_h/2':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[c$i];");
-      cur = 'c$i';
+    for (var k = 0; k < ovs.length; k++) {
+      final o = ovs[k];
+      final ii = o['ii'] as int;
+      if (o['logo'] == true) {
+        fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(0.18 * p.logoScale)}':h=-1[lg$k][bgl$k];");
+        fc.write('[lg$k]rotate=${_f(p.logoRotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[lgr$k];');
+        fc.write("[bgl$k][lgr$k]overlay=x='main_w*${_f(p.logoDx)}-overlay_w/2':y='main_h*${_f(p.logoDy)}-overlay_h/2'[o$k];");
+      } else {
+        final s = o['seg'] as SubtitleSegment;
+        final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
+        final en = (s.end - off) < st ? st : (s.end - off);
+        fc.write('[$ii:v]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[t$k];');
+        fc.write("[$cur][t$k]overlay=x='main_w*${_f(s.dx)}-overlay_w/2':y='main_h*${_f(s.dy)}-overlay_h/2':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
+      }
+      cur = 'o$k';
     }
     fc.write('[$cur]null[vout]');
 

@@ -22,6 +22,8 @@ class SubtitleSegment {
     this.bgEnabled = true,
     this.bgColor = 0x80000000,
     this.align = TextAlignH.center,
+    this.z = 0,
+    this.hidden = false,
   });
 
   String text;
@@ -40,6 +42,8 @@ class SubtitleSegment {
   bool bgEnabled; // background box behind text
   int bgColor; // ARGB box color (alpha honoured)
   TextAlignH align;
+  double z; // stacking order (higher = on top)
+  bool hidden; // layer visibility
 
   double get effectiveSize => fontSize * scale;
   Color get uiColor => Color(color);
@@ -48,13 +52,13 @@ class SubtitleSegment {
         text: text, start: start, end: end, fontFamily: fontFamily,
         fontFilePath: fontFilePath, color: color, fontSize: fontSize, dx: dx, dy: dy,
         scale: scale, rotation: rotation, strokeWidth: strokeWidth, strokeColor: strokeColor,
-        bgEnabled: bgEnabled, bgColor: bgColor, align: align,
+        bgEnabled: bgEnabled, bgColor: bgColor, align: align, z: z, hidden: hidden,
       );
 
   Map<String, dynamic> toJson() => {
         't': text, 's': start, 'e': end, 'ff': fontFamily, 'fp': fontFilePath,
         'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
-        'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index,
+        'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index, 'z': z, 'hid': hidden,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -65,6 +69,7 @@ class SubtitleSegment {
         strokeWidth: (j['sw'] as num?)?.toDouble() ?? 0,
         strokeColor: (j['scol'] as int?) ?? 0xFF000000, bgEnabled: (j['bg'] as bool?) ?? true,
         bgColor: (j['bgc'] as int?) ?? 0x80000000, align: TextAlignH.values[(j['al'] as int?) ?? 1],
+        z: (j['z'] as num?)?.toDouble() ?? 0, hidden: (j['hid'] as bool?) ?? false,
       );
 }
 
@@ -95,6 +100,8 @@ class EditorProject {
     this.logoDy = 0.10,
     this.logoScale = 1.0,
     this.logoRotation = 0.0,
+    this.logoZ = 1000,
+    this.logoHidden = false,
     this.trimStart = 0.0,
     this.trimEnd,
     this.duration = 0.0,
@@ -109,6 +116,8 @@ class EditorProject {
   double logoDy; // 0..1 center Y
   double logoScale; // multiplier on base logo width (base = 18% of canvas)
   double logoRotation; // radians
+  double logoZ; // stacking order
+  bool logoHidden; // layer visibility
   double trimStart; // seconds
   double? trimEnd; // seconds (null = clip end)
   double duration; // full clip duration seconds
@@ -125,7 +134,7 @@ class EditorProject {
   Map<String, dynamic> snapshot() => {
         'subs': subtitles.map((s) => s.toJson()).toList(),
         'logoPath': logoPath, 'logoDx': logoDx, 'logoDy': logoDy,
-        'logoScale': logoScale, 'logoRotation': logoRotation,
+        'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
       };
 
@@ -136,6 +145,8 @@ class EditorProject {
     logoDy = (s['logoDy'] as num).toDouble();
     logoScale = (s['logoScale'] as num).toDouble();
     logoRotation = (s['logoRotation'] as num).toDouble();
+    logoZ = (s['logoZ'] as num?)?.toDouble() ?? 1000;
+    logoHidden = (s['logoHidden'] as bool?) ?? false;
     trimStart = (s['trimStart'] as num).toDouble();
     trimEnd = (s['trimEnd'] as num?)?.toDouble();
     aspect = AspectOption.all[s['aspect'] as int];

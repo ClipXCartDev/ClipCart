@@ -163,9 +163,17 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   // ---------- subtitle ops (inline, CapCut-style — video stays visible) ----------
+  double _topZ() {
+    var m = _project!.logoPath != null ? _project!.logoZ : 0.0;
+    for (final s in _project!.subtitles) {
+      if (s.z > m) m = s.z;
+    }
+    return m + 1;
+  }
+
   void _addSubtitle() {
     _snapshot();
-    final seg = SubtitleSegment(text: '', start: _t, end: (_t + 3).clamp(0, _duration));
+    final seg = SubtitleSegment(text: '', start: _t, end: (_t + 3).clamp(0, _duration), z: _topZ());
     setState(() {
       _project!.subtitles.add(seg);
       _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
@@ -223,6 +231,134 @@ class _EditorScreenState extends State<EditorScreen> {
         _selected = res;
       });
     }
+  }
+
+  // ---------- layers panel (CapCut-style: reorder z, select, hide, delete) ----------
+  void _openLayers() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(builder: (ctx, setSheet) {
+        final ordered = <MapEntry<double, Object>>[
+          for (final s in _project!.subtitles) MapEntry(s.z, s),
+          if (_project!.logoPath != null) MapEntry(_project!.logoZ, 'logo'),
+        ]..sort((a, b) => b.key.compareTo(a.key)); // top layer first
+
+        void reassign() {
+          for (var i = 0; i < ordered.length; i++) {
+            final z = (ordered.length - i).toDouble();
+            final it = ordered[i].value;
+            if (it is SubtitleSegment) {
+              it.z = z;
+            } else {
+              _project!.logoZ = z;
+            }
+          }
+        }
+
+        Widget rowFor(Object it) {
+          final isLogo = it == 'logo';
+          final s = it is SubtitleSegment ? it : null;
+          final hidden = isLogo ? _project!.logoHidden : (s?.hidden ?? false);
+          final selected = isLogo ? _selected == 'logo' : identical(_selected, s);
+          return Container(
+            key: isLogo ? const ValueKey('logo') : ObjectKey(s),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: selected ? _kAccent.withOpacity(0.18) : _kChip,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: selected ? _kAccent : Colors.transparent),
+            ),
+            child: ListTile(
+              dense: true,
+              leading: Container(
+                width: 34, height: 34,
+                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+                child: Icon(isLogo ? Icons.image_outlined : Icons.title, color: Colors.white70, size: 18),
+              ),
+              title: Text(isLogo ? 'Logo' : (s!.text.trim().isEmpty ? 'Text' : s.text),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: hidden ? Colors.white38 : Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              onTap: () {
+                setState(() => _selected = isLogo ? 'logo' : s);
+                Navigator.pop(context);
+              },
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.white54, size: 20),
+                  onPressed: () {
+                    _snapshot();
+                    setState(() {
+                      if (isLogo) {
+                        _project!.logoHidden = !_project!.logoHidden;
+                      } else {
+                        s!.hidden = !s.hidden;
+                      }
+                    });
+                    setSheet(() {});
+                  },
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF04438), size: 20),
+                  onPressed: () {
+                    _snapshot();
+                    setState(() {
+                      if (isLogo) {
+                        _project!.logoPath = null;
+                      } else {
+                        _project!.subtitles.remove(s);
+                      }
+                      if (identical(_selected, it) || (isLogo && _selected == 'logo')) _selected = null;
+                    });
+                    setSheet(() {});
+                  },
+                ),
+                const Icon(Icons.drag_handle_rounded, color: Colors.white30),
+              ]),
+            ),
+          );
+        }
+
+        return Container(
+          decoration: const BoxDecoration(color: _kPanel, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          padding: const EdgeInsets.fromLTRB(14, 16, 14, 22),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(9)))),
+            const SizedBox(height: 14),
+            Row(children: const [
+              Text('Layers', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              Spacer(),
+              Text('Drag to reorder', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            ]),
+            const SizedBox(height: 8),
+            if (ordered.isEmpty)
+              const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No layers yet.\nAdd text or a logo.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))))
+            else
+              Flexible(
+                child: ReorderableListView(
+                  shrinkWrap: true,
+                  buildDefaultDragHandles: true,
+                  onReorder: (oldI, newI) {
+                    _snapshot();
+                    setSheet(() {
+                      if (newI > oldI) newI--;
+                      final it = ordered.removeAt(oldI);
+                      ordered.insert(newI, it);
+                      reassign();
+                    });
+                    setState(() {});
+                  },
+                  children: [for (final e in ordered) rowFor(e.value)],
+                ),
+              ),
+          ]),
+        );
+      }),
+    );
   }
 
   // Inline text bar (docked above the keyboard; video + live text stay visible).
@@ -470,7 +606,11 @@ class _EditorScreenState extends State<EditorScreen> {
               valueListenable: _vc!,
               builder: (context, v, _) {
                 final t = v.position.inMilliseconds / 1000.0;
-                final subs = _project!.subtitles.where((s) => identical(_selected, s) || (t >= s.start && t <= s.end));
+                final subs = _project!.subtitles.where((s) => !s.hidden && (identical(_selected, s) || (t >= s.start && t <= s.end)));
+                final overlays = <MapEntry<double, Widget>>[
+                  for (final s in subs) MapEntry(s.z, _subOverlay(s, w, h, scale)),
+                  if (_project!.logoPath != null && !_project!.logoHidden) MapEntry(_project!.logoZ, _logoOverlay(w, h)),
+                ]..sort((a, b) => a.key.compareTo(b.key));
                 return Stack(
                   key: _canvasKey,
                   fit: StackFit.expand,
@@ -483,8 +623,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       child: VideoPlayer(_vc!),
                     ),
                     if (_project!.aspect.ratio != null) _cropGuide(w, h),
-                    for (final s in subs) _subOverlay(s, w, h, scale),
-                    if (_project!.logoPath != null) _logoOverlay(w, h),
+                    ...overlays.map((e) => e.value),
                     if (_snapX) Positioned(left: w / 2 - 0.5, top: 0, bottom: 0, child: const IgnorePointer(child: SizedBox(width: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
                     if (_snapY) Positioned(top: h / 2 - 0.5, left: 0, right: 0, child: const IgnorePointer(child: SizedBox(height: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
                     if (_hint != null)
@@ -716,6 +855,8 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
             Text('${_fmt(v.position)} / ${_fmt(v.duration)}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
             const Spacer(),
+            _pill('Layers', Icons.layers_rounded, _openLayers),
+            const SizedBox(width: 8),
             _pill(_project!.aspect.label, Icons.crop, _pickAspect),
             const SizedBox(width: 8),
             _pill(_trimMode ? 'Trim ✓' : 'Trim', Icons.content_cut, () => setState(() => _trimMode = !_trimMode), on: _trimMode),
