@@ -36,21 +36,19 @@ def verify_google_token(id_token: str) -> GoogleIdentity:
             settings.GOOGLE_CLIENT_ID or None,
         )
     except Exception as exc:  # noqa: BLE001 - normalise to our error type
-        try:  # TEMP diagnostic: log token aud vs expected
+        try:  # TEMP diagnostic
             import base64
             import json
-            import logging
             seg = id_token.split(".")[1]
             seg += "=" * (-len(seg) % 4)
             claims = json.loads(base64.urlsafe_b64decode(seg))
-            logging.getLogger("uvicorn.error").warning(
-                "GOOGLE_VERIFY_FAIL aud=%s iss=%s azp=%s expected=%s err=%s",
-                claims.get("aud"), claims.get("iss"), claims.get("azp"), settings.GOOGLE_CLIENT_ID, exc,
-            )
+            print(f"GOOGLE_VERIFY_FAIL aud={claims.get('aud')} iss={claims.get('iss')} "
+                  f"azp={claims.get('azp')} expected={settings.GOOGLE_CLIENT_ID} err={exc}", flush=True)
         except Exception:  # pragma: no cover
-            pass
+            print(f"GOOGLE_VERIFY_FAIL (no-decode) err={exc}", flush=True)
         raise GoogleAuthError(str(exc)) from exc
 
+    print(f"GOOGLE_VERIFY_OK email={info.get('email')} email_verified={info.get('email_verified')!r} aud={info.get('aud')}", flush=True)
     if not info.get("email_verified", False):
         raise GoogleAuthError("email not verified by Google")
 
