@@ -86,6 +86,20 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     if (mounted) setState(() {});
   }
 
+  /// Free ALL reels video decoders before opening the editor — otherwise the
+  /// editor's decoder + the reels current±1 decoders exhaust MediaCodec (SIGABRT
+  /// "could not create MediaCodec.BufferInfo" on larger clips). Re-init on return.
+  Future<void> _openEditor(Clip clip) async {
+    for (final c in _ctrls.values) {
+      c.dispose();
+    }
+    _ctrls.clear();
+    _loading.clear();
+    if (mounted) setState(() {});
+    await context.push('/editor', extra: clip);
+    if (mounted) _sync();
+  }
+
   Future<void> _ensure(int i) async {
     if (_ctrls.containsKey(i) || _loading[i] == true) return;
     _loading[i] = true;
@@ -198,7 +212,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
             Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(6)), child: Text('#$t', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))),
         ]),
         const SizedBox(height: 14),
-        PrimaryButton(label: 'Use template', icon: Icons.auto_awesome, onPressed: () => context.push('/editor', extra: clip)),
+        PrimaryButton(label: 'Use template', icon: Icons.auto_awesome, onPressed: () => _openEditor(clip)),
       ],
     );
   }
