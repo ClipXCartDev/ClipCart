@@ -99,7 +99,7 @@ function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" onclick="clipDe
   <div class="thumb" style="background:linear-gradient(150deg,${a},${b})">
     <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span>
     <span class="dur">${dur(c.duration_sec)}</span></div>
-  <div class="m"><div class="nm">${h(c.title)}</div><div class="by">${h(c.category||c.genre||c.language)} · ${c.downloads}</div></div></div>`;}
+  <div class="m"><div class="nm">${h(c.title)}</div><div class="by">${h(c.category||c.genre||c.language)}${c.downloads>0?' · '+c.downloads+' uses':''}</div></div></div>`;}
 function dur(s){s=s||0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 
 async function vHome(){
@@ -108,29 +108,30 @@ async function vHome(){
   catch(e){document.getElementById('tr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
 
-let _cat=null,_q='';
+let _cat=null,_q='',_cats=[];
 async function vBrowse(){
   view(`<h2 class="sec">Browse clips</h2>
    <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}" style="max-width:360px">
    <div class="chips" id="ch"></div><div class="grid" id="gr">Loading…</div>`);
-  const cats=[['All',null],['Comedy','comedy'],['Reactions','reactions'],['Movie edits','movie-edits']];
-  document.getElementById('ch').innerHTML=cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${l}</span>`).join('');
+  try{if(!_cats.length)_cats=await api('/categories');}catch(e){}
+  renderChips();
   loadBrowse();
 }
 async function loadBrowse(){
-  vBrowseChips();
+  renderChips();
   try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('limit','40');
     const r=await api('/clips?'+qs.toString());document.getElementById('gr').innerHTML=(r.items||[]).map(clipCard).join('')||'<p class="muted">No results.</p>';}
   catch(e){document.getElementById('gr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
-function vBrowseChips(){const cats=[['All',null],['Comedy','comedy'],['Reactions','reactions'],['Movie edits','movie-edits']];const el=document.getElementById('ch');if(el)el.innerHTML=cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${l}</span>`).join('');}
+function renderChips(){const el=document.getElementById('ch');if(!el)return;const list=[['All',null]].concat(_cats.map(c=>[c.name,c.slug]));el.innerHTML=list.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${h(l)}</span>`).join('');}
 
 async function clipDetail(slug){
   location.hash='#/browse';
   try{const c=await api('/clips/'+slug);const[a,b]=g(c.id);
     view(`<div style="display:grid;grid-template-columns:220px 1fr;gap:24px;padding-top:10px">
       <div style="aspect-ratio:9/16;border-radius:16px;background:linear-gradient(150deg,${a},${b})"></div>
-      <div><h1 style="margin:0 0 4px">${h(c.title)} <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span></h1>
+      <div><h1 style="margin:0 0 8px">${h(c.title)}</h1>
+      <p style="margin:0 0 6px"><span class="badge ${c.access==='pro'?'b-pro':'b-free'}" style="position:static;display:inline-block;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:900;text-transform:uppercase">${c.access}</span></p>
       <p class="muted">by ${h(c.editor_name||'creator')} · ${c.downloads} uses</p>
       <p><b>Movie:</b> ${h(c.movie_name||'—')} &nbsp; <b>Genre:</b> ${h(c.genre||'—')} &nbsp; <b>Language:</b> ${h(c.language)} &nbsp; ${dur(c.duration_sec)}</p>
       <p class="muted" style="font-size:12px;text-transform:uppercase;font-weight:800">Customize in the app</p>

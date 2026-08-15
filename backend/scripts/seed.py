@@ -44,8 +44,8 @@ customer = user("customer@clipcart.app", "Aditya", Role.customer)
 
 # plans
 if not db.query(Plan).filter_by(slug="professional").first():
-    db.add(Plan(name="Basic", slug="basic", price_usd=4, export_limit=30, quality="1080p", max_devices=1, features=["30 exports/mo"]))
-    db.add(Plan(name="Professional", slug="professional", price_usd=9, export_limit=None, quality="1080p", max_devices=2, features=["All Pro clips", "Unlimited exports", "2 devices"], sort_order=1))
+    db.add(Plan(name="Basic", slug="basic", price_usd=4, export_limit=30, quality="1080p", max_devices=1, features=["Free clips library", "No watermark"]))
+    db.add(Plan(name="Professional", slug="professional", price_usd=9, export_limit=None, quality="1080p", max_devices=2, features=["All Pro clips", "Priority new drops", "No watermark"], sort_order=1))
     db.commit()
 
 # category
