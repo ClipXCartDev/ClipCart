@@ -1,6 +1,4 @@
 # ClipCart — reverse proxy + static hosting, with automatic HTTPS.
-# 38.9.96.250.nip.io resolves to the server IP, so Caddy can get a free Let's Encrypt
-# cert (no domain purchase needed). The raw IP is still served over plain HTTP.
 (app) {
 	encode gzip
 
@@ -20,12 +18,22 @@
 	}
 }
 
-# HTTPS (auto Let's Encrypt) via the nip.io hostname
+# Primary domain (auto Let's Encrypt HTTPS)
+clipscart.app {
+	import app
+}
+
+# www -> apex (canonical)
+www.clipscart.app {
+	redir https://clipscart.app{uri} permanent
+}
+
+# nip.io hostname (kept working)
 38.9.96.250.nip.io {
 	import app
 }
 
-# Plain HTTP by raw IP (fallback / existing clients)
+# Plain HTTP by raw IP (fallback)
 http://38.9.96.250 {
 	import app
 }
