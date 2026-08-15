@@ -47,6 +47,26 @@ def list_clips(
     return ClipListOut(items=[clip_to_out(c) for c in rows], total=total, limit=limit, offset=offset)
 
 
+@router.get("/showcase")
+def showcase(db: Session = Depends(get_db)) -> dict:
+    """PUBLIC (no auth) — a few featured clips for the pre-login onboarding
+    background. Returns preview (720p) + raw (full) + thumb URLs, from R2."""
+    stmt = (
+        select(Clip)
+        .where(Clip.status == ClipStatus.approved, Clip.is_featured.is_(True), Clip.base_clip_path.isnot(None))
+        .order_by(func.random())
+        .limit(6)
+    )
+    items = []
+    for c in db.scalars(stmt).all():
+        items.append({
+            "preview": storage.presign_download(f"previews/{c.id}.mp4", expires=3600),
+            "raw": storage.presign_download(c.base_clip_path, expires=3600),
+            "thumb": storage.presign_download(f"thumbs/{c.id}.jpg", expires=3600),
+        })
+    return {"items": items}
+
+
 @router.get("/clips/{slug}", response_model=ClipOut)
 def get_clip(slug: str, db: Session = Depends(get_db)) -> ClipOut:
     clip = db.scalar(select(Clip).where(Clip.slug == slug, Clip.status == ClipStatus.approved))
