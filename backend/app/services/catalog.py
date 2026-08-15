@@ -9,8 +9,23 @@ from sqlalchemy.orm import Session
 
 from app.models import Category, Clip, ClipStatus
 from app.schemas.catalog import ClipOut
+from app.services.storage import storage
 
 SORTS = {"trending", "newest", "popular"}
+
+_THUMB_TTL = 86400  # 24h — long enough that cached pages don't break
+
+
+def _thumb_url(clip: Clip) -> str | None:
+    """Presigned GET for the clip's poster frame. Key is deterministic (thumbs/{id}.jpg);
+    the stored `thumb` column wins if present. Returns None when no base file exists."""
+    key = clip.thumb or (f"thumbs/{clip.id}.jpg" if clip.base_clip_path else None)
+    if not key:
+        return None
+    try:
+        return storage.presign_download(key, expires=_THUMB_TTL)
+    except Exception:
+        return None
 
 
 def slugify(title: str) -> str:
@@ -38,6 +53,7 @@ def clip_to_out(clip: Clip) -> ClipOut:
         is_featured=clip.is_featured,
         downloads=clip.downloads,
         review_note=clip.review_note,
+        thumb=_thumb_url(clip),
         created_at=clip.created_at,
     )
 
