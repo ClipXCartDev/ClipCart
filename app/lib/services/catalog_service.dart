@@ -30,6 +30,29 @@ class CatalogService {
     return RuntimeConfig.absolute(r.data['url'] as String);
   }
 
+  /// Download the base clip for EDITING via the free preview URL (no quota/gate,
+  /// no download recorded — editing is free; the export is what's gated).
+  /// Atomic (tmp → rename) so a failed download never leaves a corrupt cache.
+  /// `fresh: true` forces a re-download (used to recover from a bad cache).
+  Future<String> editClipFile(String clipId, {bool fresh = false}) async {
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/base_$clipId.mp4';
+    final f = File(path);
+    if (fresh && await f.exists()) await f.delete();
+    if (!fresh && await f.exists() && await f.length() > 0) return path;
+    final url = await previewUrl(clipId);
+    final tmp = '$path.tmp';
+    await Dio().download(url, tmp);
+    await File(tmp).rename(path);
+    return path;
+  }
+
+  /// Gate + record one export (Pro-access + monthly quota). Call on export, not on
+  /// editor open. Throws DioException (402 = subscribe / quota) if not allowed.
+  Future<void> recordExport(String clipId) async {
+    await api.dio.post('/clips/$clipId/download-url');
+  }
+
   Future<List<Clip>> listClips({
     String? q,
     String? category,

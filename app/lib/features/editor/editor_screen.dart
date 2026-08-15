@@ -70,16 +70,26 @@ class _EditorScreenState extends State<EditorScreen> {
       _defaultFont = '';
     }
     if (widget.clip != null) {
-      try {
-        final path = await context.read<CatalogService>().downloadClipFile(widget.clip!.id);
-        await _load(path);
-      } catch (e) {
-        _error = (e is DioException && e.response?.statusCode == 402)
-            ? 'Subscribe to use Pro clips'
-            : 'Could not load the clip';
+      final cs = context.read<CatalogService>();
+      // attempt 0 uses any cache; attempt 1 forces a fresh re-download (recovers
+      // from a corrupt/partial cache or a transient failure).
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          final path = await cs.editClipFile(widget.clip!.id, fresh: attempt > 0);
+          await _load(path);
+          _error = null;
+          break;
+        } catch (_) {
+          _error = 'Could not load the clip. Check your connection and retry.';
+        }
       }
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _retry() async {
+    setState(() => _error = null);
+    await _init();
   }
 
   Future<void> _pickClip() async {
@@ -224,6 +234,19 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _export() async {
+    // Gate (Pro-access + monthly quota) at export time, not on editor open.
+    if (widget.clip != null) {
+      try {
+        await context.read<CatalogService>().recordExport(widget.clip!.id);
+      } on DioException catch (e) {
+        final detail = e.response?.data is Map ? (e.response!.data['detail']) : null;
+        final msg = e.response?.statusCode == 402
+            ? (detail is Map && detail['message'] != null ? detail['message'].toString() : 'Subscribe to export this clip')
+            : 'Could not start export. Try again.';
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        return;
+      }
+    }
     setState(() => _busy = true);
     showDialog(
       context: context,
@@ -277,8 +300,14 @@ class _EditorScreenState extends State<EditorScreen> {
           child: _defaultFont == null
               ? const CircularProgressIndicator(color: _kAccent)
               : Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(_error ?? 'Loading…', style: const TextStyle(color: Colors.white70)),
-                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(_error ?? 'Loading…', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                  ),
+                  const SizedBox(height: 14),
+                  if (_error != null && widget.clip != null)
+                    SizedBox(width: 220, child: PrimaryButton(label: 'Retry', icon: Icons.refresh, onPressed: _retry)),
+                  if (_error != null && widget.clip != null) const SizedBox(height: 10),
                   SizedBox(width: 220, child: PrimaryButton(label: 'Choose video', icon: Icons.video_library, onPressed: _pickClip)),
                 ]),
         ),
