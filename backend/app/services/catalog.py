@@ -28,6 +28,17 @@ def _thumb_url(clip: Clip) -> str | None:
         return None
 
 
+def _preview_url(clip: Clip) -> str | None:
+    """Presigned GET for the 720p muted-preview (reels/web hover). Public-safe —
+    viewing is free; the gate is on export/customization."""
+    if not clip.base_clip_path:
+        return None
+    try:
+        return storage.presign_download(f"previews/{clip.id}.mp4", expires=_THUMB_TTL)
+    except Exception:
+        return None
+
+
 def slugify(title: str) -> str:
     base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:40] or "clip"
     return f"{base}-{uuid.uuid4().hex[:6]}"
@@ -54,6 +65,7 @@ def clip_to_out(clip: Clip) -> ClipOut:
         downloads=clip.downloads,
         review_note=clip.review_note,
         thumb=_thumb_url(clip),
+        preview=_preview_url(clip),
         created_at=clip.created_at,
     )
 
