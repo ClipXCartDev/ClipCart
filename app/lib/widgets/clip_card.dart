@@ -67,7 +67,7 @@ class ClipCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(clip.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  Text('${clip.category ?? clip.genre ?? clip.language} · ${clip.downloads}',
+                  Text('${clip.category ?? clip.genre ?? clip.language}${clip.downloads > 0 ? ' · ${clip.downloads} uses' : ''}',
                       maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                 ],
               ),

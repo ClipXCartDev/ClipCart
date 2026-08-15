@@ -50,6 +50,14 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
         GoRoute(path: '/clip/:slug', builder: (c, s) => ClipPlayerScreen(slug: s.pathParameters['slug']!)),
         GoRoute(
+          path: '/player',
+          builder: (c, s) {
+            final m = s.extra as Map<String, dynamic>?;
+            final clips = (m?['clips'] as List?)?.cast<Clip>() ?? const <Clip>[];
+            return ReelsPlayerScreen(clips: clips, startIndex: (m?['index'] as int?) ?? 0);
+          },
+        ),
+        GoRoute(
           path: '/editor',
           builder: (c, s) {
             final clip = s.extra is Clip ? s.extra as Clip : null;

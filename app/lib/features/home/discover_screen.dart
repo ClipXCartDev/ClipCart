@@ -59,7 +59,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               itemCount: clips.length,
               itemBuilder: (context, i) => ClipCard(
                 clip: clips[i],
-                onTap: () => context.push('/clip/${clips[i].slug}'),
+                onTap: () => context.push('/player', extra: {'clips': clips, 'index': i}),
               ),
             );
           },

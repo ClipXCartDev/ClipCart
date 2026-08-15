@@ -24,6 +24,12 @@ class CatalogService {
     return path;
   }
 
+  /// Presigned muted-preview URL for the reels player (no download recorded).
+  Future<String> previewUrl(String clipId) async {
+    final r = await api.dio.post('/clips/$clipId/preview-url');
+    return RuntimeConfig.absolute(r.data['url'] as String);
+  }
+
   Future<List<Clip>> listClips({
     String? q,
     String? category,
