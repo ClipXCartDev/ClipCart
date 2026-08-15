@@ -14,6 +14,7 @@ class Clip {
     required this.layers,
     this.status,
     this.reviewNote,
+    this.thumb,
   });
 
   final String id;
@@ -30,6 +31,7 @@ class Clip {
   final List<String> layers;
   final String? status; // pending | approved | rejected | changes (creator view)
   final String? reviewNote;
+  final String? thumb; // presigned poster-frame URL
 
   bool get isPro => access == 'pro';
 
@@ -53,5 +55,6 @@ class Clip {
         layers: ((j['layers'] ?? []) as List).map((e) => e.toString()).toList(),
         status: j['status'] as String?,
         reviewNote: j['review_note'] as String?,
+        thumb: j['thumb'] as String?,
       );
 }

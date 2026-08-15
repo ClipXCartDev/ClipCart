@@ -34,6 +34,15 @@ class ClipCard extends StatelessWidget {
               child: Stack(
                 children: [
                   Container(decoration: BoxDecoration(gradient: LinearGradient(colors: g, begin: Alignment.topLeft, end: Alignment.bottomRight))),
+                  if (clip.thumb != null)
+                    Positioned.fill(
+                      child: Image.network(
+                        clip.thumb!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        loadingBuilder: (ctx, child, prog) => prog == null ? child : const SizedBox.shrink(),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     left: 8,
