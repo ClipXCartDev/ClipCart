@@ -36,6 +36,19 @@ def verify_google_token(id_token: str) -> GoogleIdentity:
             settings.GOOGLE_CLIENT_ID or None,
         )
     except Exception as exc:  # noqa: BLE001 - normalise to our error type
+        try:  # TEMP diagnostic: log token aud vs expected
+            import base64
+            import json
+            import logging
+            seg = id_token.split(".")[1]
+            seg += "=" * (-len(seg) % 4)
+            claims = json.loads(base64.urlsafe_b64decode(seg))
+            logging.getLogger("uvicorn.error").warning(
+                "GOOGLE_VERIFY_FAIL aud=%s iss=%s azp=%s expected=%s err=%s",
+                claims.get("aud"), claims.get("iss"), claims.get("azp"), settings.GOOGLE_CLIENT_ID, exc,
+            )
+        except Exception:  # pragma: no cover
+            pass
         raise GoogleAuthError(str(exc)) from exc
 
     if not info.get("email_verified", False):
