@@ -10,9 +10,12 @@
 		reverse_proxy api:8000
 	}
 
-	# Everything else -> static files (/, /admin/, /web/, /downloads/)
+	# Everything else -> static files. Domain root shows the customer web app
+	# (the product) — NOT the internal design deck.
 	handle {
 		root * /srv
+		@root path /
+		rewrite @root /web/index.html
 		file_server
 	}
 }
