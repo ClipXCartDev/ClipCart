@@ -143,19 +143,32 @@ async function vHome(){
 }
 
 let _cat=null,_q='',_cats=[];
+let _off=0,_more=true,_bz=false;
 async function vBrowse(){
-  view(`<h2 class="sec">Browse clips</h2>
-   <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}" style="max-width:360px">
-   <div class="chips" id="ch"></div><div class="grid" id="gr">Loading…</div>`);
+  view(`<h2 class="sec">Browse clips</h2><p class="subsec">Every ready-to-use template, always fresh</p>
+   <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}" style="max-width:420px">
+   <div class="chips" id="ch"></div><div class="grid" id="gr"></div>
+   <div id="more" style="text-align:center;padding:26px 0;color:var(--muted);font-size:13px"></div>`);
   try{if(!_cats.length)_cats=await api('/categories');}catch(e){}
   renderChips();
+  window.onscroll=()=>{ if(location.hash.startsWith('#/browse') && _more && !_bz && (window.innerHeight+window.scrollY)>=document.body.offsetHeight-800) loadMore(); };
   loadBrowse();
 }
-async function loadBrowse(){
-  renderChips();
-  try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('limit','40');
-    const r=await api('/clips?'+qs.toString());document.getElementById('gr').innerHTML=(r.items||[]).map(clipCard).join('')||'<p class="muted">No results.</p>';}
-  catch(e){document.getElementById('gr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+async function loadBrowse(){ // reset + first page (called on category/search change)
+  _off=0;_more=true;renderChips();
+  const gr=document.getElementById('gr'); if(gr)gr.innerHTML='';
+  await loadMore();
+}
+async function loadMore(){
+  if(_bz||!_more)return; _bz=true;
+  const more=document.getElementById('more'); if(more)more.innerHTML='Loading…';
+  try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('limit','30');qs.set('offset',_off);
+    const r=await api('/clips?'+qs.toString());const items=r.items||[];
+    document.getElementById('gr').insertAdjacentHTML('beforeend',items.map(clipCard).join(''));
+    _off+=items.length; if(items.length<30)_more=false;
+    if(more)more.innerHTML=_more?'':(_off?`That's all ${_off} clips`:'No results.');
+  }catch(e){if(more)more.innerHTML='<span class="err">'+h(e.message)+'</span>';_more=false;}
+  finally{_bz=false;}
 }
 function renderChips(){const el=document.getElementById('ch');if(!el)return;const list=[['All',null]].concat(_cats.map(c=>[c.name,c.slug]));el.innerHTML=list.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${h(l)}</span>`).join('');}
 
