@@ -40,6 +40,7 @@ h2.sec{font-size:clamp(20px,2.4vw,28px);font-weight:900;letter-spacing:-.02em;ma
 .tpl{background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;cursor:pointer;box-shadow:0 1px 2px rgba(30,20,40,.04);transition:transform .16s,box-shadow .16s}
 .tpl:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
 .tpl .thumb{aspect-ratio:3/4;position:relative;display:flex;align-items:flex-end;padding:10px;background-size:cover;background-position:center}
+.tpl .pv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .3s;z-index:1;background:#000}
 .tpl .thumb:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.35));opacity:0;transition:.16s}
 .tpl:hover .thumb:after{opacity:1}
 .tpl .play{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transition:.16s;z-index:3}
@@ -120,11 +121,14 @@ function logout(){TOKEN='';ME=null;localStorage.removeItem('cc_web');renderNav()
 function go(v){location.hash='#/'+v;({home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount}[v]||vHome)();}
 
 function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" onclick="clipDetail('${c.slug}')">
-  <div class="thumb" style="background:${c.thumb?`url('${c.thumb}')`:`linear-gradient(150deg,${a},${b})`};background-size:cover;background-position:center">
+  <div class="thumb" onmouseenter="playPrev(this)" onmouseleave="stopPrev(this)" data-prev="${c.preview||''}" style="background:${c.thumb?`url('${c.thumb}')`:`linear-gradient(150deg,${a},${b})`};background-size:cover;background-position:center">
+    ${c.preview?`<video class="pv" muted loop playsinline preload="none"></video>`:''}
     <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span>
     <span class="dur">${dur(c.duration_sec)}</span>
     <div class="play"><span><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></div></div>
   <div class="m"><div class="nm">${h(c.title)}</div><div class="by">${h(c.category||c.genre||c.language)}${c.downloads>0?' · '+c.downloads+' uses':''}</div></div></div>`;}
+function playPrev(el){const url=el.dataset.prev;if(!url)return;const v=el.querySelector('.pv');if(!v)return;if(!v.src)v.src=url;v.style.opacity=1;v.play().catch(()=>{});}
+function stopPrev(el){const v=el.querySelector('.pv');if(v){v.pause();v.style.opacity=0;}}
 function dur(s){s=s||0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 
 async function vHome(){
@@ -176,7 +180,11 @@ async function clipDetail(slug){
   location.hash='#/browse';
   try{const c=await api('/clips/'+slug);const[a,b]=g(c.id);
     view(`<div style="display:grid;grid-template-columns:220px 1fr;gap:24px;padding-top:10px">
-      <div style="aspect-ratio:9/16;border-radius:16px;overflow:hidden;position:relative;background:linear-gradient(150deg,${a},${b})">${c.thumb?`<img src="${c.thumb}" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:''}</div>
+      <div style="aspect-ratio:9/16;border-radius:16px;overflow:hidden;position:relative;background:#000;box-shadow:var(--shadow)">
+        ${c.preview?`<video id="dv" src="${c.preview}" autoplay muted loop playsinline poster="${c.thumb||''}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
+        <button onclick="var v=document.getElementById('dv');v.muted=!v.muted;this.textContent=v.muted?'🔇':'🔊'" style="position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:22px;padding:8px 13px;font-size:15px;cursor:pointer;backdrop-filter:blur(6px)">🔇</button>`
+        :(c.thumb?`<img src="${c.thumb}" onerror="this.remove()" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<div style="position:absolute;inset:0;background:linear-gradient(150deg,${a},${b})"></div>`)}
+      </div>
       <div><h1 style="margin:0 0 8px">${h(c.title)}</h1>
       <p style="margin:0 0 6px"><span class="badge ${c.access==='pro'?'b-pro':'b-free'}" style="position:static;display:inline-block;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:900;text-transform:uppercase">${c.access}</span></p>
       <p class="muted">by ${h(c.editor_name||'creator')} · ${c.downloads} uses</p>
