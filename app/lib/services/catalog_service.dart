@@ -30,17 +30,19 @@ class CatalogService {
     return RuntimeConfig.absolute(r.data['url'] as String);
   }
 
-  /// Download the base clip for EDITING via the free preview URL (no quota/gate,
-  /// no download recorded — editing is free; the export is what's gated).
-  /// Atomic (tmp → rename) so a failed download never leaves a corrupt cache.
-  /// `fresh: true` forces a re-download (used to recover from a bad cache).
+  /// Download the FULL-QUALITY raw base clip for EDITING (not the 720p reels
+  /// preview) — editing + export must be high quality. Free (no quota/record);
+  /// the gate is on export. Atomic (tmp → rename) so a failed download never
+  /// leaves a corrupt cache. `fresh: true` forces a re-download.
   Future<String> editClipFile(String clipId, {bool fresh = false}) async {
     final dir = await getTemporaryDirectory();
     final path = '${dir.path}/base_$clipId.mp4';
     final f = File(path);
     if (fresh && await f.exists()) await f.delete();
     if (!fresh && await f.exists() && await f.length() > 0) return path;
-    final url = await previewUrl(clipId);
+    final r = await api.dio.post('/clips/$clipId/preview-url');
+    // 'raw' = full-quality original; 'url' = 720p preview (reels). Editor uses raw.
+    final url = RuntimeConfig.absolute((r.data['raw'] ?? r.data['url']) as String);
     final tmp = '$path.tmp';
     await Dio().download(url, tmp);
     await File(tmp).rename(path);
