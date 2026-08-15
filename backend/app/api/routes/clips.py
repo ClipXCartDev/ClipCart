@@ -120,6 +120,20 @@ def download_url(
     return {"url": storage.presign_download(clip.base_clip_path), "downloads": clip.downloads}
 
 
+@router.post("/clips/{clip_id}/preview-url")
+def preview_url(
+    clip_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Presigned GET for muted in-app preview (reels player). No download recorded,
+    no quota/access gate — viewing is free; the gate is on export/customization."""
+    clip = _approved_clip(db, clip_id)
+    if not clip.base_clip_path:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="Clip has no uploaded file")
+    return {"url": storage.presign_download(clip.base_clip_path, expires=3600)}
+
+
 @router.get("/me/downloads", response_model=list[DownloadOut])
 def my_downloads(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[DownloadOut]:
     rows = db.execute(
