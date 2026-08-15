@@ -230,8 +230,14 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           for (final t in [clip.category ?? clip.genre ?? 'clip', clip.language, clip.durationLabel])
             Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(6)), child: Text('#$t', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))),
         ]),
-        const SizedBox(height: 14),
-        PrimaryButton(label: 'Use template', icon: Icons.auto_awesome, onPressed: () => _openEditor(clip)),
+        const SizedBox(height: 12),
+        Row(children: [
+          const Icon(Icons.lock_outline_rounded, color: Colors.white70, size: 14),
+          const SizedBox(width: 5),
+          Text('Preview quality · full HD unlocks in the editor', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 11.5, fontWeight: FontWeight.w600)),
+        ]),
+        const SizedBox(height: 10),
+        PrimaryButton(label: 'Use template · Unlock HD', icon: Icons.auto_awesome, onPressed: () => _openEditor(clip)),
       ],
     );
   }
