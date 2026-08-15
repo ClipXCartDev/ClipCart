@@ -126,12 +126,14 @@ def preview_url(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Presigned GET for muted in-app preview (reels player). No download recorded,
-    no quota/access gate — viewing is free; the gate is on export/customization."""
+    """Presigned GET for the optimized in-app preview (reels player) — a small 720p
+    H.264+AAC transcode (fast streaming, real audio). Falls back to the raw base clip
+    if no preview exists. No download recorded, no quota — viewing is free."""
     clip = _approved_clip(db, clip_id)
     if not clip.base_clip_path:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Clip has no uploaded file")
-    return {"url": storage.presign_download(clip.base_clip_path, expires=3600)}
+    key = f"previews/{clip.id}.mp4"
+    return {"url": storage.presign_download(key, expires=3600), "raw": storage.presign_download(clip.base_clip_path, expires=3600)}
 
 
 @router.get("/me/downloads", response_model=list[DownloadOut])
