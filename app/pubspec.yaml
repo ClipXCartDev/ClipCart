@@ -40,3 +40,4 @@ flutter:
   assets:
     - assets/fonts/   # place a default Roboto.ttf here (see app/README.md)
     - assets/icon/
+    - assets/video/

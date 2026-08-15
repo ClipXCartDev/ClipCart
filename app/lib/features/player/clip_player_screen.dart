@@ -46,6 +46,14 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   late int _current;
   final Map<int, VideoPlayerController> _ctrls = {};
   final Map<int, bool> _loading = {};
+  bool _muted = true;
+
+  void _toggleMute() {
+    setState(() => _muted = !_muted);
+    for (final c in _ctrls.values) {
+      c.setVolume(_muted ? 0 : 1);
+    }
+  }
 
   @override
   void initState() {
@@ -108,7 +116,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       final c = VideoPlayerController.networkUrl(Uri.parse(url));
       await c.initialize();
       await c.setLooping(true);
-      await c.setVolume(0);
+      await c.setVolume(_muted ? 0 : 1);
       if (!mounted) {
         c.dispose();
         return;
@@ -183,7 +191,18 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
             ),
           ),
           Positioned(left: 16, right: 16, bottom: 24, child: _meta(clip)),
-          const Positioned(right: 12, top: 60, child: Icon(Icons.volume_off_rounded, color: Colors.white70, size: 20)),
+          Positioned(
+            right: 10,
+            top: 54,
+            child: GestureDetector(
+              onTap: _toggleMute,
+              child: Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                child: Icon(_muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
         ],
       ),
     );

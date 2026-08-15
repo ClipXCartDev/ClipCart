@@ -16,6 +16,7 @@ class SubtitleSegment {
     this.dx = 0.5,
     this.dy = 0.82,
     this.scale = 1.0,
+    this.rotation = 0.0,
     this.strokeWidth = 0,
     this.strokeColor = 0xFF000000,
     this.bgEnabled = true,
@@ -33,6 +34,7 @@ class SubtitleSegment {
   double dx; // 0..1 center X on canvas
   double dy; // 0..1 center Y on canvas
   double scale; // user pinch scale multiplier
+  double rotation; // radians
   double strokeWidth; // outline width in video px (0 = none)
   int strokeColor; // ARGB outline
   bool bgEnabled; // background box behind text
@@ -45,13 +47,13 @@ class SubtitleSegment {
   SubtitleSegment copy() => SubtitleSegment(
         text: text, start: start, end: end, fontFamily: fontFamily,
         fontFilePath: fontFilePath, color: color, fontSize: fontSize, dx: dx, dy: dy,
-        scale: scale, strokeWidth: strokeWidth, strokeColor: strokeColor,
+        scale: scale, rotation: rotation, strokeWidth: strokeWidth, strokeColor: strokeColor,
         bgEnabled: bgEnabled, bgColor: bgColor, align: align,
       );
 
   Map<String, dynamic> toJson() => {
         't': text, 's': start, 'e': end, 'ff': fontFamily, 'fp': fontFilePath,
-        'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale,
+        'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
         'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index,
       };
 
@@ -59,7 +61,8 @@ class SubtitleSegment {
         text: j['t'] as String, start: (j['s'] as num).toDouble(), end: (j['e'] as num).toDouble(),
         fontFamily: j['ff'] as String?, fontFilePath: j['fp'] as String?, color: j['c'] as int,
         fontSize: (j['fs'] as num).toDouble(), dx: (j['dx'] as num).toDouble(), dy: (j['dy'] as num).toDouble(),
-        scale: (j['sc'] as num?)?.toDouble() ?? 1.0, strokeWidth: (j['sw'] as num?)?.toDouble() ?? 0,
+        scale: (j['sc'] as num?)?.toDouble() ?? 1.0, rotation: (j['rot'] as num?)?.toDouble() ?? 0.0,
+        strokeWidth: (j['sw'] as num?)?.toDouble() ?? 0,
         strokeColor: (j['scol'] as int?) ?? 0xFF000000, bgEnabled: (j['bg'] as bool?) ?? true,
         bgColor: (j['bgc'] as int?) ?? 0x80000000, align: TextAlignH.values[(j['al'] as int?) ?? 1],
       );

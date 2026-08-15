@@ -46,6 +46,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   final _canvasKey = GlobalKey();
   bool _snapX = false, _snapY = false;
+  String? _hint; // live scale%/angle° readout during manipulation
+
+  String _deg(double rad) => (rad * 180 / math.pi).round().toString();
+  double _snapAngle(double rad) {
+    const step = 15 * 3.1415926535 / 180;
+    final n = (rad / step).round();
+    return ((rad - n * step).abs() < 0.05) ? n * step : rad;
+  }
 
   // gesture start state
   double _gDx = 0, _gDy = 0, _gScale = 1, _gRot = 0, _gDist = 1, _gAngle = 0;
@@ -378,6 +386,21 @@ class _EditorScreenState extends State<EditorScreen> {
                     if (_project!.logoPath != null) _logoOverlay(w, h),
                     if (_snapX) Positioned(left: w / 2 - 0.5, top: 0, bottom: 0, child: const IgnorePointer(child: SizedBox(width: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
                     if (_snapY) Positioned(top: h / 2 - 0.5, left: 0, right: 0, child: const IgnorePointer(child: SizedBox(height: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
+                    if (_hint != null)
+                      Positioned(
+                        top: 12,
+                        left: 0,
+                        right: 0,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(color: Colors.black.withOpacity(0.72), borderRadius: BorderRadius.circular(20)),
+                              child: Text(_hint!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5)),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (!v.isPlaying && _selected == null)
                       IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 54, color: Colors.white.withOpacity(0.5)))),
                   ],
@@ -440,35 +463,41 @@ class _EditorScreenState extends State<EditorScreen> {
     );
     return Align(
       alignment: Alignment(s.dx * 2 - 1, s.dy * 2 - 1),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _selected = s),
-        onScaleStart: (d) {
-          setState(() => _selected = s);
-          moved = false;
-          _gDx = s.dx;
-          _gDy = s.dy;
-          _gScale = s.scale;
-        },
-        onScaleUpdate: (d) => setState(() {
-          if (!moved) {
-            _snapshot();
-            moved = true;
-          }
-          _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
-          _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
-          s.dx = _snap(_gDx, 0.5).clamp(0.03, 0.97).toDouble();
-          s.dy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
-          _snapX = (s.dx - 0.5).abs() < 0.001;
-          _snapY = (s.dy - 0.5).abs() < 0.001;
-          if (d.scale != 1.0) s.scale = (_gScale * d.scale).clamp(0.4, 4.0);
-        }),
-        onScaleEnd: (_) => setState(() => _snapX = _snapY = false),
-        child: Stack(clipBehavior: Clip.none, children: [
-          text,
-          if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle(s, w, h, rotate: false)),
-        ]),
-      ),
+      child: Stack(clipBehavior: Clip.none, children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _selected = s),
+          onScaleStart: (d) {
+            setState(() => _selected = s);
+            moved = false;
+            _gDx = s.dx;
+            _gDy = s.dy;
+            _gScale = s.scale;
+            _gRot = s.rotation;
+          },
+          onScaleUpdate: (d) => setState(() {
+            if (!moved) {
+              _snapshot();
+              moved = true;
+            }
+            _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
+            _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
+            s.dx = _snap(_gDx, 0.5).clamp(0.03, 0.97).toDouble();
+            s.dy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
+            _snapX = (s.dx - 0.5).abs() < 0.001;
+            _snapY = (s.dy - 0.5).abs() < 0.001;
+            if (d.scale != 1.0) s.scale = (_gScale * d.scale).clamp(0.4, 4.0);
+            if (d.rotation != 0) s.rotation = _snapAngle(_gRot + d.rotation);
+            _hint = '${(s.scale * 100).round()}%   ${_deg(s.rotation)}°';
+          }),
+          onScaleEnd: (_) => setState(() {
+            _snapX = _snapY = false;
+            _hint = null;
+          }),
+          child: Transform.rotate(angle: s.rotation, child: text),
+        ),
+        if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle(s, w, h, rotate: true)),
+      ]),
     );
   }
 
@@ -489,7 +518,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _gDist = f == null ? 1 : math.max(8, (f - c).distance);
         _gAngle = f == null ? 0 : math.atan2(f.dy - c.dy, f.dx - c.dx);
         _gScale = target is SubtitleSegment ? target.scale : _project!.logoScale;
-        _gRot = target is SubtitleSegment ? 0 : _project!.logoRotation;
+        _gRot = target is SubtitleSegment ? target.rotation : _project!.logoRotation;
       },
       onPanUpdate: (d) => setState(() {
         if (!moved) {
@@ -501,13 +530,17 @@ class _EditorScreenState extends State<EditorScreen> {
         final c = center();
         final dist = math.max(8, (f - c).distance);
         final ns = (_gScale * dist / _gDist).clamp(0.3, 5.0);
+        final nr = rotate ? _snapAngle(_gRot + (math.atan2(f.dy - c.dy, f.dx - c.dx) - _gAngle)) : _gRot;
         if (target is SubtitleSegment) {
           target.scale = ns;
+          target.rotation = nr;
         } else {
           _project!.logoScale = ns;
-          if (rotate) _project!.logoRotation = _gRot + (math.atan2(f.dy - c.dy, f.dx - c.dx) - _gAngle);
+          _project!.logoRotation = nr;
         }
+        _hint = '${(ns * 100).round()}%   ${_deg(nr)}°';
       }),
+      onPanEnd: (_) => setState(() => _hint = null),
       child: Container(
         width: 24,
         height: 24,
@@ -523,43 +556,47 @@ class _EditorScreenState extends State<EditorScreen> {
     bool moved = false;
     return Align(
       alignment: Alignment(p.logoDx * 2 - 1, p.logoDy * 2 - 1),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _selected = 'logo'),
-        onScaleStart: (d) {
-          setState(() => _selected = 'logo');
-          moved = false;
-          _gDx = p.logoDx;
-          _gDy = p.logoDy;
-          _gScale = p.logoScale;
-          _gRot = p.logoRotation;
-        },
-        onScaleUpdate: (d) => setState(() {
-          if (!moved) {
-            _snapshot();
-            moved = true;
-          }
-          _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
-          _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
-          p.logoDx = _snap(_gDx, 0.5).clamp(0.03, 0.97).toDouble();
-          p.logoDy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
-          _snapX = (p.logoDx - 0.5).abs() < 0.001;
-          _snapY = (p.logoDy - 0.5).abs() < 0.001;
-          if (d.scale != 1.0) p.logoScale = (_gScale * d.scale).clamp(0.3, 4.0);
-          p.logoRotation = _gRot + d.rotation;
-        }),
-        onScaleEnd: (_) => setState(() => _snapX = _snapY = false),
-        child: Stack(clipBehavior: Clip.none, children: [
-          Transform.rotate(
+      child: Stack(clipBehavior: Clip.none, children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _selected = 'logo'),
+          onScaleStart: (d) {
+            setState(() => _selected = 'logo');
+            moved = false;
+            _gDx = p.logoDx;
+            _gDy = p.logoDy;
+            _gScale = p.logoScale;
+            _gRot = p.logoRotation;
+          },
+          onScaleUpdate: (d) => setState(() {
+            if (!moved) {
+              _snapshot();
+              moved = true;
+            }
+            _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
+            _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
+            p.logoDx = _snap(_gDx, 0.5).clamp(0.03, 0.97).toDouble();
+            p.logoDy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
+            _snapX = (p.logoDx - 0.5).abs() < 0.001;
+            _snapY = (p.logoDy - 0.5).abs() < 0.001;
+            if (d.scale != 1.0) p.logoScale = (_gScale * d.scale).clamp(0.3, 4.0);
+            p.logoRotation = _snapAngle(_gRot + d.rotation);
+            _hint = '${(p.logoScale * 100).round()}%   ${_deg(p.logoRotation)}°';
+          }),
+          onScaleEnd: (_) => setState(() {
+            _snapX = _snapY = false;
+            _hint = null;
+          }),
+          child: Transform.rotate(
             angle: p.logoRotation,
             child: Container(
               decoration: BoxDecoration(border: selected ? Border.all(color: _kAccent, width: 1.5) : null),
               child: Image.file(File(p.logoPath!), width: w * 0.18 * p.logoScale),
             ),
           ),
-          if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
-        ]),
-      ),
+        ),
+        if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
+      ]),
     );
   }
 
