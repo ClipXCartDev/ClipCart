@@ -9,6 +9,7 @@ argon2-cffi==23.1.0
 PyJWT==2.10.1
 python-multipart==0.0.20
 google-auth==2.37.0
+requests==2.32.3
 boto3==1.35.90
 httpx==0.28.1
 pytest==8.3.4
