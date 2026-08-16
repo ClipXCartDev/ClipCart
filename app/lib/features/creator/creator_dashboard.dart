@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/clip.dart';
 import '../../services/creator_service.dart';
+import '../../widgets/premium_empty_state.dart';
 
 class CreatorDashboard extends StatefulWidget {
   const CreatorDashboard({super.key});
@@ -52,6 +53,13 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
     }
   }
 
+  Widget _stat(String label, String value) => Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      );
+
   Color _statusColor(String? s) => switch (s) {
         'approved' => const Color(0xFF12B76A),
         'pending' => const Color(0xFFF79009),
@@ -88,17 +96,23 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Available balance', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
-                      Text('\$${available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
-                      Text('Earned \$${(e?['earned'] ?? 0)} · ${e?['downloads'] ?? 0} downloads · pending \$${e?['pending'] ?? 0}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                      const SizedBox(height: 10),
+                      const Text('AVAILABLE BALANCE', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1)),
+                      const SizedBox(height: 2),
+                      Text('\$${available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 14),
+                      Row(children: [
+                        _stat('Earned', '\$${e?['earned'] ?? 0}'),
+                        _stat('Downloads', '${e?['downloads'] ?? 0}'),
+                        _stat('Pending', '\$${e?['pending'] ?? 0}'),
+                      ]),
+                      const SizedBox(height: 14),
                       SizedBox(
-                        width: 180,
+                        width: double.infinity,
                         child: FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFE01A48)),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFE01A48), padding: const EdgeInsets.symmetric(vertical: 12)),
                           onPressed: available > 0 ? () => _requestPayout(available) : null,
-                          icon: const Icon(Icons.payments, size: 18),
-                          label: const Text('Request payout'),
+                          icon: const Icon(Icons.payments_rounded, size: 18),
+                          label: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w800)),
                         ),
                       ),
                     ],
@@ -116,19 +130,43 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                   return const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()));
                 }
                 final clips = snap.data ?? [];
-                if (clips.isEmpty) return const Padding(padding: EdgeInsets.all(24), child: Text('No uploads yet.', style: TextStyle(color: Colors.grey)));
+                if (clips.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.only(top: 20),
+                    child: PremiumEmptyState(icon: Icons.cloud_upload_outlined, title: 'No uploads yet', subtitle: 'Tap Upload to submit your first clip.\nApproved clips earn on every download.'),
+                  );
+                }
                 return Column(
-                  children: clips.map((c) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Container(width: 42, height: 54, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(8))),
-                        title: Text(c.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('${c.category ?? c.genre ?? ''} · ${c.downloads} downloads${c.reviewNote != null ? '\n“${c.reviewNote}”' : ''}'),
-                        isThreeLine: c.reviewNote != null,
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: _statusColor(c.status).withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
-                          child: Text((c.status ?? '').toUpperCase(), style: TextStyle(color: _statusColor(c.status), fontSize: 10, fontWeight: FontWeight.w800)),
-                        ),
+                  children: clips.map((c) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.withOpacity(0.15))),
+                        child: Row(children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(9),
+                            child: SizedBox(
+                              width: 44, height: 56,
+                              child: c.thumb != null
+                                  ? Image.network(c.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF241E28)))
+                                  : const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]))),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                              const SizedBox(height: 2),
+                              Text('${c.category ?? c.genre ?? ''} · ${c.downloads} downloads', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              if (c.reviewNote != null) Text('“${c.reviewNote}”', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFF04438), fontSize: 11, fontStyle: FontStyle.italic)),
+                            ]),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(color: _statusColor(c.status).withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                            child: Text((c.status ?? '').toUpperCase(), style: TextStyle(color: _statusColor(c.status), fontSize: 9.5, fontWeight: FontWeight.w900)),
+                          ),
+                        ]),
                       )).toList(),
                 );
               },
