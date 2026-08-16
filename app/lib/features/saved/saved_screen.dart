@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
+import '../../widgets/premium_empty_state.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -35,14 +36,21 @@ class _SavedScreenState extends State<SavedScreen> {
             }
             final clips = snap.data ?? [];
             if (clips.isEmpty) {
-              return ListView(children: const [SizedBox(height: 140), Center(child: Text('No saved clips yet', style: TextStyle(color: Colors.grey)))]);
+              return ListView(children: const [
+                SizedBox(height: 80),
+                PremiumEmptyState(
+                  icon: Icons.favorite_border_rounded,
+                  title: 'No saved clips yet',
+                  subtitle: 'Tap the heart on any clip to save it here\nfor quick access later.',
+                ),
+              ]);
             }
             return GridView.builder(
               padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 13, childAspectRatio: 0.60),
+                crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.60),
               itemCount: clips.length,
-              itemBuilder: (context, i) => ClipCard(clip: clips[i], onTap: () => context.push('/clip/${clips[i].slug}')),
+              itemBuilder: (context, i) => ClipCard(clip: clips[i], onTap: () => context.push('/player', extra: {'clips': clips, 'index': i})),
             );
           },
         ),

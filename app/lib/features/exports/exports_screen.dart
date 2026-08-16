@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../widgets/premium_empty_state.dart';
+
 /// On-device export history — lists MP4 files written by ExportService.
 class ExportsScreen extends StatefulWidget {
   const ExportsScreen({super.key});
@@ -46,24 +48,40 @@ class _ExportsScreenState extends State<ExportsScreen> {
             }
             final files = snap.data ?? [];
             if (files.isEmpty) {
-              return ListView(children: const [SizedBox(height: 140), Center(child: Text('No exports yet.\nEdit a clip and export.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)))]);
+              return ListView(children: const [
+                SizedBox(height: 80),
+                PremiumEmptyState(
+                  icon: Icons.movie_creation_outlined,
+                  title: 'No exports yet',
+                  subtitle: 'Pick a clip, customize it in the editor,\nand your exports will show up here.',
+                ),
+              ]);
             }
             return ListView.separated(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               itemCount: files.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, i) {
                 final f = files[i];
                 final name = f.path.split(Platform.pathSeparator).last;
-                return ListTile(
-                  leading: Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(10)),
-                    child: const Icon(Icons.movie, color: Colors.white),
+                return Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.withOpacity(0.15)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 3))],
                   ),
-                  title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(_size(f)),
-                  trailing: const Icon(Icons.play_circle_outline),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(10),
+                    leading: Container(
+                      width: 50, height: 50,
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
+                    ),
+                    title: Text(name.replaceAll('clip_', 'Export ').replaceAll('.mp4', ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: Text('${_size(f)} · saved to Gallery', style: const TextStyle(fontSize: 12)),
+                    trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.withOpacity(0.5)),
+                  ),
                 );
               },
             );
