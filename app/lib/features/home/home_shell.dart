@@ -45,49 +45,134 @@ class _HomeShellState extends State<HomeShell> {
 
 class _AccountTab extends StatelessWidget {
   const _AccountTab();
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final user = auth.user;
+    final initial = user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : '?';
     return Scaffold(
-      appBar: AppBar(title: const Text('Me', style: TextStyle(fontWeight: FontWeight.w800))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
-          Row(
-            children: [
-              CircleAvatar(radius: 28, backgroundColor: const Color(0xFFFF4D6D), child: Text(user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800))),
-              const SizedBox(width: 14),
+          // gradient profile header
+          Container(
+            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 24, 20, 26),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+            child: Row(children: [
+              Container(
+                width: 62, height: 62,
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), shape: BoxShape.circle, border: Border.all(color: Colors.white54, width: 2)),
+                alignment: Alignment.center,
+                child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+              ),
+              const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user?.name ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                    Text(user?.email ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                    const SizedBox(height: 4),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(user?.name ?? '', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(user?.email ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), borderRadius: BorderRadius.circular(20)),
+                    child: Text((user?.role ?? 'customer').toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              // subscription upsell card
+              GestureDetector(
+                onTap: () => context.push('/plans'),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17131F),
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: Row(children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: const Color(0xFFE7F7EF), borderRadius: BorderRadius.circular(6)),
-                      child: Text((user?.role ?? 'customer').toUpperCase(), style: const TextStyle(color: Color(0xFF12B76A), fontSize: 10, fontWeight: FontWeight.w800)),
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFFFF7A00)]), borderRadius: BorderRadius.circular(12)),
+                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 24),
                     ),
-                  ],
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                        SizedBox(height: 2),
+                        Text('All Pro clips · unlimited exports · no watermark', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                      ]),
+                    ),
+                    const Icon(Icons.arrow_forward_rounded, color: Colors.white54),
+                  ]),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          ListTile(leading: const Icon(Icons.star_border), title: const Text('Plans & subscription'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/plans')),
-          if (user?.isEditor == true)
-            ListTile(leading: const Icon(Icons.video_camera_back_outlined), title: const Text('Creator studio'), trailing: const Icon(Icons.chevron_right), onTap: () => context.push('/creator')),
-          const ListTile(leading: Icon(Icons.phone_android), title: Text('Devices')),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Log out', style: TextStyle(color: Colors.red)),
-            onTap: () => context.read<AuthController>().logout(),
+              const SizedBox(height: 18),
+              _MenuCard(children: [
+                _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
+                if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
+                _MenuRow(Icons.download_rounded, 'My exports', () {}),
+                _MenuRow(Icons.phone_android_rounded, 'Devices', () {}),
+              ]),
+              const SizedBox(height: 14),
+              _MenuCard(children: [
+                _MenuRow(Icons.help_outline_rounded, 'Help & support', () {}),
+                _MenuRow(Icons.privacy_tip_outlined, 'Privacy & terms', () {}),
+              ]),
+              const SizedBox(height: 14),
+              _MenuCard(children: [
+                _MenuRow(Icons.logout_rounded, 'Log out', () => context.read<AuthController>().logout(), danger: true),
+              ]),
+              const SizedBox(height: 20),
+              const Text('ClipCart · v1.0', style: TextStyle(color: Colors.grey, fontSize: 11)),
+              const SizedBox(height: 20),
+            ]),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MenuCard extends StatelessWidget {
+  const _MenuCard({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+      ),
+      child: Column(children: children),
+    );
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  const _MenuRow(this.icon, this.label, this.onTap, {this.danger = false});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+  @override
+  Widget build(BuildContext context) {
+    final c = danger ? const Color(0xFFF04438) : null;
+    return ListTile(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      leading: Icon(icon, color: c ?? const Color(0xFFFF4D6D), size: 22),
+      title: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: c)),
+      trailing: danger ? null : Icon(Icons.chevron_right_rounded, color: Colors.grey.withOpacity(0.5)),
+      onTap: onTap,
     );
   }
 }
