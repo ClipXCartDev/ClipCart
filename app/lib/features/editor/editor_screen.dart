@@ -12,6 +12,7 @@ import '../../models/editor_state.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
+import '../../services/sticker_service.dart';
 import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
 import 'subtitle_editor_sheet.dart';
@@ -699,47 +700,111 @@ class _EditorScreenState extends State<EditorScreen> {
     '💪','🧠','👑','🚀','⚡','💰','💎','🏆','🎯','📈','🤑','😴','🥳','😇','😈','🤙',
   ];
 
+  /// Rich emoji/sticker library picker — category tabs + grid loaded from R2
+  /// (StickerService), with a local-emoji fallback if the catalog is unreachable.
   Future<void> _openEmojiPicker() async {
-    final emoji = await showModalBottomSheet<String>(
+    final svc = context.read<StickerService>();
+    svc.ensureLoaded();
+    int tab = 0;
+    await showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Add emoji', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 260,
-              child: GridView.count(
-                crossAxisCount: 6,
-                mainAxisSpacing: 6,
-                crossAxisSpacing: 6,
-                children: [
-                  for (final e in _emojiSet)
-                    InkWell(
-                      onTap: () => Navigator.pop(context, e),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(10)),
-                        child: Center(child: Text(e, style: const TextStyle(fontSize: 28))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) {
+          return AnimatedBuilder(
+            animation: svc,
+            builder: (context, _) {
+              final cats = svc.categories;
+              final useR2 = cats.isNotEmpty;
+              return SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Stickers & emoji', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                    const SizedBox(height: 10),
+                    if (svc.loading && !useR2)
+                      const SizedBox(height: 280, child: Center(child: CircularProgressIndicator(color: _kAccent)))
+                    else if (useR2) ...[
+                      // category tabs
+                      SizedBox(
+                        height: 34,
+                        child: ListView(scrollDirection: Axis.horizontal, children: [
+                          for (var i = 0; i < cats.length; i++)
+                            GestureDetector(
+                              onTap: () => setSheet(() => tab = i),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(color: tab == i ? _kAccent : _kChip, borderRadius: BorderRadius.circular(18)),
+                                child: Text(cats[i].name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                              ),
+                            ),
+                        ]),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          ]),
-        ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 280,
+                        child: GridView.count(
+                          crossAxisCount: 6,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          children: [
+                            for (final it in cats[tab.clamp(0, cats.length - 1)].items)
+                              InkWell(
+                                onTap: () { Navigator.pop(context); _addR2Sticker(it); },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(10)),
+                                  child: Image.network(it.url, fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Center(child: Text(it.emoji ?? '', style: const TextStyle(fontSize: 24)))),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ] else
+                      // fallback: local platform emoji set (rendered to PNG)
+                      SizedBox(
+                        height: 280,
+                        child: GridView.count(
+                          crossAxisCount: 6, mainAxisSpacing: 6, crossAxisSpacing: 6,
+                          children: [
+                            for (final e in _emojiSet)
+                              InkWell(
+                                onTap: () async { Navigator.pop(context); try { final p = await TextRenderService.renderEmojiToPng(e); if (mounted) _addSticker(p, emoji: e); } catch (_) {} },
+                                borderRadius: BorderRadius.circular(10),
+                                child: Container(decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(10)), child: Center(child: Text(e, style: const TextStyle(fontSize: 28)))),
+                              ),
+                          ],
+                        ),
+                      ),
+                    if (svc.attribution != null)
+                      Padding(padding: const EdgeInsets.only(top: 8), child: Text(svc.attribution!, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 9.5))),
+                  ]),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
-    if (emoji == null) return;
+  }
+
+  /// Downloads the crisp R2 PNG for a picked sticker and adds it to the canvas.
+  Future<void> _addR2Sticker(StickerItem it) async {
     try {
-      final path = await TextRenderService.renderEmojiToPng(emoji);
-      if (mounted) _addSticker(path, emoji: emoji);
+      final path = await context.read<StickerService>().download(it);
+      if (mounted) _addSticker(path, emoji: it.emoji);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add emoji')));
+      // fallback to platform-rendered emoji if download fails
+      if (it.emoji != null) {
+        try { final p = await TextRenderService.renderEmojiToPng(it.emoji!); if (mounted) _addSticker(p, emoji: it.emoji); } catch (_) {}
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add sticker')));
+      }
     }
   }
 

@@ -10,6 +10,7 @@ import 'services/billing_service.dart';
 import 'services/catalog_service.dart';
 import 'services/creator_service.dart';
 import 'services/font_service.dart';
+import 'services/sticker_service.dart';
 import 'state/auth_controller.dart';
 
 void main() async {
@@ -30,6 +31,7 @@ void main() async {
       Provider<BillingService>.value(value: billing),
       Provider<CreatorService>.value(value: creator),
       ChangeNotifierProvider<FontService>(create: (_) => FontService()),
+      ChangeNotifierProvider<StickerService>(create: (_) => StickerService(api)),
       ChangeNotifierProvider<AuthController>.value(value: authController),
     ],
     child: const ClipCartApp(),
