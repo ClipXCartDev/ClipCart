@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ClipCart — Funny movie clips</title>
 <style>
-:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f7f6f8;--surface:#fff;--border:#ece9f0;--text:#17131f;--muted:#726c7d;--ok:#12b76a;--gold:#f5a623;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d);--maxw:2100px;--pad:clamp(18px,4vw,72px);--shadow:0 8px 30px rgba(30,18,45,.08)}
+:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f7f6f8;--surface:#fff;--border:#ece9f0;--text:#17131f;--muted:#726c7d;--ok:#12b76a;--gold:#f5a623;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d);--maxw:2100px;--pad:clamp(18px,4vw,72px);--shadow:0 8px 30px rgba(30,18,45,.08);--navbg:rgba(255,255,255,.72)}
+:root[data-theme="dark"]{--bg:#0d0a12;--surface:#171320;--border:#26212f;--text:#f2eef8;--muted:#9d95ad;--ink:#ff6d8a;--shadow:0 8px 30px rgba(0,0,0,.4);--navbg:rgba(20,16,28,.72)}
+:root[data-theme="dark"] .tpl,:root[data-theme="dark"] .card,:root[data-theme="dark"] .plan,:root[data-theme="dark"] .tm,:root[data-theme="dark"] .hiw .step,:root[data-theme="dark"] .fpanel,:root[data-theme="dark"] .fbtn,:root[data-theme="dark"] .chip{background:var(--surface)}
+:root[data-theme="dark"] input{background:#0f0c15;color:var(--text)}
+:root[data-theme="dark"] .p-ok{background:rgba(18,183,106,.16)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
@@ -18,7 +22,8 @@ a{color:inherit;text-decoration:none;cursor:pointer}button{font:inherit;cursor:p
 input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font:inherit;margin-bottom:10px;background:var(--surface);outline:none}
 input:focus{border-color:var(--accent)}
 /* nav */
-nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.72);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:20px;padding:13px var(--pad)}
+nav{position:sticky;top:0;z-index:20;background:var(--navbg);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:20px;padding:13px var(--pad)}
+.tglt{width:38px;height:38px;border-radius:11px;border:1px solid var(--border);background:var(--surface);font-size:16px;vertical-align:middle;transition:.12s}.tglt:hover{border-color:#d9d5e0}
 nav .logo{display:flex;align-items:center;gap:9px;font-weight:900;font-size:18px}
 nav .logo .lg{width:31px;height:31px;border-radius:9px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900}
 nav .links{display:flex;gap:20px;font-weight:700;font-size:14px;color:var(--muted)}
@@ -163,7 +168,7 @@ footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padd
     </div>
     <div><h4>Product</h4><a onclick="go('browse')">Browse clips</a><a onclick="go('pricing')">Pricing</a><a onclick="go('register')">Get the app</a></div>
     <div><h4>Company</h4><a onclick="go('home')">About</a><a href="mailto:clipxcart@gmail.com">Contact</a><a onclick="go('register')">Become a creator</a></div>
-    <div><h4>Legal</h4><a onclick="go('home')">Terms</a><a onclick="go('home')">Privacy</a><a href="mailto:clipxcart@gmail.com">Support</a></div>
+    <div><h4>Legal</h4><a onclick="go('terms')">Terms</a><a onclick="go('privacy')">Privacy</a><a href="mailto:clipxcart@gmail.com">Support</a></div>
   </div>
   <div class="foot-bot">
     <span>© 2026 ClipCart. All rights reserved.</span>
@@ -194,12 +199,38 @@ async function boot(){
   renderNav(); go(location.hash.slice(2)||'home');
 }
 function renderNav(){
-  document.getElementById('navauth').innerHTML = ME
-    ? `<a onclick="go('account')" style="font-weight:700">${h(ME.name)}</a> &nbsp; <button class="btn sm sec" onclick="logout()">Log out</button>`
-    : `<button class="btn sm sec" onclick="go('login')">Log in</button> <button class="btn sm" onclick="go('register')">Subscribe</button>`;
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  const tbtn=`<button class="tglt" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">${dark?'☀️':'🌙'}</button>`;
+  document.getElementById('navauth').innerHTML = tbtn + (ME
+    ? ` <a onclick="go('account')" style="font-weight:700">${h(ME.name)}</a> &nbsp; <button class="btn sm sec" onclick="logout()">Log out</button>`
+    : ` <button class="btn sm sec" onclick="go('login')">Log in</button> <button class="btn sm" onclick="go('register')">Subscribe</button>`);
 }
 function logout(){TOKEN='';ME=null;localStorage.removeItem('cc_web');renderNav();go('home');}
-function go(v){location.hash='#/'+v;({home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount}[v]||vHome)();}
+function go(v){location.hash='#/'+v;({home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount,terms:()=>vLegal('terms'),privacy:()=>vLegal('privacy')}[v]||vHome)();}
+
+function vLegal(kind){
+  const t=kind==='privacy'?'Privacy Policy':'Terms of Service';
+  const body=kind==='privacy'?[
+    ['What we collect','Your account email, subscription status, and device info used only to run your account and enforce device limits. We never sell your data.'],
+    ['Payments','Subscriptions are paid in crypto via Binance Pay. We store payment status, not your wallet keys or card details.'],
+    ['Your content','Clips you export are rendered on your own device. We do not upload or store your finished videos.'],
+    ['Contact','Questions about your data? Email clipxcart@gmail.com and we\'ll respond within 48 hours.'],
+  ]:[
+    ['Using ClipCart','ClipCart provides ready-made clips you can customize and export for your own social posts. A subscription unlocks Pro clips and higher export limits.'],
+    ['Licensing','Exported clips are for your own social/marketing use. Reselling raw ClipCart clips or redistributing the catalog is not permitted.'],
+    ['Subscriptions','Plans are billed in crypto with manual renewal — there is no auto-charge. Access continues until your plan expires.'],
+    ['Fair use','Accounts are limited to a set number of devices. Abuse, scraping, or sharing credentials may result in suspension.'],
+    ['Contact','For support or questions, email clipxcart@gmail.com.'],
+  ];
+  view(`<div style="max-width:760px;margin:8px auto">
+    <h2 class="sec" style="margin-top:8px">${t}</h2>
+    <p class="subsec">Last updated: August 2026</p>
+    ${body.map(([hd,tx])=>`<div class="card"><h3 style="margin:0 0 6px;font-size:16px;font-weight:800">${hd}</h3><p class="muted" style="margin:0;line-height:1.6;font-size:14px">${h(tx)}</p></div>`).join('')}
+  </div>`);
+}
+
+function toggleTheme(){const d=document.documentElement.getAttribute('data-theme')==='dark';const nx=d?'light':'dark';document.documentElement.setAttribute('data-theme',nx);localStorage.setItem('cc_theme',nx);renderNav();}
+(function(){const t=localStorage.getItem('cc_theme');if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');})();
 
 function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" data-slug="${c.slug}" onclick="openWatch('${c.slug}')">
   <div class="thumb" onmouseenter="playPrev(this)" onmouseleave="stopPrev(this)" data-prev="${c.preview||''}" style="background:${c.thumb?`url('${c.thumb}')`:`linear-gradient(150deg,${a},${b})`};background-size:cover;background-position:center">
