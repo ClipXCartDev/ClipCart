@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -65,8 +67,21 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   late int _current;
   final Map<int, VideoPlayerController> _ctrls = {};
   final Map<int, bool> _loading = {};
+  final Set<String> _faved = {}; // clip ids saved this session (optimistic)
   bool _muted = true;
   int _gen = 0; // bumps whenever we tear controllers down; stale async _ensure bail on mismatch
+
+  Future<void> _toggleFav(Clip clip) async {
+    final id = clip.id;
+    final wasFav = _faved.contains(id);
+    setState(() => wasFav ? _faved.remove(id) : _faved.add(id));
+    try {
+      final cs = context.read<CatalogService>();
+      wasFav ? await cs.unfavorite(id) : await cs.favorite(id);
+    } catch (_) {
+      if (mounted) setState(() => wasFav ? _faved.add(id) : _faved.remove(id)); // revert
+    }
+  }
 
   void _toggleMute() {
     setState(() => _muted = !_muted);
@@ -202,16 +217,22 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // background: video, else thumbnail poster, else gradient
+          // blurred fill behind — fills the screen with no visible crop of the real video
+          if (clip.thumb != null)
+            ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: Image.network(clip.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _grad()),
+            )
+          else
+            _grad(),
+          // the actual video/thumbnail — CONTAIN so the WHOLE frame is visible (no crop)
           if (ready)
             FittedBox(
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
               child: SizedBox(width: c.value.size.width, height: c.value.size.height, child: VideoPlayer(c)),
             )
           else if (clip.thumb != null)
-            Image.network(clip.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _grad())
-          else
-            _grad(),
+            Image.network(clip.thumb!, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
           if (!ready) const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D))),
           if (ready && !c.value.isPlaying)
             IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white.withOpacity(0.85)))),
@@ -237,6 +258,24 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                 decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
                 child: Icon(_muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white, size: 22),
               ),
+            ),
+          ),
+          // Save/favorite heart — populates the Saved tab
+          Positioned(
+            right: 10,
+            top: 62 + MediaQuery.of(context).viewPadding.top,
+            child: GestureDetector(
+              onTap: () => _toggleFav(clip),
+              child: Column(children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+                  child: Icon(_faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                      color: _faved.contains(clip.id) ? const Color(0xFFFF4D6D) : Colors.white, size: 22),
+                ),
+                const SizedBox(height: 2),
+                Text(_faved.contains(clip.id) ? 'Saved' : 'Save', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+              ]),
             ),
           ),
         ],

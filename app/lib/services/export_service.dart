@@ -139,8 +139,11 @@ class ExportService {
     parts.addAll(['-filter_complex', fc.toString(), '-map', '"[vout]"', '-map', audioMap]);
     if (trimmed) parts.addAll(['-t', _f(p.outDuration, 3)]);
     parts.addAll([
-      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
-      '-c:a', 'aac', '-movflags', '+faststart', '-shortest', '"$output"',
+      // High-quality HD export: crf 18 ≈ visually lossless, medium preset for good
+      // quality-per-bit (veryfast+crf23 was destroying quality → tiny files).
+      '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
+      '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
+      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', '"$output"',
     ]);
 
     final session = await FFmpegKit.execute(parts.join(' '));
