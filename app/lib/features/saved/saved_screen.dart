@@ -32,7 +32,7 @@ class _SavedScreenState extends State<SavedScreen> {
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
             }
             if (snap.hasError) {
               return ListView(children: [

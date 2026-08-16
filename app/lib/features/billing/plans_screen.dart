@@ -82,7 +82,7 @@ class _PlansScreenState extends State<PlansScreen> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(children: [
               if (_sub != null)
                 Container(
@@ -147,7 +147,7 @@ class _PlansScreenState extends State<PlansScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              Flexible(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18))),
               const SizedBox(width: 10),
               if (popular)
                 Container(

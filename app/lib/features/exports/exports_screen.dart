@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../widgets/premium_empty_state.dart';
 
@@ -34,6 +35,14 @@ class _ExportsScreenState extends State<ExportsScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  Future<void> _shareExport(String path) async {
+    try {
+      await Share.shareXFiles([XFile(path)], text: 'Made with ClipCart');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not share — the video is in your Gallery (ClipCart album).')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -44,7 +53,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
             }
             if (snap.hasError) {
               return ListView(children: [
@@ -82,14 +91,15 @@ class _ExportsScreenState extends State<ExportsScreen> {
                   ),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(10),
+                    onTap: () => _shareExport(f.path),
                     leading: Container(
                       width: 50, height: 50,
                       decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(12)),
                       child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                     ),
                     title: Text(name.replaceAll('clip_', 'Export ').replaceAll('.mp4', ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: Text('${_size(f)} · saved to Gallery', style: const TextStyle(fontSize: 12)),
-                    trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey.withOpacity(0.5)),
+                    subtitle: Text('${_size(f)} · saved to Gallery · tap to share', style: const TextStyle(fontSize: 12)),
+                    trailing: Icon(Icons.ios_share_rounded, color: Colors.grey.withOpacity(0.6)),
                   ),
                 );
               },

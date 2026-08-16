@@ -46,6 +46,9 @@ class AuthController extends ChangeNotifier {
         scopes: const ['email', 'profile'],
         serverClientId: serverClientId,
       );
+      // Clear the cached account so the account-chooser always appears
+      // (devices with multiple Google accounts were silently reusing the last one).
+      try { await gsi.signOut(); } catch (_) {}
       final account = await gsi.signIn();
       if (account == null) return 'Cancelled';
       final tokenData = await account.authentication;

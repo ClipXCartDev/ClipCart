@@ -209,7 +209,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         ),
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 92),
+                            padding: EdgeInsets.only(top: 8, bottom: 24 + MediaQuery.of(context).viewPadding.bottom),
                             child: Center(
                               child: _more
                                   ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFFFF4D6D)))
@@ -238,8 +238,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           const SizedBox(width: 10),
           const Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Discover', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, height: 1.0)),
-              Text('Viral clips, ready for your brand', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('Discover', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, height: 1.0)),
+              Text('Viral clips, ready for your brand', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey, fontSize: 12)),
             ]),
           ),
           IconButton(onPressed: () => homeTab.value = 1, icon: const Icon(Icons.search_rounded)),

@@ -225,10 +225,11 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               ),
             ),
           ),
-          Positioned(left: 16, right: 16, bottom: 24, child: _meta(clip)),
+          // meta + CTA sit above the system nav bar (viewPadding.bottom)
+          Positioned(left: 16, right: 16, bottom: 20 + MediaQuery.of(context).viewPadding.bottom, child: _meta(clip)),
           Positioned(
             right: 10,
-            top: 54,
+            top: 10 + MediaQuery.of(context).viewPadding.top,
             child: GestureDetector(
               onTap: _toggleMute,
               child: Container(

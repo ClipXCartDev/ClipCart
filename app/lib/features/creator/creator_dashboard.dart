@@ -43,6 +43,10 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
     );
     ctrl.dispose();
     if (amount == null) return;
+    if (amount <= 0 || amount > available) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Enter an amount between \$0 and \$${available.toStringAsFixed(2)}')));
+      return;
+    }
     try {
       await context.read<CreatorService>().requestPayout(amount);
       if (mounted) {
@@ -56,8 +60,8 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
 
   Widget _stat(String label, String value) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       );
 

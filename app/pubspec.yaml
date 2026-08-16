@@ -21,6 +21,7 @@ dependencies:
   path_provider: ^2.1.5         # app dirs for fonts/exports
   ffmpeg_kit_flutter_new: ^4.6.2 # on-device MP4 export (drawtext/overlay) — fixes Windows build
   gal: ^2.3.0                    # save exported MP4 to the phone Gallery
+  share_plus: ^10.1.4            # share exported MP4 to Instagram/etc from the Exports tab
 
 dev_dependencies:
   flutter_test:

@@ -547,7 +547,7 @@ class _EditorScreenState extends State<EditorScreen> {
     const colors = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5];
     return Container(
       color: _kPanel,
-      padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).padding.bottom * 0),
+      padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).viewPadding.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // single compact control row: font · presets · colors · toggles
         SizedBox(
@@ -1400,9 +1400,13 @@ class _EditorScreenState extends State<EditorScreen> {
           child: _defaultFont == null
               ? const CircularProgressIndicator(color: _kAccent)
               : Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (_error == null) ...[
+                    const CircularProgressIndicator(color: _kAccent),
+                    const SizedBox(height: 16),
+                  ],
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(_error ?? 'Loading…', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                    child: Text(_error ?? 'Loading your clip in full HD…', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
                   ),
                   const SizedBox(height: 14),
                   if (_error != null && widget.clip != null)
@@ -1431,29 +1435,30 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ],
       ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(child: _canvas()),
-            if (_typing)
-              _inlineTextEditor()
-            else
-              // Fixed-height control deck so the tools never get squeezed/truncated
-              // by a tall canvas. Playbar + timeline + one scrollable tool row.
-              Container(
-                color: _kPanel,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _playbar(),
-                    _timeline(),
-                    _toolbar(),
-                  ],
-                ),
+      // Don't use SafeArea here — the control-deck panel paints its own colour
+      // behind the nav bar (bottom padding = viewPadding.bottom) so there is no
+      // black gap, and _toolbar/_inlineTextEditor already add the bottom inset.
+      body: Column(
+        children: [
+          Expanded(child: SafeArea(top: false, bottom: false, child: _canvas())),
+          if (_typing)
+            _inlineTextEditor()
+          else
+            // Fixed-height control deck so the tools never get squeezed/truncated
+            // by a tall canvas. Playbar + timeline + one scrollable tool row.
+            Container(
+              color: _kPanel,
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _playbar(),
+                  _timeline(),
+                  _toolbar(),
+                ],
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

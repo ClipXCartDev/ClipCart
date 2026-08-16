@@ -137,6 +137,14 @@ class _SearchScreenState extends State<SearchScreen> {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
         }
+        if (snap.hasError) {
+          return Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text("Couldn't search right now.", style: TextStyle(color: Colors.grey.shade600)),
+              TextButton(onPressed: () => _search(), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+            ]),
+          );
+        }
         final clips = snap.data ?? [];
         if (clips.isEmpty) {
           return const PremiumEmptyState(
