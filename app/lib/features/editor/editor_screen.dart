@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
@@ -56,10 +57,19 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _hint; // live scale%/angle° readout during manipulation
 
   String _deg(double rad) => (rad * 180 / math.pi).round().toString();
+  bool _wasAngleSnapped = false, _wasXSnapped = false, _wasYSnapped = false;
   double _snapAngle(double rad) {
-    const step = 15 * 3.1415926535 / 180;
+    const step = 45 * 3.1415926535 / 180; // CapCut snaps at 45° increments
     final n = (rad / step).round();
-    return ((rad - n * step).abs() < 0.05) ? n * step : rad;
+    final snapped = (rad - n * step).abs() < 0.06;
+    if (snapped && !_wasAngleSnapped) HapticFeedback.selectionClick();
+    _wasAngleSnapped = snapped;
+    return snapped ? n * step : rad;
+  }
+  void _snapHaptic(bool x, bool y) {
+    if (x && !_wasXSnapped) HapticFeedback.selectionClick();
+    if (y && !_wasYSnapped) HapticFeedback.selectionClick();
+    _wasXSnapped = x; _wasYSnapped = y;
   }
 
   // gesture start state
@@ -1144,6 +1154,7 @@ class _EditorScreenState extends State<EditorScreen> {
             s.dy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
             _snapX = (s.dx - 0.5).abs() < 0.001;
             _snapY = (s.dy - 0.5).abs() < 0.001;
+            _snapHaptic(_snapX, _snapY);
             if (d.scale != 1.0) s.scale = (_gScale * d.scale).clamp(0.4, 4.0);
             if (d.rotation != 0) s.rotation = _snapAngle(_gRot + d.rotation);
             _hint = '${(s.scale * 100).round()}%   ${_deg(s.rotation)}°';
@@ -1157,10 +1168,26 @@ class _EditorScreenState extends State<EditorScreen> {
             child: Transform.rotate(angle: s.rotation, child: text),
           ),
         ),
-        if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle(s, w, h, rotate: true)),
+        if (selected) ...[
+          Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
+          Positioned(right: -11, top: -11, child: _cornerBtn(Icons.edit_rounded, () => _startTyping(s))),
+          Positioned(left: -11, bottom: -11, child: _cornerBtn(Icons.copy_rounded, _duplicateSelected)),
+          Positioned(right: -11, bottom: -11, child: _resizeHandle(s, w, h, rotate: true)),
+        ],
       ]),
     );
   }
+
+  /// A CapCut-style round corner action button on a selected overlay.
+  Widget _cornerBtn(IconData icon, VoidCallback onTap) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          width: 24, height: 24,
+          decoration: BoxDecoration(color: Colors.black.withOpacity(0.72), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.4)),
+          child: Icon(icon, size: 13, color: Colors.white),
+        ),
+      );
 
   /// One-finger corner handle: drag to scale (text) or scale+rotate (logo).
   Widget _resizeHandle(Object target, double w, double h, {required bool rotate}) {
@@ -1252,6 +1279,7 @@ class _EditorScreenState extends State<EditorScreen> {
             p.logoDy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
             _snapX = (p.logoDx - 0.5).abs() < 0.001;
             _snapY = (p.logoDy - 0.5).abs() < 0.001;
+            _snapHaptic(_snapX, _snapY);
             if (d.scale != 1.0) p.logoScale = (_gScale * d.scale).clamp(0.3, 4.0);
             p.logoRotation = _snapAngle(_gRot + d.rotation);
             _hint = '${(p.logoScale * 100).round()}%   ${_deg(p.logoRotation)}°';
@@ -1268,7 +1296,10 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           ),
         ),
-        if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
+        if (selected) ...[
+          Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
+          Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
+        ],
       ]),
     );
   }
@@ -1301,6 +1332,7 @@ class _EditorScreenState extends State<EditorScreen> {
             st.dy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
             _snapX = (st.dx - 0.5).abs() < 0.001;
             _snapY = (st.dy - 0.5).abs() < 0.001;
+            _snapHaptic(_snapX, _snapY);
             if (d.scale != 1.0) st.scale = (_gScale * d.scale).clamp(0.3, 5.0);
             st.rotation = _snapAngle(_gRot + d.rotation);
             _hint = '${(st.scale * 100).round()}%   ${_deg(st.rotation)}°';
@@ -1320,7 +1352,11 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           ),
         ),
-        if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle(st, w, h, rotate: true)),
+        if (selected) ...[
+          Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
+          Positioned(left: -11, bottom: -11, child: _cornerBtn(Icons.copy_rounded, _duplicateSelected)),
+          Positioned(right: -11, bottom: -11, child: _resizeHandle(st, w, h, rotate: true)),
+        ],
       ]),
     );
   }
