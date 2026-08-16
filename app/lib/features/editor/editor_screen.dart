@@ -459,7 +459,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
         return Container(
           decoration: const BoxDecoration(color: _kPanel, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 22),
+          padding: EdgeInsets.fromLTRB(14, 16, 14, 16 + MediaQuery.of(context).viewPadding.bottom),
           constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(9)))),
@@ -497,52 +497,51 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   // Inline text bar (docked above the keyboard; video + live text stay visible).
+  // Minimal / compact: one scrollable row of small transparent chips, then a
+  // slim input + Done. Everything uses the same subtle chip language.
   Widget _inlineTextEditor() {
     final s = _selected is SubtitleSegment ? _selected as SubtitleSegment : null;
     const colors = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5];
     return Container(
       color: _kPanel,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).padding.bottom * 0),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // font button + one-tap style presets
+        // single compact control row: font · presets · colors · toggles
         SizedBox(
-          height: 38,
-          child: ListView(scrollDirection: Axis.horizontal, children: [
-            GestureDetector(
+          height: 30,
+          child: ListView(scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(), children: [
+            // font chip
+            _ghostChip(
               onTap: () async { _textFocus.unfocus(); await _openFontPicker(); if (mounted && _typing) WidgetsBinding.instance.addPostFrameCallback((_) => _textFocus.requestFocus()); },
-              child: Container(
-                margin: const EdgeInsets.only(right: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white24)),
-                child: Row(children: [
-                  Text('Aa', style: TextStyle(fontFamily: s?.fontFamily, color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-                  const SizedBox(width: 5),
-                  const Icon(Icons.expand_more_rounded, size: 15, color: Colors.white54),
-                ]),
-              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('Aa', style: TextStyle(fontFamily: s?.fontFamily, color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                const SizedBox(width: 3),
+                const Icon(Icons.expand_more_rounded, size: 13, color: Colors.white38),
+              ]),
             ),
+            _chipDivider(),
             for (final p in _textPresets) _presetChip(s, p),
-          ]),
-        ),
-        const SizedBox(height: 9),
-        SizedBox(
-          height: 34,
-          child: ListView(scrollDirection: Axis.horizontal, children: [
+            _chipDivider(),
+            // color dots
             for (final c in colors)
               GestureDetector(
                 onTap: () => setState(() => s?.color = c),
                 child: Container(
-                  width: 30, height: 30, margin: const EdgeInsets.only(right: 10),
-                  decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: s?.color == c ? _kAccent : Colors.white24, width: s?.color == c ? 3 : 1)),
+                  width: 22, height: 22, margin: const EdgeInsets.only(right: 7),
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 20, height: 20,
+                    decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: s?.color == c ? _kAccent : Colors.white24, width: s?.color == c ? 2.5 : 1)),
+                  ),
                 ),
               ),
+            _chipDivider(),
             _miniToggle(Icons.border_color, (s?.strokeWidth ?? 0) > 0, () => setState(() => s?.strokeWidth = (s.strokeWidth) > 0 ? 0 : 4)),
             _miniToggle(Icons.title, s?.bgEnabled ?? false, () => setState(() => s?.bgEnabled = !(s.bgEnabled))),
             _miniToggle(_alignIcon(s?.align ?? TextAlignH.center), true, () => setState(() => s?.align = TextAlignH.values[((s.align.index) + 1) % 3])),
           ]),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(children: [
           Expanded(
             child: TextField(
@@ -551,27 +550,27 @@ class _EditorScreenState extends State<EditorScreen> {
               autofocus: true,
               minLines: 1,
               maxLines: 2,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
               cursorColor: _kAccent,
               textInputAction: TextInputAction.done,
               onChanged: (v) => setState(() => s?.text = v),
               onSubmitted: (_) => _doneTyping(),
               decoration: InputDecoration(
                 hintText: 'Type your text…',
-                hintStyle: const TextStyle(color: Colors.white38),
-                filled: true, fillColor: Colors.white10, isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
+                filled: true, fillColor: Colors.white.withOpacity(0.06), isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: _doneTyping,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF7A59), _kAccent]), borderRadius: BorderRadius.circular(12)),
-              child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(color: _kAccent, borderRadius: BorderRadius.circular(10)),
+              child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
             ),
           ),
         ]),
@@ -587,6 +586,21 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Mint', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF12B76A, 'sw': 0.0, 'sc': 0xFF000000},
     {'name': 'Ink', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF3B9EFF, 'sw': 0.0, 'sc': 0xFF000000},
   ];
+
+  /// A minimal transparent pill used across the inline text bar.
+  Widget _ghostChip({required Widget child, required VoidCallback onTap}) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 30,
+          margin: const EdgeInsets.only(right: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+          child: child,
+        ),
+      );
+
+  Widget _chipDivider() => Container(width: 1, height: 18, margin: const EdgeInsets.only(right: 9, top: 6), color: Colors.white12);
 
   Widget _presetChip(SubtitleSegment? s, Map<String, dynamic> p) {
     final bg = p['bg'] as bool;
@@ -605,19 +619,19 @@ class _EditorScreenState extends State<EditorScreen> {
         });
       },
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        width: 30, height: 30,
+        margin: const EdgeInsets.only(right: 7),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: bg ? Color(p['bgc'] as int) : Colors.white10,
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: Colors.white24),
+          color: bg ? Color(p['bgc'] as int) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white12),
         ),
         child: Text('Aa', style: TextStyle(
           color: color,
           fontWeight: FontWeight.w900,
-          fontSize: 16,
-          shadows: sw > 0 ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)]) Shadow(color: Color(p['sc'] as int), offset: o)] : null,
+          fontSize: 13,
+          shadows: sw > 0 ? [for (final o in const [Offset(-0.8, -0.8), Offset(0.8, 0.8), Offset(0.8, -0.8), Offset(-0.8, 0.8)]) Shadow(color: Color(p['sc'] as int), offset: o)] : null,
         )),
       ),
     );
@@ -626,9 +640,9 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _miniToggle(IconData i, bool on, VoidCallback onTap) => GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 36, height: 30, margin: const EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(8)),
-          child: Icon(i, size: 16, color: Colors.white),
+          width: 30, height: 30, margin: const EdgeInsets.only(right: 7),
+          decoration: BoxDecoration(color: on ? _kAccent : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(8), border: Border.all(color: on ? _kAccent : Colors.white12)),
+          child: Icon(i, size: 15, color: Colors.white),
         ),
       );
 
@@ -1752,18 +1766,25 @@ class _EditorScreenState extends State<EditorScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(18),
-        child: Wrap(spacing: 14, runSpacing: 14, children: [
-          for (final c in colors)
-            GestureDetector(
-              onTap: () {
-                _mutate(() => s.color = c);
-                Navigator.pop(context);
-              },
-              child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == s.color ? _kAccent : Colors.white24, width: c == s.color ? 3 : 1))),
-            ),
-        ]),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Text color', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+            const SizedBox(height: 14),
+            Wrap(spacing: 14, runSpacing: 14, children: [
+              for (final c in colors)
+                GestureDetector(
+                  onTap: () {
+                    _mutate(() => s.color = c);
+                    Navigator.pop(context);
+                  },
+                  child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == s.color ? _kAccent : Colors.white24, width: c == s.color ? 3 : 1))),
+                ),
+            ]),
+          ]),
+        ),
       ),
     );
   }
