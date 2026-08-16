@@ -94,19 +94,21 @@ class ExportService {
         // scale to fraction of frame width (against a reference of the current bg)
         fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(s.baseWidthFrac * s.scale)}':h=-1[sg$k][bgs$k];");
         String lbl = 'sg$k';
-        final fade = _fadeChain(s.fadeIn, s.fadeOut, st, en, 'sg$k', 'sf$k');
+        final fade = _fadeChain(_animFadeIn(s.anim, s.fadeIn), s.fadeOut, st, en, 'sg$k', 'sf$k');
         if (fade != null) { fc.write(fade); lbl = 'sf$k'; }
         fc.write('[$lbl]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[sr$k];');
-        fc.write("[bgs$k][sr$k]overlay=x='main_w*${_f(s.dx)}-overlay_w/2':y='main_h*${_f(s.dy)}-overlay_h/2':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
+        final sxy = _animXY(s.anim, st, en, "main_w*${_f(s.dx)}-overlay_w/2", "main_h*${_f(s.dy)}-overlay_h/2");
+        fc.write("[bgs$k][sr$k]overlay=x='${sxy['x']}':y='${sxy['y']}':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
       } else {
         final s = o['seg'] as SubtitleSegment;
         final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
         final en = (s.end - off) < st ? st : (s.end - off);
         String src = '$ii:v';
-        final fade = _fadeChain(s.fadeIn, s.fadeOut, st, en, src, 'tf$k');
+        final fade = _fadeChain(_animFadeIn(s.anim, s.fadeIn), s.fadeOut, st, en, src, 'tf$k');
         if (fade != null) { fc.write(fade); src = 'tf$k'; }
         fc.write('[$src]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[t$k];');
-        fc.write("[$cur][t$k]overlay=x='main_w*${_f(s.dx)}-overlay_w/2':y='main_h*${_f(s.dy)}-overlay_h/2':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
+        final xy = _animXY(s.anim, st, en, "main_w*${_f(s.dx)}-overlay_w/2", "main_h*${_f(s.dy)}-overlay_h/2");
+        fc.write("[$cur][t$k]overlay=x='${xy['x']}':y='${xy['y']}':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
       }
       cur = 'o$k';
     }
@@ -150,6 +152,45 @@ class ExportService {
     // main-time `st` (overlay syncs by PTS; enable gates placement to [st,en]).
     b.write(',trim=0:${_f(dur, 3)},setpts=PTS-STARTPTS+${_f(st, 3)}/TB[$out];');
     return b.toString();
+  }
+
+  /// Effective fade-in for an overlay: an explicit fadeIn, OR an implicit ~0.3s
+  /// opacity ramp when an animation preset is set (so every preset "appears" in).
+  double _animFadeIn(OverlayAnim a, double explicitFadeIn) {
+    if (explicitFadeIn > 0.01) return explicitFadeIn;
+    if (a == OverlayAnim.none) return 0;
+    return 0.3;
+  }
+
+  /// Overlay x/y expressions for the animation preset over window [st,en].
+  /// [bx]/[by] are the base center expressions (without overlay_w/h subtraction).
+  /// Returns {x, y} FFmpeg expressions (main timeline `t`). Scale-based presets
+  /// (pop/zoom/bounce/pulse) fall back to position-neutral (the fade-in carries
+  /// the motion) since single-pass overlay can't time-vary scale.
+  Map<String, String> _animXY(OverlayAnim a, double st, double en, String cx, String cy) {
+    // cx/cy already include the -overlay_w/2 / -overlay_h/2 centering.
+    String x = cx, y = cy;
+    final dIn = 0.35;
+    // progress p = clip(( t - st ) / dIn, 0, 1); 1 after entry
+    final p = "clip((t-${_f(st, 3)})/$dIn\\,0\\,1)";
+    switch (a) {
+      case OverlayAnim.slideUp:
+        y = "$cy+(1-$p)*main_h*0.12";
+        break;
+      case OverlayAnim.slideDown:
+        y = "$cy-(1-$p)*main_h*0.12";
+        break;
+      case OverlayAnim.typewriter:
+        x = "$cx-(1-$p)*main_w*0.08";
+        break;
+      case OverlayAnim.shake:
+        // damped horizontal jitter during entry
+        x = "$cx+(1-$p)*main_w*0.012*sin((t-${_f(st, 3)})*40)";
+        break;
+      default:
+        break; // fade/pop/zoom/bounce/pulse → position neutral; fade-in carries it
+    }
+    return {'x': x, 'y': y};
   }
 
   String _f(num v, [int d = 4]) => v.toStringAsFixed(d);

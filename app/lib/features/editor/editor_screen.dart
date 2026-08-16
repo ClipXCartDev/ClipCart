@@ -818,7 +818,8 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  /// In/out fade + visible-window timing for the selected sticker or text overlay.
+  /// Animation preset picker ("caption looks") + in/out fade timing for the
+  /// selected text or sticker overlay. Tapping a preset previews it live.
   Future<void> _openFadeSheet() async {
     final sel = _selected;
     if (sel is! SubtitleSegment && sel is! StickerOverlay) return;
@@ -826,6 +827,9 @@ class _EditorScreenState extends State<EditorScreen> {
     double getFO() => sel is SubtitleSegment ? sel.fadeOut : (sel as StickerOverlay).fadeOut;
     void setFI(double v) => sel is SubtitleSegment ? sel.fadeIn = v : (sel as StickerOverlay).fadeIn = v;
     void setFO(double v) => sel is SubtitleSegment ? sel.fadeOut = v : (sel as StickerOverlay).fadeOut = v;
+    OverlayAnim getAnim() => sel is SubtitleSegment ? sel.anim : (sel as StickerOverlay).anim;
+    void setAnim(OverlayAnim a) => sel is SubtitleSegment ? sel.anim = a : (sel as StickerOverlay).anim = a;
+    final segStart = sel is SubtitleSegment ? sel.start : ((sel as StickerOverlay).start >= 9998 ? 0.0 : sel.start);
     _snapshot();
     await showModalBottomSheet(
       context: context,
@@ -834,22 +838,67 @@ class _EditorScreenState extends State<EditorScreen> {
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Animation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-              const SizedBox(height: 6),
-              Text('Fade the layer in when it appears and out when it leaves.', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.5)),
+              const SizedBox(height: 4),
+              Text('Pick a caption look — tap to preview.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 168,
+                child: GridView.count(
+                  crossAxisCount: 5,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 0.82,
+                  children: [
+                    for (final a in OverlayAnim.values)
+                      GestureDetector(
+                        onTap: () {
+                          setSheet(() { setAnim(a); });
+                          setState(() {});
+                          _previewAnimFrom(segStart); // play the entry so the user sees it
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: getAnim() == a ? _kAccent : _kChip,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: getAnim() == a ? _kAccent : Colors.white12),
+                          ),
+                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(a.icon, color: Colors.white, size: 22),
+                            const SizedBox(height: 5),
+                            Text(a.label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                          ]),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 14),
+              const Text('Fade', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+              const SizedBox(height: 6),
               _fadeRow('Fade in', getFI(), (v) => setSheet(() { setFI(v); setState(() {}); })),
-              const SizedBox(height: 6),
               _fadeRow('Fade out', getFO(), (v) => setSheet(() { setFO(v); setState(() {}); })),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
             ]),
           ),
         ),
       ),
     );
+  }
+
+  /// Seeks to just before the overlay's start and plays ~1.2s so the entry
+  /// animation is visible as a live preview.
+  void _previewAnimFrom(double startSec) {
+    final vc = _vc;
+    if (vc == null) return;
+    final to = (startSec - 0.05).clamp(0.0, _duration);
+    vc.seekTo(Duration(milliseconds: (to * 1000).round()));
+    vc.play();
+    Future.delayed(const Duration(milliseconds: 1300), () { if (mounted && vc.value.isInitialized) vc.pause(); });
+    setState(() {});
   }
 
   Widget _fadeRow(String label, double value, ValueChanged<double> onChanged) => Row(children: [
@@ -1163,10 +1212,20 @@ class _EditorScreenState extends State<EditorScreen> {
             _snapX = _snapY = false;
             _hint = null;
           }),
-          child: Opacity(
-            opacity: selected ? 1.0 : s.opacityAt(t).clamp(0.15, 1.0),
-            child: Transform.rotate(angle: s.rotation, child: text),
-          ),
+          child: Builder(builder: (_) {
+            final af = selected ? const AnimFrame() : s.animAt(t);
+            final op = (selected ? 1.0 : s.opacityAt(t) * af.opacity).clamp(0.15, 1.0);
+            return Opacity(
+              opacity: op,
+              child: Transform.translate(
+                offset: Offset(af.ox * w, af.oy * h),
+                child: Transform.scale(
+                  scale: af.scale,
+                  child: Transform.rotate(angle: s.rotation, child: text),
+                ),
+              ),
+            );
+          }),
         ),
         if (selected) ...[
           Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
@@ -1341,16 +1400,26 @@ class _EditorScreenState extends State<EditorScreen> {
             _snapX = _snapY = false;
             _hint = null;
           }),
-          child: Opacity(
-            opacity: selected ? 1.0 : st.opacityAt(t).clamp(0.15, 1.0),
-            child: Transform.rotate(
-              angle: st.rotation,
-              child: Container(
-                decoration: BoxDecoration(border: selected ? Border.all(color: _kAccent, width: 1.5) : null),
-                child: Image.file(File(st.path), width: w * st.baseWidthFrac * st.scale),
+          child: Builder(builder: (_) {
+            final af = selected ? const AnimFrame() : st.animAt(t);
+            final op = (selected ? 1.0 : st.opacityAt(t) * af.opacity).clamp(0.15, 1.0);
+            return Opacity(
+              opacity: op,
+              child: Transform.translate(
+                offset: Offset(af.ox * w, af.oy * h),
+                child: Transform.scale(
+                  scale: af.scale,
+                  child: Transform.rotate(
+                    angle: st.rotation,
+                    child: Container(
+                      decoration: BoxDecoration(border: selected ? Border.all(color: _kAccent, width: 1.5) : null),
+                      child: Image.file(File(st.path), width: w * st.baseWidthFrac * st.scale),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          }),
         ),
         if (selected) ...[
           Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
@@ -1594,7 +1663,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(s.bgEnabled ? Icons.check_box : Icons.check_box_outline_blank, 'BG', () => _mutate(() => s.bgEnabled = !s.bgEnabled)),
         _tool(Icons.border_color, 'Outline', () => _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3)),
         _tool(_alignIcon(s.align), 'Align', () => _mutate(() => s.align = TextAlignH.values[(s.align.index + 1) % 3])),
-        _tool(Icons.animation, 'Animate', _openFadeSheet, active: s.fadeIn > 0 || s.fadeOut > 0),
+        _tool(Icons.animation, 'Animate', _openFadeSheet, active: s.anim != OverlayAnim.none || s.fadeIn > 0 || s.fadeOut > 0),
         _tool(Icons.copy, 'Copy', _duplicateSelected),
         _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
       ]);
@@ -1604,7 +1673,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.rotate_left, 'Rotate', () => _mutate(() => st.rotation -= math.pi / 12)),
         _tool(Icons.rotate_right, '', () => _mutate(() => st.rotation += math.pi / 12)),
         _tool(Icons.flip, 'Reset', () => _mutate(() { st.rotation = 0; st.scale = 1; })),
-        _tool(Icons.animation, 'Animate', _openFadeSheet, active: st.fadeIn > 0 || st.fadeOut > 0),
+        _tool(Icons.animation, 'Animate', _openFadeSheet, active: st.anim != OverlayAnim.none || st.fadeIn > 0 || st.fadeOut > 0),
         _tool(Icons.copy, 'Copy', _duplicateSelected),
         _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
       ]);

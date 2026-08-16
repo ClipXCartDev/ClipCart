@@ -2,6 +2,48 @@ import 'package:flutter/material.dart';
 
 enum TextAlignH { left, center, right }
 
+/// One-tap "caption look" motion presets applied to a text/sticker overlay.
+/// Drives the in/out animation in both the live preview and the FFmpeg export.
+enum OverlayAnim {
+  none,
+  fade, // simple opacity fade in/out
+  popIn, // scale from 0 → 1 with a slight overshoot (bouncy)
+  slideUp, // rise up + fade in
+  slideDown,
+  zoomIn, // scale from big → normal
+  bounce, // pop with a spring settle
+  typewriter, // reveal left→right (approximated by a wipe)
+  shake, // quick jitter on entry (attention grab)
+  pulse, // gentle continuous scale breathing
+}
+
+extension OverlayAnimMeta on OverlayAnim {
+  String get label => switch (this) {
+        OverlayAnim.none => 'None',
+        OverlayAnim.fade => 'Fade',
+        OverlayAnim.popIn => 'Pop',
+        OverlayAnim.slideUp => 'Slide up',
+        OverlayAnim.slideDown => 'Slide down',
+        OverlayAnim.zoomIn => 'Zoom',
+        OverlayAnim.bounce => 'Bounce',
+        OverlayAnim.typewriter => 'Type',
+        OverlayAnim.shake => 'Shake',
+        OverlayAnim.pulse => 'Pulse',
+      };
+  IconData get icon => switch (this) {
+        OverlayAnim.none => Icons.block,
+        OverlayAnim.fade => Icons.gradient,
+        OverlayAnim.popIn => Icons.bubble_chart,
+        OverlayAnim.slideUp => Icons.arrow_upward,
+        OverlayAnim.slideDown => Icons.arrow_downward,
+        OverlayAnim.zoomIn => Icons.zoom_in,
+        OverlayAnim.bounce => Icons.sports_basketball,
+        OverlayAnim.typewriter => Icons.keyboard,
+        OverlayAnim.shake => Icons.vibration,
+        OverlayAnim.pulse => Icons.favorite,
+      };
+}
+
 /// One timed, positioned subtitle layer. dx/dy are 0..1 fractions of the canvas
 /// (center of the text). scale multiplies fontSize; stroke + bg are burned on export.
 class SubtitleSegment {
@@ -26,6 +68,7 @@ class SubtitleSegment {
     this.hidden = false,
     this.fadeIn = 0,
     this.fadeOut = 0,
+    this.anim = OverlayAnim.none,
   });
 
   String text;
@@ -48,6 +91,7 @@ class SubtitleSegment {
   bool hidden; // layer visibility
   double fadeIn; // seconds, 0 = none
   double fadeOut; // seconds, 0 = none
+  OverlayAnim anim; // one-tap motion preset
 
   double get effectiveSize => fontSize * scale;
   Color get uiColor => Color(color);
@@ -60,19 +104,22 @@ class SubtitleSegment {
     return a.clamp(0.0, 1.0);
   }
 
+  /// Live-preview transform (opacity, scale, dx/dy offset) for the animation preset.
+  AnimFrame animAt(double t) => computeAnim(anim, t, start, end);
+
   SubtitleSegment copy() => SubtitleSegment(
         text: text, start: start, end: end, fontFamily: fontFamily,
         fontFilePath: fontFilePath, color: color, fontSize: fontSize, dx: dx, dy: dy,
         scale: scale, rotation: rotation, strokeWidth: strokeWidth, strokeColor: strokeColor,
         bgEnabled: bgEnabled, bgColor: bgColor, align: align, z: z, hidden: hidden,
-        fadeIn: fadeIn, fadeOut: fadeOut,
+        fadeIn: fadeIn, fadeOut: fadeOut, anim: anim,
       );
 
   Map<String, dynamic> toJson() => {
         't': text, 's': start, 'e': end, 'ff': fontFamily, 'fp': fontFilePath,
         'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
         'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index, 'z': z, 'hid': hidden,
-        'fi': fadeIn, 'fo': fadeOut,
+        'fi': fadeIn, 'fo': fadeOut, 'an': anim.index,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -85,10 +132,77 @@ class SubtitleSegment {
         bgColor: (j['bgc'] as int?) ?? 0x80000000, align: TextAlignH.values[(j['al'] as int?) ?? 1],
         z: (j['z'] as num?)?.toDouble() ?? 0, hidden: (j['hid'] as bool?) ?? false,
         fadeIn: (j['fi'] as num?)?.toDouble() ?? 0, fadeOut: (j['fo'] as num?)?.toDouble() ?? 0,
+        anim: OverlayAnim.values[(j['an'] as int?) ?? 0],
       );
 }
 
 double math_min(double a, double b) => a < b ? a : b;
+
+/// Per-frame animation transform: opacity 0..1, scale multiplier, and dx/dy pixel
+/// offset (as a fraction of canvas). Shared by text + sticker preview + export.
+class AnimFrame {
+  const AnimFrame({this.opacity = 1, this.scale = 1, this.ox = 0, this.oy = 0});
+  final double opacity, scale, ox, oy;
+}
+
+/// Computes the animation transform for [a] at time [t] within window [start,end].
+/// In-animation runs over the first ~0.5s, out over the last ~0.35s.
+AnimFrame computeAnim(OverlayAnim a, double t, double start, double end) {
+  if (a == OverlayAnim.none) return const AnimFrame();
+  final dur = (end - start).clamp(0.1, double.infinity);
+  final inD = math_min(0.5, dur * 0.5);
+  final outD = math_min(0.35, dur * 0.4);
+  final tin = ((t - start) / inD).clamp(0.0, 1.0); // 0→1 during entry
+  final tout = ((end - t) / outD).clamp(0.0, 1.0); // 1→0 near exit
+  double _ease(double x) => 1 - (1 - x) * (1 - x); // easeOutQuad
+  double _overshoot(double x) {
+    // easeOutBack — overshoots past 1 then settles
+    const c1 = 1.70158, c3 = 2.70158;
+    final p = x - 1;
+    return 1 + c3 * p * p * p + c1 * p * p;
+  }
+  switch (a) {
+    case OverlayAnim.fade:
+      return AnimFrame(opacity: math_min(_ease(tin), tout));
+    case OverlayAnim.popIn:
+      return AnimFrame(opacity: math_min(tin < 1 ? tin : 1.0, tout), scale: tin < 1 ? _overshoot(tin) : 1.0);
+    case OverlayAnim.bounce:
+      final double s = tin < 1 ? _overshoot(tin) : 1.0;
+      return AnimFrame(opacity: math_min(tin < 1 ? _ease(tin) : 1.0, tout), scale: s);
+    case OverlayAnim.zoomIn:
+      final double s = tin < 1 ? (1.6 - 0.6 * _ease(tin)) : 1.0;
+      return AnimFrame(opacity: math_min(_ease(tin), tout), scale: s);
+    case OverlayAnim.slideUp:
+      return AnimFrame(opacity: math_min(_ease(tin), tout), oy: (1 - _ease(tin)) * 0.12);
+    case OverlayAnim.slideDown:
+      return AnimFrame(opacity: math_min(_ease(tin), tout), oy: -(1 - _ease(tin)) * 0.12);
+    case OverlayAnim.typewriter:
+      // approximate: quick horizontal reveal (slide in from left + fade)
+      return AnimFrame(opacity: math_min(tin, tout), ox: -(1 - tin) * 0.08);
+    case OverlayAnim.shake:
+      if (tin >= 1) return AnimFrame(opacity: tout);
+      final ph = (t - start) * 40; // fast jitter
+      return AnimFrame(opacity: _ease(tin), ox: 0.012 * (1 - tin) * math_sin(ph));
+    case OverlayAnim.pulse:
+      // continuous gentle breathing
+      final ph = (t - start) * 3.2;
+      return AnimFrame(opacity: math_min(_ease(tin), tout), scale: 1 + 0.06 * math_sin(ph));
+    case OverlayAnim.none:
+      return const AnimFrame();
+  }
+}
+
+double math_sin(double x) {
+  // lightweight sine (avoid importing dart:math in the model)
+  const tau = 6.283185307179586;
+  x = x % tau;
+  if (x < 0) x += tau;
+  // Bhaskara approximation
+  final neg = x > 3.141592653589793;
+  if (neg) x -= 3.141592653589793;
+  final s = (16 * x * (3.141592653589793 - x)) / (49.348022 - 4 * x * (3.141592653589793 - x));
+  return neg ? -s : s;
+}
 
 /// An image/emoji sticker layer — positioned/scaled/rotated/time-gated, composited
 /// on export exactly like the logo (transparent PNG overlay). [emoji] is set when
@@ -108,6 +222,7 @@ class StickerOverlay {
     this.fadeIn = 0,
     this.fadeOut = 0,
     this.baseWidthFrac = 0.22,
+    this.anim = OverlayAnim.none,
   });
 
   String path; // transparent PNG on disk
@@ -120,6 +235,7 @@ class StickerOverlay {
   bool hidden;
   double fadeIn, fadeOut; // seconds
   double baseWidthFrac; // base width as fraction of canvas before scale
+  OverlayAnim anim;
 
   double opacityAt(double t) {
     var a = 1.0;
@@ -128,14 +244,16 @@ class StickerOverlay {
     return a.clamp(0.0, 1.0);
   }
 
+  AnimFrame animAt(double t) => computeAnim(anim, t, start >= 9998 ? 0 : start, end >= 9998 ? start + 3 : end);
+
   StickerOverlay copy() => StickerOverlay(
         path: path, emoji: emoji, start: start, end: end, dx: dx, dy: dy,
-        scale: scale, rotation: rotation, z: z, hidden: hidden, fadeIn: fadeIn, fadeOut: fadeOut, baseWidthFrac: baseWidthFrac,
+        scale: scale, rotation: rotation, z: z, hidden: hidden, fadeIn: fadeIn, fadeOut: fadeOut, baseWidthFrac: baseWidthFrac, anim: anim,
       );
 
   Map<String, dynamic> toJson() => {
         'p': path, 'em': emoji, 's': start, 'e': end, 'dx': dx, 'dy': dy,
-        'sc': scale, 'rot': rotation, 'z': z, 'hid': hidden, 'fi': fadeIn, 'fo': fadeOut, 'bw': baseWidthFrac,
+        'sc': scale, 'rot': rotation, 'z': z, 'hid': hidden, 'fi': fadeIn, 'fo': fadeOut, 'bw': baseWidthFrac, 'an': anim.index,
       };
 
   factory StickerOverlay.fromJson(Map<String, dynamic> j) => StickerOverlay(
@@ -146,6 +264,7 @@ class StickerOverlay {
         z: (j['z'] as num?)?.toDouble() ?? 500, hidden: (j['hid'] as bool?) ?? false,
         fadeIn: (j['fi'] as num?)?.toDouble() ?? 0, fadeOut: (j['fo'] as num?)?.toDouble() ?? 0,
         baseWidthFrac: (j['bw'] as num?)?.toDouble() ?? 0.22,
+        anim: OverlayAnim.values[(j['an'] as int?) ?? 0],
       );
 }
 
