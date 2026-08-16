@@ -79,6 +79,25 @@ def app_config() -> dict:
     }
 
 
+@router.get("/assets/stickers")
+def sticker_catalog() -> dict:
+    """PUBLIC — emoji/sticker library hosted on R2. Returns categories with
+    per-item presigned URLs (7-day) the app caches locally. Static + immutable."""
+    import json
+    try:
+        raw = storage.presign_download("stickers/emoji_manifest.json", expires=60)
+        import urllib.request
+        with urllib.request.urlopen(raw, timeout=10) as r:
+            manifest = json.loads(r.read())
+    except Exception:
+        return {"attribution": None, "categories": []}
+    week = 7 * 24 * 3600
+    for cat in manifest.get("categories", []):
+        for it in cat.get("items", []):
+            it["url"] = storage.presign_download(it["key"], expires=week)
+    return manifest
+
+
 @router.get("/clips/{slug}", response_model=ClipOut)
 def get_clip(slug: str, db: Session = Depends(get_db)) -> ClipOut:
     clip = db.scalar(select(Clip).where(Clip.slug == slug, Clip.status == ClipStatus.approved))
