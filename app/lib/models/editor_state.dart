@@ -69,6 +69,11 @@ class SubtitleSegment {
     this.fadeIn = 0,
     this.fadeOut = 0,
     this.anim = OverlayAnim.none,
+    this.letterSpacing = 0,
+    this.lineHeight = 1.15,
+    this.bold = true,
+    this.italic = false,
+    this.shadow = false,
   });
 
   String text;
@@ -92,6 +97,11 @@ class SubtitleSegment {
   double fadeIn; // seconds, 0 = none
   double fadeOut; // seconds, 0 = none
   OverlayAnim anim; // one-tap motion preset
+  double letterSpacing; // extra px between letters
+  double lineHeight; // line-height multiplier
+  bool bold;
+  bool italic;
+  bool shadow; // soft drop shadow
 
   double get effectiveSize => fontSize * scale;
   Color get uiColor => Color(color);
@@ -113,6 +123,7 @@ class SubtitleSegment {
         scale: scale, rotation: rotation, strokeWidth: strokeWidth, strokeColor: strokeColor,
         bgEnabled: bgEnabled, bgColor: bgColor, align: align, z: z, hidden: hidden,
         fadeIn: fadeIn, fadeOut: fadeOut, anim: anim,
+        letterSpacing: letterSpacing, lineHeight: lineHeight, bold: bold, italic: italic, shadow: shadow,
       );
 
   Map<String, dynamic> toJson() => {
@@ -120,6 +131,7 @@ class SubtitleSegment {
         'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
         'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index, 'z': z, 'hid': hidden,
         'fi': fadeIn, 'fo': fadeOut, 'an': anim.index,
+        'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -133,6 +145,8 @@ class SubtitleSegment {
         z: (j['z'] as num?)?.toDouble() ?? 0, hidden: (j['hid'] as bool?) ?? false,
         fadeIn: (j['fi'] as num?)?.toDouble() ?? 0, fadeOut: (j['fo'] as num?)?.toDouble() ?? 0,
         anim: OverlayAnim.values[(j['an'] as int?) ?? 0],
+        letterSpacing: (j['ls'] as num?)?.toDouble() ?? 0, lineHeight: (j['lh'] as num?)?.toDouble() ?? 1.15,
+        bold: (j['bo'] as bool?) ?? true, italic: (j['it'] as bool?) ?? false, shadow: (j['sh'] as bool?) ?? false,
       );
 }
 

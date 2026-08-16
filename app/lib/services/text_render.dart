@@ -23,8 +23,13 @@ class TextRenderService {
       fontFamily: s.fontFamily,
       color: Color(s.color),
       fontSize: size,
-      fontWeight: FontWeight.w800,
-      height: 1.18,
+      fontWeight: s.bold ? FontWeight.w800 : FontWeight.w500,
+      fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
+      letterSpacing: s.letterSpacing,
+      height: s.lineHeight,
+      shadows: (s.shadow && s.strokeWidth <= 0)
+          ? [Shadow(color: const Color(0xCC000000), blurRadius: size * 0.12, offset: Offset(size * 0.03, size * 0.03))]
+          : null,
     );
     final fill = TextPainter(
       text: TextSpan(text: text, style: style),

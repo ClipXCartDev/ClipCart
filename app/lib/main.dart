@@ -9,6 +9,7 @@ import 'services/auth_service.dart';
 import 'services/billing_service.dart';
 import 'services/catalog_service.dart';
 import 'services/creator_service.dart';
+import 'services/brand_kit_service.dart';
 import 'services/font_service.dart';
 import 'services/sticker_service.dart';
 import 'state/auth_controller.dart';
@@ -32,6 +33,7 @@ void main() async {
       Provider<CreatorService>.value(value: creator),
       ChangeNotifierProvider<FontService>(create: (_) => FontService()),
       ChangeNotifierProvider<StickerService>(create: (_) => StickerService(api)),
+      ChangeNotifierProvider<BrandKitService>(create: (_) => BrandKitService()..ensureLoaded()),
       ChangeNotifierProvider<AuthController>.value(value: authController),
     ],
     child: const ClipCartApp(),

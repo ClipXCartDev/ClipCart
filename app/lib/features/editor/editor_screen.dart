@@ -10,13 +10,13 @@ import 'package:video_player/video_player.dart';
 
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
+import '../../services/brand_kit_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
 import '../../services/sticker_service.dart';
 import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
-import 'subtitle_editor_sheet.dart';
 
 const _kBg = Color(0xFF0B0A0C);
 const _kPanel = Color(0xFF161318);
@@ -334,29 +334,72 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   /// Advanced font/timing sheet (opened from the Font tool), not the primary flow.
+  /// Adjust sheet — fine typography controls: bold / italic / shadow toggles +
+  /// letter-spacing and line-height sliders (live, applied to the selected text).
   Future<void> _openStyleSheet() async {
     if (_selected is! SubtitleSegment) return;
     final s = _selected as SubtitleSegment;
-    final fonts = context.read<FontService>().fonts;
-    final res = await showModalBottomSheet<SubtitleSegment>(
+    _snapshot();
+    await showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => SubtitleEditorSheet(duration: _duration, fonts: fonts, initial: s),
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Adjust', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const SizedBox(height: 14),
+              Row(children: [
+                _adjToggle('B', s.bold, () => setSheet(() { s.bold = !s.bold; setState(() {}); }), bold: true),
+                const SizedBox(width: 10),
+                _adjToggle('I', s.italic, () => setSheet(() { s.italic = !s.italic; setState(() {}); }), italic: true),
+                const SizedBox(width: 10),
+                _adjIconToggle(Icons.format_color_fill, 'Shadow', s.shadow, () => setSheet(() { s.shadow = !s.shadow; setState(() {}); })),
+              ]),
+              const SizedBox(height: 16),
+              _fadeRowGeneric('Letter spacing', s.letterSpacing, -3, 12, (v) => setSheet(() { s.letterSpacing = v; setState(() {}); }), suffix: 'px'),
+              _fadeRowGeneric('Line height', s.lineHeight, 0.8, 2.0, (v) => setSheet(() { s.lineHeight = v; setState(() {}); }), suffix: 'x'),
+              const SizedBox(height: 12),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+            ]),
+          ),
+        ),
+      ),
     );
-    if (res != null) {
-      _snapshot();
-      res.dx = s.dx;
-      res.dy = s.dy;
-      res.scale = s.scale;
-      res.rotation = s.rotation;
-      setState(() {
-        final i = _project!.subtitles.indexOf(s);
-        if (i >= 0) _project!.subtitles[i] = res;
-        _selected = res;
-      });
-    }
   }
+
+  Widget _adjToggle(String label, bool on, VoidCallback onTap, {bool bold = false, bool italic = false}) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 46, height: 40,
+          decoration: BoxDecoration(color: on ? _kAccent : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? _kAccent : Colors.white12)),
+          alignment: Alignment.center,
+          child: Text(label, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: bold ? FontWeight.w900 : FontWeight.w700, fontStyle: italic ? FontStyle.italic : FontStyle.normal)),
+        ),
+      );
+
+  Widget _adjIconToggle(IconData i, String label, bool on, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 40, padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(color: on ? _kAccent : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? _kAccent : Colors.white12)),
+          alignment: Alignment.center,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(i, size: 16, color: Colors.white), const SizedBox(width: 6), Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))]),
+        ),
+      );
+
+  Widget _fadeRowGeneric(String label, double value, double min, double max, ValueChanged<double> onChanged, {String suffix = ''}) => Row(children: [
+        SizedBox(width: 108, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+        Expanded(
+          child: SliderTheme(
+            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: _kAccent, inactiveTrackColor: Colors.white24, overlayColor: _kAccent.withOpacity(0.15)),
+            child: Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged),
+          ),
+        ),
+        SizedBox(width: 46, child: Text('${value.toStringAsFixed(1)}$suffix', textAlign: TextAlign.right, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12))),
+      ]);
 
   // ---------- layers panel (CapCut-style: reorder z, select, hide, delete) ----------
   void _openLayers() {
@@ -602,6 +645,140 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFFFF7A00, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
   ];
 
+  // ---------- Brand Kit ----------
+  Future<void> _openBrandKit() async {
+    final bk = context.read<BrandKitService>();
+    await bk.ensureLoaded();
+    await context.read<FontService>().loadBuiltins();
+    final kit = bk.kit ?? BrandKit();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _kPanel,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 16, 18, 16 + MediaQuery.of(context).viewInsets.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.palette_rounded, color: _kAccent, size: 20),
+                const SizedBox(width: 8),
+                const Text('Brand Kit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Spacer(),
+                TextButton(onPressed: () async { await bk.saveKit(kit); if (context.mounted) Navigator.pop(context); }, child: const Text('Save', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w800))),
+              ]),
+              Text('Save your colors, font & logo once — apply to any clip in a tap.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              const SizedBox(height: 16),
+              // palette
+              const Text('Colors', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 10, runSpacing: 10, children: [
+                for (var i = 0; i < kit.colors.length; i++)
+                  GestureDetector(
+                    onTap: () async {
+                      final c = await _pickBrandColor(kit.colors[i]);
+                      if (c != null) setSheet(() => kit.colors[i] = c);
+                    },
+                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(kit.colors[i]), shape: BoxShape.circle, border: Border.all(color: Colors.white24, width: i == 0 ? 3 : 1))),
+                  ),
+                if (kit.colors.length < 4)
+                  GestureDetector(
+                    onTap: () => setSheet(() => kit.colors.add(0xFF12B76A)),
+                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white10, shape: BoxShape.circle, border: Border.all(color: Colors.white24)), child: const Icon(Icons.add, color: Colors.white54, size: 20)),
+                  ),
+              ]),
+              const SizedBox(height: 16),
+              // font
+              Row(children: [
+                const Text('Font', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 40,
+                    child: ListView(scrollDirection: Axis.horizontal, children: [
+                      for (final f in context.read<FontService>().all)
+                        GestureDetector(
+                          onTap: () => setSheet(() { kit.fontFamily = f.family; kit.fontPath = f.path; }),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(color: kit.fontFamily == f.family ? _kAccent : Colors.white10, borderRadius: BorderRadius.circular(9), border: Border.all(color: kit.fontFamily == f.family ? _kAccent : Colors.white12)),
+                            child: Text('Aa', style: TextStyle(fontFamily: f.family, color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                          ),
+                        ),
+                    ]),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              // logo
+              Row(children: [
+                const Text('Logo', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                const SizedBox(width: 12),
+                if (kit.logoPath != null) ...[
+                  Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)), clipBehavior: Clip.antiAlias, child: Image.file(File(kit.logoPath!), fit: BoxFit.contain)),
+                  const SizedBox(width: 10),
+                ],
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final res = await FilePicker.platform.pickFiles(type: FileType.image);
+                    if (res != null && res.files.single.path != null) {
+                      final p = await bk.persistLogo(res.files.single.path!);
+                      setSheet(() => kit.logoPath = p);
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24)),
+                  icon: const Icon(Icons.upload_rounded, size: 16),
+                  label: Text(kit.logoPath == null ? 'Add logo' : 'Change'),
+                ),
+              ]),
+              const SizedBox(height: 20),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Apply brand to clip', icon: Icons.auto_fix_high, onPressed: () async { await bk.saveKit(kit); _applyBrand(kit); if (context.mounted) Navigator.pop(context); })),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<int?> _pickBrandColor(int current) async {
+    const palette = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFF7A00, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF9B5DE5, 0xFF17131F, 0xFFFF2D6B];
+    return showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: _kPanel,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Wrap(spacing: 14, runSpacing: 14, children: [
+            for (final c in palette)
+              GestureDetector(
+                onTap: () => Navigator.pop(context, c),
+                child: Container(width: 42, height: 42, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == current ? _kAccent : Colors.white24, width: c == current ? 3 : 1))),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// One-tap: recolor all text to the brand primary, set the brand font, and
+  /// drop the brand logo in (top-right) if not already present.
+  void _applyBrand(BrandKit kit) {
+    _mutate(() {
+      for (final s in _project!.subtitles) {
+        s.color = kit.primary;
+        if (kit.fontFamily != null) { s.fontFamily = kit.fontFamily; s.fontFilePath = kit.fontPath; }
+      }
+      if (kit.logoPath != null && File(kit.logoPath!).existsSync()) {
+        _project!.logoPath = kit.logoPath;
+        _project!.logoHidden = false;
+      }
+    });
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brand applied ✨')));
+  }
+
   void _applyStyle(SubtitleSegment s, Map<String, dynamic> t) {
     _mutate(() {
       s.fontFamily = t['font'] as String?;
@@ -619,11 +796,40 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  Widget _styleTile(SubtitleSegment s, Map<String, dynamic> tpl, VoidCallback onTap, {VoidCallback? onLong}) {
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLong,
+      child: Container(
+        decoration: BoxDecoration(
+          color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : Colors.black26,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : Colors.white12, width: s.fontFamily == tpl['font'] ? 2 : 1),
+        ),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(6),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('Aa', style: TextStyle(
+            fontFamily: tpl['font'] as String?,
+            color: Color(tpl['color'] as int),
+            fontSize: 26, fontWeight: FontWeight.w900,
+            shadows: (tpl['sw'] as double) > 0 ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)]) Shadow(color: Color(tpl['sc'] as int), offset: o)] : null,
+          )),
+          const SizedBox(height: 3),
+          Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+
   /// "Styles" gallery — one tap applies a full caption look (font+color+stroke+bg+anim).
+  /// Shows the user's saved styles first (long-press to delete) + a "Save current" tile.
   Future<void> _openStyleGallery() async {
     if (_selected is! SubtitleSegment) return;
     final s = _selected as SubtitleSegment;
     await context.read<FontService>().loadBuiltins();
+    final bk = context.read<BrandKitService>();
+    await bk.ensureLoaded();
     await showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
@@ -635,45 +841,84 @@ class _EditorScreenState extends State<EditorScreen> {
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Styles', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
               const SizedBox(height: 4),
-              Text('One-tap caption look — font, color & motion.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              Text('One-tap caption look. Long-press a saved style to remove.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 250,
+              Flexible(
                 child: GridView.count(
+                  shrinkWrap: true,
                   crossAxisCount: 3,
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
                   childAspectRatio: 1.35,
                   children: [
-                    for (final tpl in _styleTemplates)
-                      GestureDetector(
-                        onTap: () { _applyStyle(s, tpl); setSheet(() {}); },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : Colors.black26,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : Colors.white12, width: s.fontFamily == tpl['font'] ? 2 : 1),
-                          ),
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(6),
-                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Text('Aa', style: TextStyle(
-                              fontFamily: tpl['font'] as String?,
-                              color: Color(tpl['color'] as int),
-                              fontSize: 26, fontWeight: FontWeight.w900,
-                              shadows: (tpl['sw'] as double) > 0 ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)]) Shadow(color: Color(tpl['sc'] as int), offset: o)] : null,
-                            )),
-                            const SizedBox(height: 3),
-                            Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
-                          ]),
-                        ),
+                    // "Save current" tile
+                    GestureDetector(
+                      onTap: () async {
+                        final name = await _promptStyleName();
+                        if (name == null || name.trim().isEmpty) return;
+                        await bk.addStyle(SavedStyle(name.trim(), {
+                          'name': name.trim(), 'font': s.fontFamily, 'color': s.color, 'bg': s.bgEnabled,
+                          'bgc': s.bgColor, 'sw': s.strokeWidth, 'sc': s.strokeColor, 'anim': s.anim.index,
+                        }));
+                        setSheet(() {});
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24, style: BorderStyle.solid)),
+                        alignment: Alignment.center,
+                        child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.add_rounded, color: _kAccent, size: 24),
+                          SizedBox(height: 3),
+                          Text('Save current', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+                        ]),
                       ),
+                    ),
+                    // user-saved styles
+                    for (final st in bk.styles)
+                      _styleTile(s, _savedToTpl(st),
+                        () { _applyStyle(s, _savedToTpl(st)); setSheet(() {}); },
+                        onLong: () async { await bk.removeStyle(st.name); setSheet(() {}); },
+                      ),
+                    // built-in templates
+                    for (final tpl in _styleTemplates)
+                      _styleTile(s, tpl, () { _applyStyle(s, tpl); setSheet(() {}); }),
                   ],
                 ),
               ),
             ]),
           ),
         ),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _savedToTpl(SavedStyle st) => {
+        'name': st.name,
+        'font': st.data['font'] as String?,
+        'color': st.data['color'] as int,
+        'bg': st.data['bg'] as bool,
+        'bgc': st.data['bgc'] as int,
+        'sw': (st.data['sw'] as num).toDouble(),
+        'sc': st.data['sc'] as int,
+        'anim': OverlayAnim.values[st.data['anim'] as int],
+      };
+
+  Future<String?> _promptStyleName() {
+    final ctl = TextEditingController(text: 'My style');
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: _kPanel,
+        title: const Text('Save style', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: ctl, autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          cursorColor: _kAccent,
+          decoration: const InputDecoration(hintText: 'Style name', hintStyle: TextStyle(color: Colors.white38), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24))),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, ctl.text), child: const Text('Save', style: TextStyle(color: _kAccent))),
+        ],
       ),
     );
   }
@@ -779,12 +1024,6 @@ class _EditorScreenState extends State<EditorScreen> {
     }
   }
 
-  Future<void> _uploadFont() async {
-    final f = await context.read<FontService>().uploadFont();
-    if (f != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Font added: ${f.name}')));
-    }
-  }
 
   // ---------- stickers / emoji ----------
   Future<void> _pickSticker() async {
@@ -1275,11 +1514,13 @@ class _EditorScreenState extends State<EditorScreen> {
           fontFamily: s.fontFamily,
           color: s.uiColor,
           fontSize: (s.effectiveSize * scale).clamp(9, 90),
-          fontWeight: FontWeight.w800,
-          height: 1.15,
+          fontWeight: s.bold ? FontWeight.w800 : FontWeight.w500,
+          fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
+          letterSpacing: s.letterSpacing * scale,
+          height: s.lineHeight,
           shadows: s.strokeWidth > 0
               ? [for (final o in const [Offset(-1, -1), Offset(1, -1), Offset(1, 1), Offset(-1, 1)]) Shadow(color: Color(s.strokeColor), offset: o * (s.strokeWidth * scale).clamp(0.5, 4))]
-              : const [Shadow(color: Colors.black54, blurRadius: 3)],
+              : (s.shadow ? const [Shadow(color: Colors.black87, blurRadius: 6, offset: Offset(1.5, 1.5))] : const [Shadow(color: Colors.black54, blurRadius: 3)]),
         ),
       ),
     );
@@ -1796,7 +2037,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
         _tool(Icons.image_outlined, 'Logo', _pickLogo),
-        _tool(Icons.font_download_outlined, 'Font', _uploadFont),
+        _tool(Icons.palette_rounded, 'Brand', _openBrandKit),
       ]);
     }
     final hasSel = _selected != null;
