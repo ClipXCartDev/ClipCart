@@ -71,6 +71,29 @@ h2.sec{font-size:clamp(20px,2.4vw,28px);font-weight:900;letter-spacing:-.02em;ma
 .b-pro{background:var(--gold);color:#3a2600}.b-free{background:var(--ok);color:#fff}
 .tpl .dur{color:#fff;font-size:10px;font-weight:800;background:rgba(0,0,0,.5);padding:2px 7px;border-radius:6px;position:relative;z-index:2}
 .tpl .m{padding:11px 13px}.tpl .nm{font-weight:800;font-size:13.5px;letter-spacing:-.01em}.tpl .by{color:var(--muted);font-size:11.5px;margin-top:2px}
+/* inline expanded player (opens in-place in the gallery) */
+.tpl.playing{grid-column:span 2;cursor:default;transform:none;box-shadow:0 20px 50px rgba(30,18,45,.22);border-color:var(--accent)}
+.tpl.playing:hover{transform:none}
+@media(max-width:520px){.tpl.playing{grid-column:1/-1}}
+.ip{position:relative;background:#000;aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ip video{width:100%;height:100%;object-fit:contain;background:#000}
+.ip .ipx{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;border:0;font-size:19px;line-height:1;cursor:pointer;z-index:4;display:grid;place-items:center;backdrop-filter:blur(4px)}
+.ip .ipx:hover{background:rgba(0,0,0,.8)}
+.ip .ipbig{position:absolute;inset:0;display:grid;place-items:center;z-index:3;cursor:pointer;transition:.15s}
+.ip .ipbig span{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.ip .ipbig svg{width:26px;height:26px;fill:#17131f;margin-left:3px}
+.ipctrl{position:absolute;left:0;right:0;bottom:0;padding:8px 12px 10px;background:linear-gradient(0deg,rgba(0,0,0,.72),transparent);z-index:4;display:flex;flex-direction:column;gap:6px;opacity:0;transition:.18s}
+.ip:hover .ipctrl,.ip.paused .ipctrl{opacity:1}
+.ipseek{height:5px;border-radius:5px;background:rgba(255,255,255,.28);cursor:pointer;position:relative}
+.ipseek .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--grad);width:0}
+.ipseek .dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);left:0}
+.iprow{display:flex;align-items:center;gap:12px;color:#fff}
+.iprow button{background:none;border:0;color:#fff;cursor:pointer;padding:0;display:grid;place-items:center}
+.iprow svg{width:20px;height:20px;fill:#fff}
+.iprow .t{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.iprow .sp{flex:1}
+.tpl.playing .m .cta{margin-top:8px}
+.tpl.playing .m .cta a{display:inline-block;font-size:12px;font-weight:800;color:var(--accent)}
 /* chips */
 .chips{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:18px}
 .chip{border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:9px 17px;font-size:13px;font-weight:700;color:var(--muted);transition:.12s}
@@ -379,12 +402,105 @@ let _watchIdx=-1;
 
 function clipDetail(slug){ return showClip(slug); }
 
-// click entry point — pushes a history state so Back closes the player
+// ---- INLINE gallery player: clicking a card expands IT in place (no route change) ----
+let _ipSlug=null; // slug of the currently expanded card
 function showClip(slug){
   slug=decodeURIComponent(slug);
+  const card=document.querySelector(`.tpl[data-slug="${cssEsc(slug)}"]`);
+  if(!card){ // not in current grid (e.g. related) → just load full watch route as fallback
+    const cards=[...document.querySelectorAll('.tpl[data-slug]')].map(el=>el.dataset.slug);
+    _watchQueue=cards.length?cards:[slug];
+    location.hash='#/watch/'+encodeURIComponent(slug); return;
+  }
+  if(_ipSlug===slug){ collapseInline(); return; } // toggle off if same card
+  collapseInline(); // close any other open card first
+  expandInline(card, slug);
+}
+function cssEsc(s){return (window.CSS&&CSS.escape)?CSS.escape(s):s.replace(/["\\]/g,'\\$&');}
+
+async function expandInline(card, slug){
+  _ipSlug=slug;
+  card.classList.add('playing');
+  card.innerHTML=`<div class="ip paused" id="ip"><div style="color:#8f8899;font-size:13px">Loading…</div></div>
+    <div class="m"><div class="nm" id="ipnm">…</div><div class="by" id="ipby"></div>
+      <div class="cta"><a onclick="event.stopPropagation();${TOKEN?"go('pricing')":"go('register')"}">✨ Customize &amp; export in the app →</a></div></div>`;
+  try{
+    const c=await api('/clips/'+slug);
+    if(_ipSlug!==slug)return; // user closed/switched during fetch
+    const ip=card.querySelector('#ip'); if(!ip)return;
+    const[a,b]=g(c.id);
+    ip.innerHTML = c.preview ? `
+      <video id="ipv" src="${h(c.preview)}" playsinline autoplay poster="${h(c.thumb||'')}"></video>
+      <button class="ipx" onclick="event.stopPropagation();collapseInline()" title="Close">×</button>
+      <div class="ipbig" id="ipbig"><span><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></div>
+      <div class="ipctrl">
+        <div class="ipseek" id="ipseek"><div class="fill" id="ipfill"></div><div class="dot" id="ipdot"></div></div>
+        <div class="iprow">
+          <button id="ippp" title="Play/pause"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+          <span class="t" id="iptime">0:00 / 0:00</span>
+          <span class="sp"></span>
+          <button id="ipmute" title="Mute"><svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 5V5L7 10H3z"/></svg></button>
+          <button id="ipfs" title="Fullscreen"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
+        </div>
+      </div>`
+      : `<img src="${h(c.thumb||'')}" style="width:100%;height:100%;object-fit:contain"><button class="ipx" onclick="event.stopPropagation();collapseInline()">×</button>`;
+    const nm=card.querySelector('#ipnm'), by=card.querySelector('#ipby');
+    if(nm)nm.textContent=c.title;
+    if(by)by.textContent=(c.editor_name?('by '+c.editor_name):'')+(c.downloads>0?` · ${c.downloads} ${c.downloads==1?'use':'uses'}`:'')+` · ${dur(c.duration_sec)}`;
+    wireInlinePlayer(card);
+  }catch(e){const ip=card.querySelector('#ip');if(ip)ip.innerHTML='<p class="err" style="padding:20px">'+h(e.message)+'</p>';}
+}
+
+function wireInlinePlayer(card){
+  const v=card.querySelector('#ipv'); if(!v)return;
+  const ip=card.querySelector('#ip'), big=card.querySelector('#ipbig'), pp=card.querySelector('#ippp');
+  const fill=card.querySelector('#ipfill'), dot=card.querySelector('#ipdot'), time=card.querySelector('#iptime');
+  const seek=card.querySelector('#ipseek'), mute=card.querySelector('#ipmute'), fs=card.querySelector('#ipfs');
+  const fmt=s=>{s=Math.max(0,s|0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+  const setPP=()=>{const playing=!v.paused&&!v.ended;ip.classList.toggle('paused',!playing);
+    const ic=playing?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
+    if(pp)pp.querySelector('svg').innerHTML=ic; if(big)big.style.opacity=playing?0:1;};
+  const toggle=()=>{ if(v.paused||v.ended){ if(v.ended)v.currentTime=0; v.play(); } else v.pause(); };
+  v.muted=false; v.volume=1;
+  v.play().then(setPP).catch(()=>{ v.muted=true; if(mute)mute.querySelector('svg').innerHTML='<path d="M16.5 12A4.5 4.5 0 0014 8v2.2l2.5 2.5V12zM3 9v6h4l5 5V4L7 9H3z"/>'; v.play().then(setPP).catch(()=>{}); });
+  v.addEventListener('play',setPP); v.addEventListener('pause',setPP); v.addEventListener('ended',setPP);
+  if(big)big.onclick=e=>{e.stopPropagation();toggle();};
+  if(pp)pp.onclick=e=>{e.stopPropagation();toggle();};
+  if(ip)ip.onclick=e=>{ if(e.target===ip||e.target===v){e.stopPropagation();toggle();} };
+  v.addEventListener('timeupdate',()=>{ const d=v.duration||0,p=d?v.currentTime/d:0;
+    if(fill)fill.style.width=(p*100)+'%'; if(dot)dot.style.left=(p*100)+'%';
+    if(time)time.textContent=`${fmt(v.currentTime)} / ${fmt(d)}`; });
+  const doSeek=e=>{ const r=seek.getBoundingClientRect(); const x=((e.touches?e.touches[0].clientX:e.clientX)-r.left)/r.width;
+    v.currentTime=Math.max(0,Math.min(1,x))*(v.duration||0); };
+  if(seek){ let sk=false;
+    seek.addEventListener('mousedown',e=>{e.stopPropagation();sk=true;doSeek(e);});
+    window.addEventListener('mousemove',e=>{if(sk)doSeek(e);});
+    window.addEventListener('mouseup',()=>sk=false);
+    seek.addEventListener('click',e=>{e.stopPropagation();doSeek(e);});
+    seek.addEventListener('touchstart',e=>{e.stopPropagation();doSeek(e);},{passive:true});
+    seek.addEventListener('touchmove',e=>{doSeek(e);},{passive:true});
+  }
+  if(mute)mute.onclick=e=>{e.stopPropagation();v.muted=!v.muted;
+    mute.querySelector('svg').innerHTML=v.muted?'<path d="M16.5 12A4.5 4.5 0 0014 8v2.2l2.5 2.5V12zM3 9v6h4l5 5V4L7 9H3z"/>':'<path d="M3 10v4h4l5 5V5L7 10H3z"/>';};
+  if(fs)fs.onclick=e=>{e.stopPropagation(); (v.requestFullscreen||v.webkitEnterFullscreen||function(){}).call(v);};
+}
+
+function collapseInline(){
+  if(!_ipSlug)return;
+  const card=document.querySelector(`.tpl.playing[data-slug="${cssEsc(_ipSlug)}"]`);
+  const slug=_ipSlug; _ipSlug=null;
+  if(card){ const v=card.querySelector('#ipv'); if(v){try{v.pause();v.removeAttribute('src');v.load();}catch(e){}}
+    card.classList.remove('playing');
+    // re-render the card back to its thumbnail form
+    api('/clips/'+slug).then(c=>{ if(card.isConnected&&!card.classList.contains('playing')) card.outerHTML=clipCard(c); }).catch(()=>{});
+  }
+}
+
+// legacy alias for any deep-link entry
+function showClipRoute(slug){
   const cards=[...document.querySelectorAll('.tpl[data-slug]')].map(el=>el.dataset.slug);
   _watchQueue=cards.length?cards:[slug];
-  location.hash='#/watch/'+encodeURIComponent(slug); // → route() → openWatch()
+  location.hash='#/watch/'+encodeURIComponent(slug);
 }
 // called by the router (fresh nav, back/forward, or deep link)
 async function openWatch(slug){
