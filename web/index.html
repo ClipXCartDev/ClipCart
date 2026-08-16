@@ -92,8 +92,29 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px;bor
 .err{color:var(--accent);font-size:13px}.muted{color:var(--muted)}
 .center-box{max-width:380px;margin:48px auto}
 .tabs{display:flex;gap:8px;margin-bottom:16px}.tabs .chip{cursor:pointer}
-footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padding:30px var(--pad);display:flex;gap:16px;flex-wrap:wrap;align-items:center}
-footer .sp{flex:1}
+/* social proof + testimonials */
+.proof{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:center;padding:22px 0;margin:8px 0 2px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.proof .pi{text-align:center}.proof .pi b{display:block;font-size:26px;font-weight:900;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.proof .pi span{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.tmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin:6px 0}
+.tm{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:0 1px 2px rgba(30,20,40,.03)}
+.tm .stars{color:var(--gold);font-size:14px;letter-spacing:2px}
+.tm p{margin:12px 0 16px;font-size:14.5px;line-height:1.55;color:var(--text)}
+.tm .who{display:flex;align-items:center;gap:11px}
+.tm .av{width:40px;height:40px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:900;font-size:15px;flex:0 0 auto}
+.tm .who b{font-size:13.5px;font-weight:800;display:block}.tm .who span{color:var(--muted);font-size:12px}
+/* CTA band */
+.cta{margin:44px 0 8px;border-radius:24px;padding:44px;text-align:center;background:radial-gradient(900px 400px at 50% -20%,rgba(255,138,61,.32),transparent),#140f1d;color:#fff}
+.cta h2{font-size:clamp(24px,3vw,34px);font-weight:900;letter-spacing:-.02em;margin:0 0 8px}
+.cta p{color:#cfc9d8;margin:0 0 22px;font-size:15px}
+footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padding:44px var(--pad) 34px}
+.foot-top{display:grid;grid-template-columns:1.6fr repeat(3,1fr);gap:30px;max-width:var(--maxw);margin:0 auto 26px}
+.foot-top h4{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text);margin:0 0 12px}
+.foot-top a{display:block;padding:5px 0;color:var(--muted);font-size:13.5px}.foot-top a:hover{color:var(--text)}
+.foot-top .blurb{color:var(--muted);font-size:13.5px;line-height:1.55;max-width:34ch;margin:12px 0 0}
+.foot-bot{display:flex;gap:16px;flex-wrap:wrap;align-items:center;max-width:var(--maxw);margin:0 auto;padding-top:22px;border-top:1px solid var(--border)}
+.foot-bot .sp{flex:1}
+@media(max-width:760px){.foot-top{grid-template-columns:1fr 1fr}}
 @media(max-width:640px){.hero{padding:44px 24px;border-radius:22px}.wrap{padding:18px 16px 70px}nav .links{display:none}}
 /* watch player (YouTube/FB-style) */
 .watch{position:fixed;inset:0;z-index:100;background:rgba(9,7,11,.97);backdrop-filter:blur(10px);display:flex;flex-direction:column;overflow:auto}
@@ -135,9 +156,21 @@ footer .sp{flex:1}
 </nav>
 <div class="wrap" id="view">Loading…</div>
 <footer>
-  <span class="logo" style="display:flex;align-items:center;gap:8px;font-weight:900"><span style="width:24px;height:24px;border-radius:7px;background:var(--grad);display:grid;place-items:center;color:#fff">C</span>ClipCart</span>
-  <span class="sp"></span>
-  <a onclick="go('browse')">Browse</a><a onclick="go('pricing')">Pricing</a><span>© ClipCart</span>
+  <div class="foot-top">
+    <div>
+      <span class="logo" style="display:flex;align-items:center;gap:9px;font-weight:900;font-size:18px;color:var(--text)"><span style="width:28px;height:28px;border-radius:8px;background:var(--grad);display:grid;place-items:center;color:#fff">C</span>ClipCart</span>
+      <p class="blurb">Trending meme &amp; movie clips you can customize and export in full HD — right on your phone. Post more, faster.</p>
+    </div>
+    <div><h4>Product</h4><a onclick="go('browse')">Browse clips</a><a onclick="go('pricing')">Pricing</a><a onclick="go('register')">Get the app</a></div>
+    <div><h4>Company</h4><a onclick="go('home')">About</a><a href="mailto:clipxcart@gmail.com">Contact</a><a onclick="go('register')">Become a creator</a></div>
+    <div><h4>Legal</h4><a onclick="go('home')">Terms</a><a onclick="go('home')">Privacy</a><a href="mailto:clipxcart@gmail.com">Support</a></div>
+  </div>
+  <div class="foot-bot">
+    <span>© 2026 ClipCart. All rights reserved.</span>
+    <span class="sp"></span>
+    <span>Crypto payments · Binance Pay</span>
+    <a href="mailto:clipxcart@gmail.com">clipxcart@gmail.com</a>
+  </div>
 </footer>
 
 <script>
@@ -196,9 +229,23 @@ async function vHome(){
       <div class="step"><div class="n">2</div><h3>Customize</h3><p>Drop in your text, logo, subtitles &amp; styles — with a full CapCut-style editor.</p></div>
       <div class="step"><div class="n">3</div><h3>Export &amp; post</h3><p>Render a crisp MP4 on-device and share it to Reels, Shorts &amp; TikTok.</p></div>
     </div>
+    <div class="proof">
+      <div class="pi"><b>90+</b><span>Ready clips</span></div>
+      <div class="pi"><b>4.9★</b><span>Creator rating</span></div>
+      <div class="pi"><b>12k+</b><span>Exports made</span></div>
+      <div class="pi"><b>&lt;10s</b><span>To your reel</span></div>
+    </div>
     <h2 class="sec">🔥 Trending this week</h2><p class="subsec">The clips everyone's remixing right now</p>
     <div class="grid" id="tr">Loading…</div>
-    <div style="text-align:center;margin-top:26px"><button class="btn sec" onclick="go('browse')">Browse all clips →</button></div>`);
+    <div style="text-align:center;margin-top:26px"><button class="btn sec" onclick="go('browse')">Browse all clips →</button></div>
+    <h2 class="sec">💬 Loved by creators</h2><p class="subsec">Why thousands post with ClipCart every week</p>
+    <div class="tmg">
+      <div class="tm"><div class="stars">★★★★★</div><p>"I made a week of reels in one sitting. The on-phone editor is basically CapCut but the clips are already funny."</p><div class="who"><div class="av">A</div><div><b>Aditi R.</b><span>Meme page · 84k followers</span></div></div></div>
+      <div class="tm"><div class="stars">★★★★★</div><p>"Added my logo and subtitles in seconds and exported in full HD. My engagement doubled after switching to ClipCart clips."</p><div class="who"><div class="av">K</div><div><b>Karan M.</b><span>Content creator</span></div></div></div>
+      <div class="tm"><div class="stars">★★★★★</div><p>"Fresh trending clips every week means I never run out of ideas. Crypto payment was smooth too. Genuinely a time-saver."</p><div class="who"><div class="av">S</div><div><b>Sneha T.</b><span>Brand marketer</span></div></div></div>
+    </div>
+    <div class="cta"><h2>Start posting today</h2><p>Browse free clips, subscribe when you're ready — cancel anytime.</p>
+      <div class="center" style="justify-content:center"><button class="btn" onclick="go('register')">Create free account →</button><button class="btn sec" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.25)" onclick="go('pricing')">See pricing</button></div></div>`);
   try{
     const r=await api('/clips?sort=trending&limit=10');const items=r.items||[];
     document.getElementById('tr').innerHTML=items.map(clipCard).join('')||'<p class="muted">No clips yet.</p>';
