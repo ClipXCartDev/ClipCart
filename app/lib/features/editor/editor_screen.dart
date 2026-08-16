@@ -587,6 +587,97 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Ink', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF3B9EFF, 'sw': 0.0, 'sc': 0xFF000000},
   ];
 
+  /// Full "caption look" style templates — bundle font + color + stroke + bg +
+  /// animation into one named tap (RenderForest-style). Applied via _applyStyle.
+  static const _styleTemplates = [
+    {'name': 'Bold Meme', 'font': 'Anton', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 6.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
+    {'name': 'Subtitle', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xB3000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
+    {'name': 'Impact', 'font': 'ArchivoBlack', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
+    {'name': 'Neon Pop', 'font': 'BebasNeue', 'color': 0xFFFF4D6D, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.bounce},
+    {'name': 'Sunshine', 'font': 'Poppins', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideUp},
+    {'name': 'Marker', 'font': 'PermanentMarker', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.shake},
+    {'name': 'Retro', 'font': 'Lobster', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideDown},
+    {'name': 'Headline', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFFFF4D6D, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.typewriter},
+    {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
+    {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFFFF7A00, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
+  ];
+
+  void _applyStyle(SubtitleSegment s, Map<String, dynamic> t) {
+    _mutate(() {
+      s.fontFamily = t['font'] as String?;
+      // resolve font file path for FFmpeg export from the loaded builtins
+      if (s.fontFamily != null) {
+        final match = context.read<FontService>().builtins.where((f) => f.family == s.fontFamily);
+        s.fontFilePath = match.isNotEmpty ? match.first.path : s.fontFilePath;
+      }
+      s.color = t['color'] as int;
+      s.bgEnabled = t['bg'] as bool;
+      s.bgColor = t['bgc'] as int;
+      s.strokeWidth = t['sw'] as double;
+      s.strokeColor = t['sc'] as int;
+      s.anim = t['anim'] as OverlayAnim;
+    });
+  }
+
+  /// "Styles" gallery — one tap applies a full caption look (font+color+stroke+bg+anim).
+  Future<void> _openStyleGallery() async {
+    if (_selected is! SubtitleSegment) return;
+    final s = _selected as SubtitleSegment;
+    await context.read<FontService>().loadBuiltins();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Styles', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const SizedBox(height: 4),
+              Text('One-tap caption look — font, color & motion.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 250,
+                child: GridView.count(
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1.35,
+                  children: [
+                    for (final tpl in _styleTemplates)
+                      GestureDetector(
+                        onTap: () { _applyStyle(s, tpl); setSheet(() {}); },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : Colors.black26,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : Colors.white12, width: s.fontFamily == tpl['font'] ? 2 : 1),
+                          ),
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.all(6),
+                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Text('Aa', style: TextStyle(
+                              fontFamily: tpl['font'] as String?,
+                              color: Color(tpl['color'] as int),
+                              fontSize: 26, fontWeight: FontWeight.w900,
+                              shadows: (tpl['sw'] as double) > 0 ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)]) Shadow(color: Color(tpl['sc'] as int), offset: o)] : null,
+                            )),
+                            const SizedBox(height: 3),
+                            Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+                          ]),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// A minimal transparent pill used across the inline text bar.
   Widget _ghostChip({required Widget child, required VoidCallback onTap}) => GestureDetector(
         onTap: onTap,
@@ -1671,8 +1762,9 @@ class _EditorScreenState extends State<EditorScreen> {
       final s = _selected as SubtitleSegment;
       tools.addAll([
         _tool(Icons.edit, 'Edit', _editSelectedSubtitle),
+        _tool(Icons.auto_awesome_rounded, 'Styles', _openStyleGallery),
         _tool(Icons.font_download_rounded, 'Font', _openFontPicker),
-        _tool(Icons.tune_rounded, 'Style', _openStyleSheet),
+        _tool(Icons.tune_rounded, 'Adjust', _openStyleSheet),
         _tool(Icons.format_color_text, 'Color', () => _quickColor(s)),
         _tool(s.bgEnabled ? Icons.check_box : Icons.check_box_outline_blank, 'BG', () => _mutate(() => s.bgEnabled = !s.bgEnabled)),
         _tool(Icons.border_color, 'Outline', () => _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3)),
