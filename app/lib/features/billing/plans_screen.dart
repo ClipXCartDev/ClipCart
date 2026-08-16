@@ -58,65 +58,119 @@ class _PlansScreenState extends State<PlansScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Plans', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Go Pro', style: TextStyle(fontWeight: FontWeight.w800)), elevation: 0),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         children: [
-          if (_sub != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.accent)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${_sub!['plan_name']} · ${_sub!['status']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  Text('Expires ${(_sub!['expires_at'] ?? '').toString().split('T').first}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
-              ),
+          // hero
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 30),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF17131F), Color(0xFF2A1330)], begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
-          const Text('Crypto only · Binance Pay · manual renewal', style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 12),
-          FutureBuilder<List<Plan>>(
-            future: _plans,
-            builder: (context, snap) {
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
-              }
-              final plans = snap.data ?? [];
-              if (plans.isEmpty) return const Text('No plans available yet.');
-              return Column(children: plans.map(_planCard).toList());
-            },
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 52, height: 52,
+                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFFFF7A00)]), borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 28),
+              ),
+              const SizedBox(height: 14),
+              const Text('Unlock every Pro clip', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1)),
+              const SizedBox(height: 6),
+              const Text('Unlimited exports · no watermark · priority new drops. Crypto only · Binance Pay.', style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.4)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              if (_sub != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: AppColors.ok.withOpacity(0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.ok)),
+                  child: Row(children: [
+                    const Icon(Icons.verified_rounded, color: AppColors.ok),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${_sub!['plan_name']} · ${_sub!['status']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        Text('Renews / expires ${(_sub!['expires_at'] ?? '').toString().split('T').first}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      ]),
+                    ),
+                  ]),
+                ),
+              FutureBuilder<List<Plan>>(
+                future: _plans,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: AppColors.accent)));
+                  }
+                  final plans = snap.data ?? [];
+                  if (plans.isEmpty) return const Text('No plans available yet.');
+                  final topPrice = plans.map((p) => p.priceUsd).fold<double>(0, (a, b) => b > a ? b : a);
+                  return Column(children: [for (final p in plans) _planCard(p, popular: p.priceUsd == topPrice && topPrice > 0)]);
+                },
+              ),
+            ]),
           ),
         ],
       ),
     );
   }
 
-  Widget _planCard(Plan p) {
+  Widget _planCard(Plan p, {bool popular = false}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.2))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(p.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 4),
-          Text('\$${p.priceUsd.toStringAsFixed(0)} / mo', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          _feat(p.exportLabel),
-          _feat('${p.quality} · ${p.maxDevices} devices'),
-          for (final f in p.features) _feat(f),
-          const SizedBox(height: 12),
-          if (p.priceUsd > 0) PrimaryButton(label: 'Subscribe', icon: Icons.bolt, onPressed: () => _checkout(p)),
-        ],
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        gradient: popular ? const LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)]) : null,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(18),
+          border: popular ? null : Border.all(color: Colors.grey.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Text(p.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+              const SizedBox(width: 10),
+              if (popular)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(20)),
+                  child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                ),
+            ]),
+            const SizedBox(height: 6),
+            Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+              Text('\$${p.priceUsd.toStringAsFixed(0)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+              const Text(' / mo', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
+            ]),
+            const SizedBox(height: 12),
+            _feat(p.exportLabel),
+            _feat('${p.quality} · ${p.maxDevices} device${p.maxDevices == 1 ? '' : 's'}'),
+            for (final f in p.features) _feat(f),
+            const SizedBox(height: 14),
+            if (p.priceUsd > 0)
+              PrimaryButton(label: popular ? 'Get ${p.name}' : 'Subscribe', icon: Icons.bolt_rounded, onPressed: () => _checkout(p)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _feat(String t) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(children: [const Icon(Icons.check, size: 16, color: AppColors.ok), const SizedBox(width: 8), Expanded(child: Text(t, style: const TextStyle(fontSize: 13)))]),
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(children: [
+          Container(width: 18, height: 18, decoration: const BoxDecoration(color: Color(0x2212B76A), shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 12, color: AppColors.ok)),
+          const SizedBox(width: 10),
+          Expanded(child: Text(t, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500))),
+        ]),
       );
 }
