@@ -26,13 +26,28 @@ nav .links a:hover{color:var(--text)}
 nav .sp{flex:1}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:26px 22px 80px}
 /* hero */
-.hero{position:relative;overflow:hidden;border-radius:28px;margin:22px 0 8px;padding:64px 40px;background:radial-gradient(1200px 500px at 80% -10%,rgba(255,138,61,.28),transparent),radial-gradient(900px 500px at 0% 120%,rgba(255,77,109,.24),transparent),#120e1a;color:#fff}
+.hero{position:relative;overflow:hidden;border-radius:28px;margin:22px 0 8px;padding:56px 44px;background:radial-gradient(1200px 500px at 80% -10%,rgba(255,138,61,.28),transparent),radial-gradient(900px 500px at 0% 120%,rgba(255,77,109,.24),transparent),#120e1a;color:#fff;display:flex;align-items:center;gap:24px}
+.hero-copy{flex:1;min-width:0;position:relative;z-index:2}
 .hero .k{color:#ffb199;font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:12px}
-.hero h1{font-size:clamp(34px,5vw,60px);font-weight:900;letter-spacing:-.035em;line-height:1.02;margin:14px 0 0;max-width:16ch}
-.hero p{color:#cfc9d8;font-size:clamp(15px,1.5vw,19px);max-width:56ch;margin:18px 0 26px;line-height:1.5}
+.hero h1{font-size:clamp(34px,4.4vw,56px);font-weight:900;letter-spacing:-.035em;line-height:1.02;margin:14px 0 0;max-width:16ch}
+.hero p{color:#cfc9d8;font-size:clamp(15px,1.4vw,18px);max-width:52ch;margin:18px 0 26px;line-height:1.5}
 .center{display:flex;gap:12px;flex-wrap:wrap}
 .hstat{display:flex;gap:30px;margin-top:34px;flex-wrap:wrap}
 .hstat b{font-size:24px;font-weight:900;display:block}.hstat span{color:#a99fb6;font-size:12px;font-weight:600}
+/* hero visual — floating clip collage */
+.hero-visual{flex:0 0 40%;position:relative;height:430px}
+.hcard{position:absolute;top:50%;left:50%;width:184px;aspect-ratio:9/16;border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.55);border:4px solid rgba(255,255,255,.10);background:#241e28}
+.hcard video,.hcard img{width:100%;height:100%;object-fit:cover;display:block}
+.hcard .tag{position:absolute;left:9px;top:9px;font-size:9px;font-weight:900;padding:3px 7px;border-radius:6px;background:#12b76a;color:#fff}
+.hcard.c0{transform:translate(-50%,-50%) scale(1.06);z-index:3}
+.hcard.c1{transform:translate(-118%,-46%) rotate(-9deg) scale(.9);z-index:1;opacity:.9}
+.hcard.c2{transform:translate(18%,-54%) rotate(9deg) scale(.9);z-index:1;opacity:.9}
+/* how it works */
+.hiw{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;margin:14px 0}
+.hiw .step{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;box-shadow:0 1px 2px rgba(30,20,40,.03)}
+.hiw .n{width:42px;height:42px;border-radius:13px;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:900;font-size:19px;margin-bottom:14px}
+.hiw h3{margin:0 0 6px;font-size:17px;font-weight:800}.hiw p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.5}
+@media(max-width:860px){.hero{flex-direction:column;align-items:flex-start}.hero-visual{display:none}}
 h2.sec{font-size:clamp(20px,2.4vw,28px);font-weight:900;letter-spacing:-.02em;margin:38px 0 4px}
 .subsec{color:var(--muted);font-size:14px;margin:0 0 16px}
 /* grid */
@@ -126,23 +141,37 @@ function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" onclick="clipDe
     <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span>
     <span class="dur">${dur(c.duration_sec)}</span>
     <div class="play"><span><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span></div></div>
-  <div class="m"><div class="nm">${h(c.title)}</div><div class="by">${h(c.category||c.genre||c.language)}${c.downloads>0?' · '+c.downloads+' uses':''}</div></div></div>`;}
+  <div class="m"><div class="nm">${h(c.title)}</div><div class="by">${h(c.category||c.genre||c.language)}${c.downloads>0?' · '+c.downloads+(c.downloads==1?' use':' uses'):''}</div></div></div>`;}
 function playPrev(el){const url=el.dataset.prev;if(!url)return;const v=el.querySelector('.pv');if(!v)return;if(!v.src)v.src=url;v.style.opacity=1;v.play().catch(()=>{});}
 function stopPrev(el){const v=el.querySelector('.pv');if(v){v.pause();v.style.opacity=0;}}
 function dur(s){s=s||0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 
 async function vHome(){
   view(`<div class="hero">
-      <div class="k">Funny movie clips · ready to post</div>
-      <h1>Turn viral clips into your brand</h1>
-      <p>Browse trending meme &amp; movie clips, drop in your text, logo &amp; subtitles, and export a crisp MP4 on your phone — in seconds.</p>
-      <div class="center"><button class="btn" onclick="go('register')">Start free →</button><button class="btn sec" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.25)" onclick="go('pricing')">See pricing</button></div>
-      <div class="hstat"><div><b id="hs-c">90+</b><span>Ready templates</span></div><div><b>4K→MP4</b><span>On-device export</span></div><div><b>Crypto</b><span>Binance Pay</span></div></div>
+      <div class="hero-copy">
+        <div class="k">Funny movie clips · ready to post</div>
+        <h1>Turn viral clips into your brand</h1>
+        <p>Browse trending meme &amp; movie clips, drop in your text, logo &amp; subtitles, and export a crisp MP4 on your phone — in seconds.</p>
+        <div class="center"><button class="btn" onclick="go('register')">Start free →</button><button class="btn sec" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.25)" onclick="go('pricing')">See pricing</button></div>
+        <div class="hstat"><div><b>90+</b><span>Ready templates</span></div><div><b>1080p</b><span>On-device export</span></div><div><b>Crypto</b><span>Binance Pay</span></div></div>
+      </div>
+      <div class="hero-visual" id="hv"></div>
+    </div>
+    <h2 class="sec">⚡ How it works</h2><p class="subsec">From clip to post in three taps — all on your phone</p>
+    <div class="hiw">
+      <div class="step"><div class="n">1</div><h3>Browse</h3><p>Pick from 90+ trending meme &amp; movie clips, refreshed every week.</p></div>
+      <div class="step"><div class="n">2</div><h3>Customize</h3><p>Drop in your text, logo, subtitles &amp; styles — with a full CapCut-style editor.</p></div>
+      <div class="step"><div class="n">3</div><h3>Export &amp; post</h3><p>Render a crisp MP4 on-device and share it to Reels, Shorts &amp; TikTok.</p></div>
     </div>
     <h2 class="sec">🔥 Trending this week</h2><p class="subsec">The clips everyone's remixing right now</p>
     <div class="grid" id="tr">Loading…</div>
     <div style="text-align:center;margin-top:26px"><button class="btn sec" onclick="go('browse')">Browse all clips →</button></div>`);
-  try{const r=await api('/clips?sort=trending&limit=10');document.getElementById('tr').innerHTML=(r.items||[]).map(clipCard).join('')||'<p class="muted">No clips yet.</p>';}
+  try{
+    const r=await api('/clips?sort=trending&limit=10');const items=r.items||[];
+    document.getElementById('tr').innerHTML=items.map(clipCard).join('')||'<p class="muted">No clips yet.</p>';
+    const hv=document.getElementById('hv');const pick=items.filter(c=>c.thumb).slice(0,3);
+    if(hv&&pick.length)hv.innerHTML=pick.map((c,i)=>`<div class="hcard c${i}">${i===0&&c.preview?`<video src="${c.preview}" autoplay muted loop playsinline></video>`:`<img src="${c.thumb}">`}<span class="tag" style="background:${c.access==='pro'?'#f5a623':'#12b76a'};color:${c.access==='pro'?'#3a2600':'#fff'}">${c.access}</span></div>`).join('');
+  }
   catch(e){document.getElementById('tr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
 
