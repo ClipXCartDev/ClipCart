@@ -71,6 +71,13 @@ h2.sec{font-size:clamp(20px,2.4vw,28px);font-weight:900;letter-spacing:-.02em;ma
 .chip{border:1px solid var(--border);background:var(--surface);border-radius:99px;padding:9px 17px;font-size:13px;font-weight:700;color:var(--muted);transition:.12s}
 .chip:hover{border-color:#d9d5e0}
 .chip.on{background:var(--grad);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(255,77,109,.3)}
+.fbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 18px}
+.fbar input{max-width:440px;margin:0;flex:1}
+.fbtn{display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-weight:700;font-size:14px;white-space:nowrap}
+.fbtn:hover{border-color:#d9d5e0}.fbtn.on{border-color:var(--accent);color:var(--accent)}
+.fbtn .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.fpanel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;margin:0 0 18px;box-shadow:var(--shadow)}
+.fpanel .lbl{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin:4px 0 9px}
 /* cards */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;margin-bottom:14px;box-shadow:0 1px 2px rgba(30,20,40,.03)}
 .plan{border:1px solid var(--border);border-radius:18px;padding:22px;background:var(--surface);box-shadow:0 1px 2px rgba(30,20,40,.03)}
@@ -175,27 +182,41 @@ async function vHome(){
   catch(e){document.getElementById('tr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
 
-let _cat=null,_q='',_cats=[];
+let _cat=null,_q='',_cats=[],_sort='trending',_fopen=false;
 let _off=0,_more=true,_bz=false;
+function _fActive(){return _cat!==null||_sort!=='trending';}
 async function vBrowse(){
   view(`<h2 class="sec">Browse clips</h2><p class="subsec">Every ready-to-use template, always fresh</p>
-   <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}" style="max-width:420px">
-   <div class="chips" id="ch"></div><div class="grid" id="gr"></div>
+   <div class="fbar">
+     <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}">
+     <button class="fbtn ${_fActive()?'on':''}" id="fbtn" onclick="toggleFilters()"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"/></svg>Sort & filter${_fActive()?' <span class="dot"></span>':''}</button>
+   </div>
+   <div id="fpanel" style="display:${_fopen?'block':'none'}"></div>
+   <div class="grid" id="gr"></div>
    <div id="more" style="text-align:center;padding:26px 0;color:var(--muted);font-size:13px"></div>`);
   try{if(!_cats.length)_cats=await api('/categories');}catch(e){}
-  renderChips();
+  if(_fopen)renderFilters();
   window.onscroll=()=>{ if(location.hash.startsWith('#/browse') && _more && !_bz && (window.innerHeight+window.scrollY)>=document.body.offsetHeight-800) loadMore(); };
   loadBrowse();
 }
-async function loadBrowse(){ // reset + first page (called on category/search change)
-  _off=0;_more=true;renderChips();
+function toggleFilters(){_fopen=!_fopen;const p=document.getElementById('fpanel');if(!p)return;p.style.display=_fopen?'block':'none';if(_fopen)renderFilters();document.getElementById('fbtn').classList.toggle('on',_fopen||_fActive());}
+function renderFilters(){
+  const p=document.getElementById('fpanel');if(!p)return;
+  const sorts=[['trending','🔥 Trending'],['newest','🆕 Newest'],['popular','⭐ Popular']];
+  const cats=[['All',null]].concat(_cats.map(c=>[c.name,c.slug]));
+  p.innerHTML=`<div class="lbl">Sort by</div><div class="chips">${sorts.map(([v,l])=>`<span class="chip ${_sort===v?'on':''}" onclick="_sort='${v}';loadBrowse();renderFilters()">${l}</span>`).join('')}</div>
+    <div class="lbl">Category</div><div class="chips" style="margin-bottom:0">${cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse();renderFilters()">${h(l)}</span>`).join('')}</div>`;
+}
+async function loadBrowse(){ // reset + first page (called on category/search/sort change)
+  _off=0;_more=true;
+  const fb=document.getElementById('fbtn');if(fb)fb.classList.toggle('on',_fopen||_fActive());
   const gr=document.getElementById('gr'); if(gr)gr.innerHTML='';
   await loadMore();
 }
 async function loadMore(){
   if(_bz||!_more)return; _bz=true;
   const more=document.getElementById('more'); if(more)more.innerHTML='Loading…';
-  try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('limit','30');qs.set('offset',_off);
+  try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('sort',_sort);qs.set('limit','30');qs.set('offset',_off);
     const r=await api('/clips?'+qs.toString());const items=r.items||[];
     document.getElementById('gr').insertAdjacentHTML('beforeend',items.map(clipCard).join(''));
     _off+=items.length; if(items.length<30)_more=false;
@@ -203,7 +224,6 @@ async function loadMore(){
   }catch(e){if(more)more.innerHTML='<span class="err">'+h(e.message)+'</span>';_more=false;}
   finally{_bz=false;}
 }
-function renderChips(){const el=document.getElementById('ch');if(!el)return;const list=[['All',null]].concat(_cats.map(c=>[c.name,c.slug]));el.innerHTML=list.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse()">${h(l)}</span>`).join('');}
 
 async function clipDetail(slug){
   location.hash='#/browse';
