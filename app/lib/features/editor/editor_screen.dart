@@ -369,6 +369,14 @@ class _EditorScreenState extends State<EditorScreen> {
       color: _kPanel,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // one-tap style presets
+        SizedBox(
+          height: 38,
+          child: ListView(scrollDirection: Axis.horizontal, children: [
+            for (final p in _textPresets) _presetChip(s, p),
+          ]),
+        ),
+        const SizedBox(height: 9),
         SizedBox(
           height: 34,
           child: ListView(scrollDirection: Axis.horizontal, children: [
@@ -419,6 +427,50 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ]),
       ]),
+    );
+  }
+
+  static const _textPresets = [
+    {'name': 'Clean', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0x80000000, 'sw': 0.0, 'sc': 0xFF000000},
+    {'name': 'Outline', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x80000000, 'sw': 5.0, 'sc': 0xFF000000},
+    {'name': 'Sunny', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000},
+    {'name': 'Neon', 'color': 0xFFFF4D6D, 'bg': false, 'bgc': 0x80000000, 'sw': 4.0, 'sc': 0xFFFFFFFF},
+    {'name': 'Mint', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF12B76A, 'sw': 0.0, 'sc': 0xFF000000},
+    {'name': 'Ink', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF3B9EFF, 'sw': 0.0, 'sc': 0xFF000000},
+  ];
+
+  Widget _presetChip(SubtitleSegment? s, Map<String, dynamic> p) {
+    final bg = p['bg'] as bool;
+    final color = Color(p['color'] as int);
+    final sw = p['sw'] as double;
+    return GestureDetector(
+      onTap: () {
+        if (s == null) return;
+        _snapshot();
+        setState(() {
+          s.color = p['color'] as int;
+          s.bgEnabled = bg;
+          s.bgColor = p['bgc'] as int;
+          s.strokeWidth = sw;
+          s.strokeColor = p['sc'] as int;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg ? Color(p['bgc'] as int) : Colors.white10,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Text('Aa', style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w900,
+          fontSize: 16,
+          shadows: sw > 0 ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)]) Shadow(color: Color(p['sc'] as int), offset: o)] : null,
+        )),
+      ),
     );
   }
 
