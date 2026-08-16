@@ -156,7 +156,7 @@ class _SearchScreenState extends State<SearchScreen> {
         return GridView.builder(
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.62),
+            crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.70),
           itemCount: clips.length,
           itemBuilder: (context, i) => ClipCard(clip: clips[i], onTap: () => context.push('/player', extra: {'clips': clips, 'index': i})),
         );

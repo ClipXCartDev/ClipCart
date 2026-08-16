@@ -199,7 +199,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
                           sliver: SliverGrid(
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.62,
+                              crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.70,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, i) => ClipCard(clip: _grid[i], onTap: () => _open(_grid, i)),

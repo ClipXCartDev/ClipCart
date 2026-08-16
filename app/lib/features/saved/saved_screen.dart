@@ -75,7 +75,7 @@ class _SavedScreenState extends State<SavedScreen> {
             return GridView.builder(
               padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.60),
+                crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.70),
               itemCount: clips.length,
               itemBuilder: (context, i) => ClipCard(clip: clips[i], onTap: () => context.push('/player', extra: {'clips': clips, 'index': i})),
             );
