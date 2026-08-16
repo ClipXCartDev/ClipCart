@@ -112,14 +112,16 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _load(String path) async {
+    _vc?.removeListener(_playbackTick);
     await _vc?.dispose();
     final c = VideoPlayerController.file(File(path));
     await c.initialize();
-    await c.setLooping(true);
+    await c.setLooping(false); // stop at the end like a real editor (not an endless loop)
     if (!mounted) {
       await c.dispose(); // backed out during init — don't leak the decoder
       return;
     }
+    c.addListener(_playbackTick);
     setState(() {
       _vc = c;
       final dur = c.value.duration.inMilliseconds / 1000.0;
@@ -130,8 +132,24 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  bool _endHandled = false;
+  /// When playback reaches the end, stop and rewind to the start so the big play
+  /// button reappears (no infinite loop).
+  void _playbackTick() {
+    final v = _vc?.value;
+    if (v == null || !v.isInitialized) return;
+    final atEnd = v.position >= v.duration - const Duration(milliseconds: 60);
+    if (atEnd && v.isPlaying == false && !_endHandled) {
+      _endHandled = true;
+      _vc?.seekTo(Duration.zero);
+    } else if (!atEnd) {
+      _endHandled = false;
+    }
+  }
+
   @override
   void dispose() {
+    _vc?.removeListener(_playbackTick);
     _vc?.dispose();
     _textCtl.dispose();
     _textFocus.dispose();
@@ -140,6 +158,22 @@ class _EditorScreenState extends State<EditorScreen> {
 
   double get _duration => (_vc?.value.duration.inMilliseconds ?? 0) / 1000.0;
   double get _t => (_vc?.value.position.inMilliseconds ?? 0) / 1000.0;
+
+  /// Play/pause. If at the end, restart from the beginning.
+  void _togglePlay() {
+    final vc = _vc;
+    if (vc == null) return;
+    final v = vc.value;
+    if (v.isPlaying) {
+      vc.pause();
+    } else {
+      if (v.position >= v.duration - const Duration(milliseconds: 80)) {
+        vc.seekTo(Duration.zero);
+      }
+      vc.play();
+    }
+    setState(() {});
+  }
 
   // ---------- undo / redo ----------
   void _snapshot() {
@@ -785,17 +819,29 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(child: _canvas()),
-          if (_typing)
-            _inlineTextEditor()
-          else ...[
-            _playbar(),
-            _timeline(),
-            _toolbar(),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(child: _canvas()),
+            if (_typing)
+              _inlineTextEditor()
+            else
+              // Fixed-height control deck so the tools never get squeezed/truncated
+              // by a tall canvas. Playbar + timeline + one scrollable tool row.
+              Container(
+                color: _kPanel,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _playbar(),
+                    _timeline(),
+                    _toolbar(),
+                  ],
+                ),
+              ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -831,10 +877,15 @@ class _EditorScreenState extends State<EditorScreen> {
                   fit: StackFit.expand,
                   children: [
                     GestureDetector(
-                      onTap: () => setState(() {
-                        _selected = null;
-                        v.isPlaying ? _vc!.pause() : _vc!.play();
-                      }),
+                      onTap: () {
+                        // tap on empty canvas: if something is selected, just deselect
+                        // (lets the user "finish" one edit and start another); else play/pause.
+                        if (_selected != null) {
+                          setState(() => _selected = null);
+                        } else {
+                          _togglePlay();
+                        }
+                      },
                       child: VideoPlayer(_vc!),
                     ),
                     if (_project!.aspect.ratio != null) _cropGuide(w, h),
@@ -1127,21 +1178,32 @@ class _EditorScreenState extends State<EditorScreen> {
     return ValueListenableBuilder<VideoPlayerValue>(
       valueListenable: _vc!,
       builder: (context, v, _) {
+        final ended = v.position >= v.duration - const Duration(milliseconds: 80) && !v.isPlaying;
         return Container(
           color: _kBg,
-          padding: const EdgeInsets.fromLTRB(10, 4, 12, 4),
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
           child: Row(children: [
             IconButton(
-              icon: Icon(v.isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill, color: Colors.white, size: 30),
-              onPressed: () => setState(() => v.isPlaying ? _vc!.pause() : _vc!.play()),
+              visualDensity: VisualDensity.compact,
+              icon: Icon(v.isPlaying ? Icons.pause_circle_filled : (ended ? Icons.replay_circle_filled : Icons.play_circle_fill), color: Colors.white, size: 32),
+              onPressed: _togglePlay,
             ),
             Text('${_fmt(v.position)} / ${_fmt(v.duration)}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
             const Spacer(),
-            _pill('Layers', Icons.layers_rounded, _openLayers),
-            const SizedBox(width: 8),
-            _pill(_project!.aspect.label, Icons.crop, _pickAspect),
-            const SizedBox(width: 8),
-            _pill(_trimMode ? 'Trim ✓' : 'Trim', Icons.content_cut, () => setState(() => _trimMode = !_trimMode), on: _trimMode),
+            // Row-scrollable action pills so they never overflow / truncate on narrow screens.
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                reverse: true,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  _pill('Layers', Icons.layers_rounded, _openLayers),
+                  const SizedBox(width: 8),
+                  _pill(_project!.aspect.label, Icons.crop, _pickAspect),
+                  const SizedBox(width: 8),
+                  _pill(_trimMode ? 'Trim ✓' : 'Trim', Icons.content_cut, () => setState(() => _trimMode = !_trimMode), on: _trimMode),
+                ]),
+              ),
+            ),
           ]),
         );
       },
@@ -1167,9 +1229,9 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _timeline() {
     final dur = _duration;
     return Container(
-      height: 74,
+      height: 62,
       color: const Color(0xFF0F0D12),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
       child: LayoutBuilder(builder: (context, c) {
         final w = c.maxWidth;
         double x(double sec) => dur <= 0 ? 0 : (sec / dur) * w;
@@ -1188,10 +1250,10 @@ class _EditorScreenState extends State<EditorScreen> {
                 // trimmed-out dim regions
                 if (p.trimStart > 0) Positioned(left: 0, width: x(p.trimStart), top: 0, bottom: 0, child: _dim()),
                 if (p.outEnd < dur) Positioned(left: x(p.outEnd), right: 0, top: 0, bottom: 0, child: _dim()),
-                // subtitle blocks
+                // subtitle blocks (top lane)
                 for (final s in p.subtitles)
                   Positioned(
-                    left: x(s.start), width: (x(s.end) - x(s.start)).clamp(24, w), top: 8, bottom: 26,
+                    left: x(s.start), width: (x(s.end) - x(s.start)).clamp(24, w), top: 4, height: 18,
                     child: GestureDetector(
                       onTap: () => setState(() => _selected = s),
                       onHorizontalDragUpdate: (d) => setState(() {
@@ -1204,17 +1266,41 @@ class _EditorScreenState extends State<EditorScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 6),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(5),
                           border: identical(_selected, s) ? Border.all(color: Colors.white, width: 1.5) : null,
                         ),
-                        child: Text(s.text.isEmpty ? 'Text' : s.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                        child: Text(s.text.isEmpty ? 'Text' : s.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                // sticker/emoji blocks (bottom lane)
+                for (final s in p.stickers)
+                  Positioned(
+                    left: x(s.start), width: (x((s.end >= 9998 ? dur : s.end)) - x(s.start)).clamp(24, w), top: 24, height: 18,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selected = s),
+                      onHorizontalDragUpdate: (d) => setState(() {
+                        final end = s.end >= 9998 ? dur : s.end;
+                        final len = end - s.start;
+                        s.start = (s.start + sec(d.delta.dx)).clamp(0, dur - len);
+                        s.end = s.start + len;
+                      }),
+                      child: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7B61FF),
+                          borderRadius: BorderRadius.circular(5),
+                          border: identical(_selected, s) ? Border.all(color: Colors.white, width: 1.5) : null,
+                        ),
+                        child: Text(s.emoji ?? 'Sticker', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700)),
                       ),
                     ),
                   ),
                 // trim handles
                 if (_trimMode) ..._trimHandles(x, sec, w, p, dur),
                 // playhead
-                Positioned(left: ph.clamp(0, w) - 1, top: -2, bottom: 18, child: Container(width: 2.5, color: Colors.white)),
+                Positioned(left: ph.clamp(0, w) - 1, top: 0, bottom: 0, child: Container(width: 2.5, color: Colors.white)),
               ]),
             );
           },
@@ -1227,7 +1313,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   List<Widget> _trimHandles(double Function(double) x, double Function(double) sec, double w, EditorProject p, double dur) {
     Widget handle(double left, void Function(double) onDrag) => Positioned(
-          left: left - 9, top: -2, bottom: 18,
+          left: left - 9, top: 0, bottom: 0,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onHorizontalDragUpdate: (d) => setState(() => onDrag(d.delta.dx)),
@@ -1291,13 +1377,50 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.font_download_outlined, 'Font', _uploadFont),
       ]);
     }
+    final hasSel = _selected != null;
+    final selLabel = _selected is SubtitleSegment
+        ? 'Text'
+        : _selected is StickerOverlay
+            ? ((_selected as StickerOverlay).emoji != null ? 'Emoji' : 'Sticker')
+            : _selected == 'logo'
+                ? 'Logo'
+                : '';
     return Container(
       color: _kPanel,
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(children: tools),
+      padding: const EdgeInsets.only(top: 6, bottom: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // When a layer is selected: a clear header with a Done button so the user
+          // can finish editing this layer and go back to adding another.
+          if (hasSel)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 10, 6),
+              child: Row(children: [
+                Container(width: 6, height: 6, decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Text('Editing $selLabel', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() => _selected = null),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(20)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.check_rounded, size: 16, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(children: tools),
+          ),
+        ],
       ),
     );
   }
