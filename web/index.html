@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ClipCart — Funny movie clips</title>
 <style>
-:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f7f6f8;--surface:#fff;--border:#ece9f0;--text:#17131f;--muted:#726c7d;--ok:#12b76a;--gold:#f5a623;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d);--maxw:1240px;--shadow:0 8px 30px rgba(30,18,45,.08)}
+:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f7f6f8;--surface:#fff;--border:#ece9f0;--text:#17131f;--muted:#726c7d;--ok:#12b76a;--gold:#f5a623;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d);--maxw:2100px;--pad:clamp(18px,4vw,72px);--shadow:0 8px 30px rgba(30,18,45,.08)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
@@ -18,13 +18,13 @@ a{color:inherit;text-decoration:none;cursor:pointer}button{font:inherit;cursor:p
 input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:12px;font:inherit;margin-bottom:10px;background:var(--surface);outline:none}
 input:focus{border-color:var(--accent)}
 /* nav */
-nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.72);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:20px;padding:13px max(22px,calc((100vw - var(--maxw))/2))}
+nav{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.72);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:20px;padding:13px var(--pad)}
 nav .logo{display:flex;align-items:center;gap:9px;font-weight:900;font-size:18px}
 nav .logo .lg{width:31px;height:31px;border-radius:9px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900}
 nav .links{display:flex;gap:20px;font-weight:700;font-size:14px;color:var(--muted)}
 nav .links a:hover{color:var(--text)}
 nav .sp{flex:1}
-.wrap{max-width:var(--maxw);margin:0 auto;padding:26px 22px 80px}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:24px var(--pad) 80px}
 /* hero */
 .hero{position:relative;overflow:hidden;border-radius:28px;margin:22px 0 8px;padding:56px 44px;background:radial-gradient(1200px 500px at 80% -10%,rgba(255,138,61,.28),transparent),radial-gradient(900px 500px at 0% 120%,rgba(255,77,109,.24),transparent),#120e1a;color:#fff;display:flex;align-items:center;gap:24px}
 .hero-copy{flex:1;min-width:0;position:relative;z-index:2}
@@ -85,7 +85,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px;bor
 .err{color:var(--accent);font-size:13px}.muted{color:var(--muted)}
 .center-box{max-width:380px;margin:48px auto}
 .tabs{display:flex;gap:8px;margin-bottom:16px}.tabs .chip{cursor:pointer}
-footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padding:30px max(22px,calc((100vw - var(--maxw))/2));display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padding:30px var(--pad);display:flex;gap:16px;flex-wrap:wrap;align-items:center}
 footer .sp{flex:1}
 @media(max-width:640px){.hero{padding:44px 24px;border-radius:22px}.wrap{padding:18px 16px 70px}nav .links{display:none}}
 </style>
