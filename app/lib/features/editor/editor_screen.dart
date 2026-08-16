@@ -79,7 +79,9 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Future<void> _init() async {
     try {
-      _defaultFont = await context.read<FontService>().ensureDefaultFont();
+      final fs = context.read<FontService>();
+      _defaultFont = await fs.ensureDefaultFont();
+      fs.loadBuiltins(); // load the full bundled family for the font picker (bg)
     } catch (_) {
       _defaultFont = '';
     }
@@ -247,6 +249,77 @@ class _EditorScreenState extends State<EditorScreen> {
         _selected = null;
       }
     });
+  }
+
+  /// CapCut-style font picker: live "Aa" chips (bundled + uploaded) + import.
+  Future<void> _openFontPicker() async {
+    if (_selected is! SubtitleSegment) return;
+    final s = _selected as SubtitleSegment;
+    final fs = context.read<FontService>();
+    await fs.loadBuiltins();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Text('Font', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () async {
+                    final f = await fs.uploadFont();
+                    if (f != null) { _mutate(() { s.fontFamily = f.family; s.fontFilePath = f.path; }); setSheet(() {}); }
+                  },
+                  icon: const Icon(Icons.add, size: 18, color: _kAccent),
+                  label: const Text('Import', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w800)),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 210,
+                child: GridView.count(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 0.92,
+                  children: [
+                    // Default (system) option
+                    _fontChip('Default', null, null, s, setSheet),
+                    for (final f in fs.all) _fontChip(f.name, f.family, f.path, s, setSheet),
+                  ],
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fontChip(String label, String? family, String? path, SubtitleSegment s, void Function(void Function()) setSheet) {
+    final selected = s.fontFamily == family;
+    return GestureDetector(
+      onTap: () { _mutate(() { s.fontFamily = family; s.fontFilePath = path; }); setSheet(() {}); },
+      child: Container(
+        decoration: BoxDecoration(
+          color: _kChip,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? _kAccent : Colors.white12, width: selected ? 2 : 1),
+        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('Aa', style: TextStyle(fontFamily: family, color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(color: selected ? _kAccent : Colors.white60, fontSize: 10, fontWeight: FontWeight.w700)),
+          ),
+        ]),
+      ),
+    );
   }
 
   /// Advanced font/timing sheet (opened from the Font tool), not the primary flow.
@@ -420,10 +493,24 @@ class _EditorScreenState extends State<EditorScreen> {
       color: _kPanel,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // one-tap style presets
+        // font button + one-tap style presets
         SizedBox(
           height: 38,
           child: ListView(scrollDirection: Axis.horizontal, children: [
+            GestureDetector(
+              onTap: () async { _textFocus.unfocus(); await _openFontPicker(); if (mounted && _typing) WidgetsBinding.instance.addPostFrameCallback((_) => _textFocus.requestFocus()); },
+              child: Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white24)),
+                child: Row(children: [
+                  Text('Aa', style: TextStyle(fontFamily: s?.fontFamily, color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+                  const SizedBox(width: 5),
+                  const Icon(Icons.expand_more_rounded, size: 15, color: Colors.white54),
+                ]),
+              ),
+            ),
             for (final p in _textPresets) _presetChip(s, p),
           ]),
         ),
@@ -1400,7 +1487,8 @@ class _EditorScreenState extends State<EditorScreen> {
       final s = _selected as SubtitleSegment;
       tools.addAll([
         _tool(Icons.edit, 'Edit', _editSelectedSubtitle),
-        _tool(Icons.text_format, 'Font', _openStyleSheet),
+        _tool(Icons.font_download_rounded, 'Font', _openFontPicker),
+        _tool(Icons.tune_rounded, 'Style', _openStyleSheet),
         _tool(Icons.format_color_text, 'Color', () => _quickColor(s)),
         _tool(s.bgEnabled ? Icons.check_box : Icons.check_box_outline_blank, 'BG', () => _mutate(() => s.bgEnabled = !s.bgEnabled)),
         _tool(Icons.border_color, 'Outline', () => _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3)),

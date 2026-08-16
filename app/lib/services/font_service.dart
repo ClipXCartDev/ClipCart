@@ -6,17 +6,69 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CustomFont {
-  CustomFont({required this.name, required this.family, required this.path});
+  CustomFont({required this.name, required this.family, required this.path, this.builtin = false});
   final String name; // display name
   final String family; // registered Flutter family
   final String path; // on-disk .ttf/.otf for FFmpeg
+  final bool builtin; // bundled default vs user upload
 }
+
+/// The bundled meme/caption font set (asset file → display name). Regular weight
+/// static or variable .ttf — all OFL/Apache, free for commercial use.
+const _kBundledFonts = <String, String>{
+  'Roboto': 'Roboto',
+  'Anton': 'Anton',
+  'BebasNeue': 'Bebas Neue',
+  'Oswald': 'Oswald',
+  'ArchivoBlack': 'Archivo Black',
+  'Montserrat': 'Montserrat',
+  'Poppins': 'Poppins',
+  'Inter': 'Inter',
+  'Bungee': 'Bungee',
+  'PassionOne': 'Passion One',
+  'Caveat': 'Caveat',
+  'Pacifico': 'Pacifico',
+  'PermanentMarker': 'Permanent Marker',
+  'Shrikhand': 'Shrikhand',
+  'Lobster': 'Lobster',
+  'PlayfairDisplay': 'Playfair Display',
+  'Bitter': 'Bitter',
+};
 
 /// Custom font upload (§11.7): pick .ttf/.otf → register for preview (FontLoader)
 /// + keep the file path for FFmpeg export (drawtext fontfile=).
 class FontService extends ChangeNotifier {
-  final List<CustomFont> fonts = [];
+  final List<CustomFont> fonts = []; // user uploads
+  final List<CustomFont> builtins = []; // bundled defaults (loaded once)
   String? _defaultFontPath;
+  bool _builtinsLoaded = false;
+
+  /// All fonts a user can pick from: bundled first, then their uploads.
+  List<CustomFont> get all => [...builtins, ...fonts];
+
+  /// Loads every bundled font: copies the asset to disk (for FFmpeg) and
+  /// registers its family for live preview (FontLoader). Idempotent.
+  Future<void> loadBuiltins() async {
+    if (_builtinsLoaded) return;
+    _builtinsLoaded = true;
+    final dir = await getApplicationSupportDirectory();
+    for (final entry in _kBundledFonts.entries) {
+      final asset = 'assets/fonts/${entry.key}.ttf';
+      try {
+        final data = await rootBundle.load(asset);
+        final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        // persist for FFmpeg export
+        final path = '${dir.path}/fonts/${entry.key}.ttf';
+        final file = File(path)..parent.createSync(recursive: true);
+        if (!file.existsSync()) await file.writeAsBytes(bytes);
+        // register family for canvas preview
+        final loader = FontLoader(entry.value)..addFont(Future.value(ByteData.view(bytes.buffer)));
+        await loader.load();
+        builtins.add(CustomFont(name: entry.value, family: entry.value, path: path, builtin: true));
+      } catch (_) {/* asset missing — skip */}
+    }
+    notifyListeners();
+  }
 
   /// Copies the bundled default font to disk once; returns its path.
   Future<String> ensureDefaultFont() async {
@@ -30,6 +82,8 @@ class FontService extends ChangeNotifier {
       await file.writeAsBytes(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
     }
     _defaultFontPath = path;
+    // kick off loading the rest of the family in the background
+    loadBuiltins();
     return path;
   }
 
