@@ -46,6 +46,15 @@ class _ExportsScreenState extends State<ExportsScreen> {
             if (snap.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
+            if (snap.hasError) {
+              return ListView(children: [
+                const SizedBox(height: 80),
+                Center(child: Column(children: [
+                  Text("Couldn't load your exports.", style: TextStyle(color: Colors.grey.shade600)),
+                  TextButton(onPressed: () => setState(() => _future = _load()), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+                ])),
+              ]);
+            }
             final files = snap.data ?? [];
             if (files.isEmpty) {
               return ListView(children: const [

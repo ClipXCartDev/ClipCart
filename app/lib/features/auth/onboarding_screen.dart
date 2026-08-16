@@ -38,7 +38,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await c.setLooping(true);
       await c.setVolume(0);
       await c.play();
-      if (mounted) setState(() => _vc = c);
+      if (!mounted) {
+        await c.dispose(); // unmounted mid-init (auth redirect) — don't leak
+        return;
+      }
+      setState(() => _vc = c);
     } catch (_) {/* gradient fallback */}
   }
 

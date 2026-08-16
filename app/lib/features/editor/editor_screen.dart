@@ -115,7 +115,10 @@ class _EditorScreenState extends State<EditorScreen> {
     final c = VideoPlayerController.file(File(path));
     await c.initialize();
     await c.setLooping(true);
-    if (!mounted) return;
+    if (!mounted) {
+      await c.dispose(); // backed out during init — don't leak the decoder
+      return;
+    }
     setState(() {
       _vc = c;
       final dur = c.value.duration.inMilliseconds / 1000.0;
@@ -541,22 +544,37 @@ class _EditorScreenState extends State<EditorScreen> {
       }
     }
     setState(() => _busy = true);
+    // Progress dialog. Capture the ROOT navigator so we always pop the dialog
+    // itself (never the editor screen), and block the Android back button from
+    // dismissing it mid-render (which previously left a stuck spinner + double-pop).
+    final rootNav = Navigator.of(context, rootNavigator: true);
+    var dialogOpen = true;
     showDialog(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        backgroundColor: _kPanel,
-        content: Row(children: [
-          SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5)),
-          SizedBox(width: 18),
-          Text('Rendering…', style: TextStyle(color: Colors.white)),
-        ]),
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: _kPanel,
+          content: Row(children: [
+            SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5)),
+            SizedBox(width: 18),
+            Text('Rendering…', style: TextStyle(color: Colors.white)),
+          ]),
+        ),
       ),
-    );
+    ).then((_) => dialogOpen = false);
+    void closeProgress() {
+      if (dialogOpen) {
+        dialogOpen = false;
+        rootNav.pop();
+      }
+    }
     try {
       final res = await ExportService().export(_project!);
+      closeProgress();
       if (mounted) {
-        Navigator.pop(context); // close progress
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
@@ -573,8 +591,8 @@ class _EditorScreenState extends State<EditorScreen> {
         );
       }
     } catch (e) {
+      closeProgress();
       if (mounted) {
-        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {

@@ -41,6 +41,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
         ],
       ),
     );
+    ctrl.dispose();
     if (amount == null) return;
     try {
       await context.read<CreatorService>().requestPayout(amount);
@@ -88,6 +89,23 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
             FutureBuilder<Map<String, dynamic>>(
               future: _earnings,
               builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    height: 176,
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(16)),
+                    child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+                  );
+                }
+                if (snap.hasError) {
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.15))),
+                    child: Row(children: [
+                      const Expanded(child: Text("Couldn't load your balance.", style: TextStyle(fontWeight: FontWeight.w600))),
+                      TextButton(onPressed: () => setState(_reload), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+                    ]),
+                  );
+                }
                 final e = snap.data;
                 final available = (e?['available'] as num?)?.toDouble() ?? 0;
                 return Container(

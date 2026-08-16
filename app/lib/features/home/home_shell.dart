@@ -14,8 +14,27 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
+/// Lets child tabs request a tab switch (e.g. Discover's search icon → Search).
+final ValueNotifier<int> homeTab = ValueNotifier<int>(0);
+
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    homeTab.addListener(_onTabRequest);
+  }
+
+  void _onTabRequest() {
+    if (mounted && homeTab.value != _index) setState(() => _index = homeTab.value);
+  }
+
+  @override
+  void dispose() {
+    homeTab.removeListener(_onTabRequest);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +49,7 @@ class _HomeShellState extends State<HomeShell> {
       body: IndexedStack(index: _index, children: tabs),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: (i) { homeTab.value = i; setState(() => _index = i); },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
@@ -41,6 +60,17 @@ class _HomeShellState extends State<HomeShell> {
       ),
     );
   }
+}
+
+void _infoDialog(BuildContext context, String title, String body) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      content: Text(body),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+    ),
+  );
 }
 
 class _AccountTab extends StatelessWidget {
@@ -119,13 +149,13 @@ class _AccountTab extends StatelessWidget {
               _MenuCard(children: [
                 _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
                 if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
-                _MenuRow(Icons.download_rounded, 'My exports', () {}),
-                _MenuRow(Icons.phone_android_rounded, 'Devices', () {}),
+                _MenuRow(Icons.download_rounded, 'My exports', () => homeTab.value = 3),
+                _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/plans')),
               ]),
               const SizedBox(height: 14),
               _MenuCard(children: [
-                _MenuRow(Icons.help_outline_rounded, 'Help & support', () {}),
-                _MenuRow(Icons.privacy_tip_outlined, 'Privacy & terms', () {}),
+                _MenuRow(Icons.help_outline_rounded, 'Help & support', () => _infoDialog(context, 'Help & support', 'Need a hand? Email us at clipxcart@gmail.com and we\'ll get back within 48 hours.')),
+                _MenuRow(Icons.privacy_tip_outlined, 'Privacy & terms', () => _infoDialog(context, 'Privacy & terms', 'Your account data is used only to run ClipCart and is never sold. Exports render on your device. Full details at clipscart.app. Questions: clipxcart@gmail.com')),
               ]),
               const SizedBox(height: 14),
               _MenuCard(children: [

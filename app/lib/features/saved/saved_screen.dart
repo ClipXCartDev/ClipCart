@@ -34,6 +34,17 @@ class _SavedScreenState extends State<SavedScreen> {
             if (snap.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
+            if (snap.hasError) {
+              return ListView(children: [
+                const SizedBox(height: 80),
+                Center(
+                  child: Column(children: [
+                    Text("Couldn't load your saved clips.", style: TextStyle(color: Colors.grey.shade600)),
+                    TextButton(onPressed: () => setState(() => _future = context.read<CatalogService>().favorites()), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+                  ]),
+                ),
+              ]);
+            }
             final clips = snap.data ?? [];
             if (clips.isEmpty) {
               return ListView(children: const [

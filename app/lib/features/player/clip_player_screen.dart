@@ -22,7 +22,26 @@ class ClipPlayerScreen extends StatelessWidget {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
           }
-          if (!snap.hasData) return Center(child: Text('Could not load clip', style: TextStyle(color: Colors.grey.shade400)));
+          if (snap.hasError || !snap.hasData) {
+            return SafeArea(
+              child: Stack(children: [
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
+                  ),
+                ),
+                Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text('Could not load clip', style: TextStyle(color: Colors.grey.shade400)),
+                    const SizedBox(height: 12),
+                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: Color(0xFFFF4D6D)))),
+                  ]),
+                ),
+              ]),
+            );
+          }
           return ReelsPlayerScreen(clips: [snap.data!], startIndex: 0);
         },
       ),
@@ -47,6 +66,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   final Map<int, VideoPlayerController> _ctrls = {};
   final Map<int, bool> _loading = {};
   bool _muted = true;
+  int _gen = 0; // bumps whenever we tear controllers down; stale async _ensure bail on mismatch
 
   void _toggleMute() {
     setState(() => _muted = !_muted);
@@ -65,9 +85,11 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   @override
   void dispose() {
+    _gen++; // invalidate any in-flight _ensure
     for (final c in _ctrls.values) {
       c.dispose();
     }
+    _ctrls.clear();
     _pc.dispose();
     super.dispose();
   }
@@ -84,20 +106,32 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
         c.pause();
       }
     });
-    // drop controllers outside the window
+    // drop controllers outside the window. Remove from the map + rebuild FIRST so
+    // no VideoPlayer widget is still pointing at a controller we're about to dispose,
+    // THEN dispose after the frame (prevents "used after dispose" on fast swipes).
     final keep = {_current, _current - 1, _current + 1};
     final drop = _ctrls.keys.where((i) => !keep.contains(i)).toList();
+    final dropped = <VideoPlayerController>[];
     for (final i in drop) {
-      _ctrls.remove(i)?.dispose();
+      final c = _ctrls.remove(i);
+      if (c != null) dropped.add(c);
       _loading.remove(i);
     }
     if (mounted) setState(() {});
+    if (dropped.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        for (final c in dropped) {
+          c.dispose();
+        }
+      });
+    }
   }
 
   /// Free ALL reels video decoders before opening the editor — otherwise the
   /// editor's decoder + the reels current±1 decoders exhaust MediaCodec (SIGABRT
   /// "could not create MediaCodec.BufferInfo" on larger clips). Re-init on return.
   Future<void> _openEditor(Clip clip) async {
+    _gen++; // invalidate any in-flight _ensure so it can't re-insert a decoder while the editor is open
     for (final c in _ctrls.values) {
       c.dispose();
     }
@@ -110,6 +144,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   Future<void> _ensure(int i) async {
     if (_ctrls.containsKey(i) || _loading[i] == true) return;
+    final gen = _gen; // snapshot: if controllers get torn down mid-init, abandon this one
     _loading[i] = true;
     try {
       final url = await context.read<CatalogService>().previewUrl(widget.clips[i].id);
@@ -117,8 +152,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       await c.initialize();
       await c.setLooping(true);
       await c.setVolume(_muted ? 0 : 1);
-      if (!mounted) {
-        c.dispose();
+      if (!mounted || gen != _gen) {
+        c.dispose(); // screen gone OR a teardown (editor/dispose) happened while we loaded
         return;
       }
       _ctrls[i] = c;
@@ -149,7 +184,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
         SafeArea(
           child: Align(
             alignment: Alignment.topLeft,
-            child: IconButton(icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 30), onPressed: () => context.pop()),
+            child: IconButton(icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 30), onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
           ),
         ),
       ]),

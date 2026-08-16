@@ -106,6 +106,15 @@ class _PlansScreenState extends State<PlansScreen> {
                   if (snap.connectionState == ConnectionState.waiting) {
                     return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator(color: AppColors.accent)));
                   }
+                  if (snap.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(children: [
+                        const Text("Couldn't load plans."),
+                        TextButton(onPressed: () => setState(() => _plans = context.read<BillingService>().plans()), child: const Text('Retry', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800))),
+                      ]),
+                    );
+                  }
                   final plans = snap.data ?? [];
                   if (plans.isEmpty) return const Text('No plans available yet.');
                   final topPrice = plans.map((p) => p.priceUsd).fold<double>(0, (a, b) => b > a ? b : a);

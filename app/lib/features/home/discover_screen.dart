@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
+import 'home_shell.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -241,7 +242,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               Text('Viral clips, ready for your brand', style: TextStyle(color: Colors.grey, fontSize: 12)),
             ]),
           ),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.search_rounded)),
+          IconButton(onPressed: () => homeTab.value = 1, icon: const Icon(Icons.search_rounded)),
           // minimal filter icon — dot shows when a filter is active
           Stack(children: [
             IconButton(onPressed: _openFilters, icon: const Icon(Icons.tune_rounded)),
