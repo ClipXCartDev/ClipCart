@@ -147,6 +147,19 @@ footer{border-top:1px solid var(--border);color:var(--muted);font-size:13px;padd
 .wnav{position:fixed;top:48%;transform:translateY(-50%);width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#fff;font-size:26px;cursor:pointer;z-index:2}
 .wnav:hover{background:rgba(255,255,255,.26)}.wnav.p{left:18px}.wnav.n{right:18px}
 @media(max-width:900px){.watch-body{grid-template-columns:minmax(0,1fr)}.wnav{display:none}.wplayer{aspect-ratio:1/1}}
+/* app-store buttons */
+.stgrid{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 4px}
+.stbtn{display:inline-flex;align-items:center;gap:10px;padding:9px 15px;border-radius:12px;background:#111;color:#fff;border:1px solid #2a2531;transition:.12s;text-decoration:none}
+.stbtn:hover{transform:translateY(-1px)}
+.stbtn.dis{opacity:.5;cursor:default}.stbtn.dis:hover{transform:none}
+.stbtn .ic{font-size:20px;line-height:1}
+.stbtn small{display:block;font-size:10px;opacity:.75;font-weight:600;letter-spacing:.02em}
+.stbtn b{display:block;font-size:14px;font-weight:800;margin-top:-1px}
+/* edit-in-app info banner */
+.appbn{display:flex;align-items:center;gap:14px;background:linear-gradient(120deg,rgba(255,138,61,.12),rgba(255,77,109,.1));border:1px solid var(--border);border-radius:16px;padding:14px 18px;margin:0 0 4px}
+.appbn .em{font-size:26px;flex:0 0 auto}
+.appbn .tx b{font-size:14.5px;font-weight:800;display:block}.appbn .tx span{color:var(--muted);font-size:13px}
+@media(max-width:720px){.appbn #bnstore{display:none}.appbn{margin-bottom:14px}}
 </style>
 </head>
 <body>
@@ -194,9 +207,33 @@ async function api(path,method='GET',body){
 }
 const view=html=>document.getElementById('view').innerHTML=html;
 
+let APPCFG={ios_url:null,android_url:null,apk_url:null};
 async function boot(){
   if(TOKEN){try{ME=await api('/auth/me');}catch(e){TOKEN='';localStorage.removeItem('cc_web');}}
-  renderNav(); go(location.hash.slice(2)||'home');
+  try{APPCFG=await api('/app-config');}catch(e){}
+  renderNav(); route();
+}
+// store buttons/links — driven by backend app-config
+function storeBtns(dark){
+  const ios=APPCFG.ios_url,and=APPCFG.android_url,apk=APPCFG.apk_url;
+  const st=dark?'background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2)':'';
+  const btn=(href,icon,label,sub)=>`<a class="stbtn" style="${st}" href="${href}" target="_blank" rel="noopener"><span class="ic">${icon}</span><span><small>${sub}</small><b>${label}</b></span></a>`;
+  const soon=(icon,label,sub)=>`<span class="stbtn dis" style="${st}" title="Coming soon"><span class="ic">${icon}</span><span><small>${sub}</small><b>${label}</b></span></span>`;
+  return `<div class="stgrid">
+    ${ios?btn(ios,'','App Store','Download on the'):soon('','App Store','Coming soon to')}
+    ${and?btn(and,'▶','Google Play','Get it on'):(apk?btn(apk,'⬇','Android APK','Download for'):soon('▶','Google Play','Coming soon to'))}
+  </div>`;
+}
+// ---- hash router: back/forward work everywhere ----
+const ROUTES={home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount,terms:()=>vLegal('terms'),privacy:()=>vLegal('privacy')};
+function route(){
+  const raw=location.hash.slice(2)||'home';
+  const [seg,arg]=raw.split('/');
+  if(seg==='watch'&&arg){ openWatch(decodeURIComponent(arg)); return; }
+  // leaving a watch overlay (back pressed) → tear it down
+  if(document.getElementById('watch'))closeWatch(true);
+  window.onscroll=null; // drop any prior page's infinite-scroll handler
+  (ROUTES[seg]||vHome)();
 }
 function renderNav(){
   const dark=document.documentElement.getAttribute('data-theme')==='dark';
@@ -206,7 +243,7 @@ function renderNav(){
     : ` <button class="btn sm sec" onclick="go('login')">Log in</button> <button class="btn sm" onclick="go('register')">Subscribe</button>`);
 }
 function logout(){TOKEN='';ME=null;localStorage.removeItem('cc_web');renderNav();go('home');}
-function go(v){location.hash='#/'+v;({home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount,terms:()=>vLegal('terms'),privacy:()=>vLegal('privacy')}[v]||vHome)();}
+function go(v){ if(location.hash.slice(2)===v){route();} else {location.hash='#/'+v;} } // hashchange → route()
 
 function vLegal(kind){
   const t=kind==='privacy'?'Privacy Policy':'Terms of Service';
@@ -232,7 +269,7 @@ function vLegal(kind){
 function toggleTheme(){const d=document.documentElement.getAttribute('data-theme')==='dark';const nx=d?'light':'dark';document.documentElement.setAttribute('data-theme',nx);localStorage.setItem('cc_theme',nx);renderNav();}
 (function(){const t=localStorage.getItem('cc_theme');if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');})();
 
-function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" data-slug="${c.slug}" onclick="openWatch('${c.slug}')">
+function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" data-slug="${c.slug}" onclick="showClip('${c.slug}')">
   <div class="thumb" onmouseenter="playPrev(this)" onmouseleave="stopPrev(this)" data-prev="${c.preview||''}" style="background:${c.thumb?`url('${c.thumb}')`:`linear-gradient(150deg,${a},${b})`};background-size:cover;background-position:center">
     ${c.preview?`<video class="pv" muted loop playsinline preload="metadata"></video>`:''}
     <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span>
@@ -279,11 +316,12 @@ async function vHome(){
       <div class="center" style="justify-content:center"><button class="btn" onclick="go('register')">Create free account →</button><button class="btn sec" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.25)" onclick="go('pricing')">See pricing</button></div></div>`);
   try{
     const r=await api('/clips?sort=trending&limit=10');const items=r.items||[];
-    document.getElementById('tr').innerHTML=items.map(clipCard).join('')||'<p class="muted">No clips yet.</p>';
+    const tr=document.getElementById('tr');if(!tr)return; // view changed mid-fetch
+    tr.innerHTML=items.map(clipCard).join('')||'<p class="muted">No clips yet.</p>';
     const hv=document.getElementById('hv');const pick=items.filter(c=>c.thumb).slice(0,3);
     if(hv&&pick.length)hv.innerHTML=pick.map((c,i)=>`<div class="hcard c${i}">${i===0&&c.preview?`<video src="${c.preview}" autoplay muted loop playsinline></video>`:`<img src="${c.thumb}">`}<span class="tag" style="background:${c.access==='pro'?'#f5a623':'#12b76a'};color:${c.access==='pro'?'#3a2600':'#fff'}">${c.access}</span></div>`).join('');
   }
-  catch(e){document.getElementById('tr').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+  catch(e){const tr=document.getElementById('tr');if(tr)tr.innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
 
 let _cat=null,_q='',_cats=[],_sort='trending',_fopen=false;
@@ -291,6 +329,7 @@ let _off=0,_more=true,_bz=false;
 function _fActive(){return _cat!==null||_sort!=='trending';}
 async function vBrowse(){
   view(`<h2 class="sec">Browse clips</h2><p class="subsec">Every ready-to-use template, always fresh</p>
+   <div class="appbn"><span class="em">📱</span><div class="tx"><b>Editing &amp; export happen in the ClipCart app</b><span>Preview clips here, then customize &amp; export in full HD on your phone.</span></div><span style="flex:1"></span><span id="bnstore"></span></div>
    <div class="fbar">
      <input id="q" placeholder="Search clips, movies…" value="${h(_q)}" onkeydown="if(event.key==='Enter'){_q=this.value;loadBrowse()}">
      <button class="fbtn ${_fActive()?'on':''}" id="fbtn" onclick="toggleFilters()"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5h18v2l-7 7v5l-4 2v-7L3 7z"/></svg>Sort & filter${_fActive()?' <span class="dot"></span>':''}</button>
@@ -298,6 +337,7 @@ async function vBrowse(){
    <div id="fpanel" style="display:${_fopen?'block':'none'}"></div>
    <div class="grid" id="gr"></div>
    <div id="more" style="text-align:center;padding:26px 0;color:var(--muted);font-size:13px"></div>`);
+  {const bs=document.getElementById('bnstore');if(bs)bs.innerHTML=storeBtns(document.documentElement.getAttribute('data-theme')==='dark');}
   try{if(!_cats.length)_cats=await api('/categories');}catch(e){}
   if(_fopen)renderFilters();
   window.onscroll=()=>{ if(location.hash.startsWith('#/browse') && _more && !_bz && (window.innerHeight+window.scrollY)>=document.body.offsetHeight-800) loadMore(); };
@@ -322,7 +362,8 @@ async function loadMore(){
   const more=document.getElementById('more'); if(more)more.innerHTML='Loading…';
   try{const qs=new URLSearchParams();if(_q)qs.set('q',_q);if(_cat)qs.set('category',_cat);qs.set('sort',_sort);qs.set('limit','30');qs.set('offset',_off);
     const r=await api('/clips?'+qs.toString());const items=r.items||[];
-    document.getElementById('gr').insertAdjacentHTML('beforeend',items.map(clipCard).join(''));
+    const gr=document.getElementById('gr'); if(!gr){_bz=false;return;} // view changed mid-flight
+    gr.insertAdjacentHTML('beforeend',items.map(clipCard).join(''));
     _off+=items.length; if(items.length<30)_more=false;
     if(more)more.innerHTML=_more?'':(_off?`That's all ${_off} clips`:'No results.');
   }catch(e){if(more)more.innerHTML='<span class="err">'+h(e.message)+'</span>';_more=false;}
@@ -333,26 +374,41 @@ async function loadMore(){
 let _watchQueue=[];   // slugs in current context (for prev/next)
 let _watchIdx=-1;
 
-async function clipDetail(slug){ return openWatch(slug); }
+function clipDetail(slug){ return showClip(slug); }
 
-async function openWatch(slug,queue){
-  // build a navigation queue from currently rendered cards if not provided
-  if(queue&&queue.length){_watchQueue=queue;}
-  else{const cards=[...document.querySelectorAll('.tpl[data-slug]')].map(el=>el.dataset.slug);_watchQueue=cards.length?cards:[slug];}
+// click entry point — pushes a history state so Back closes the player
+function showClip(slug){
+  const cards=[...document.querySelectorAll('.tpl[data-slug]')].map(el=>el.dataset.slug);
+  _watchQueue=cards.length?cards:[slug];
+  location.hash='#/watch/'+encodeURIComponent(slug); // → route() → openWatch()
+}
+// called by the router (fresh nav, back/forward, or deep link)
+async function openWatch(slug){
+  if(_watchIdx<0||!_watchQueue.length)_watchQueue=[slug];
   _watchIdx=_watchQueue.indexOf(slug); if(_watchIdx<0){_watchQueue=[slug];_watchIdx=0;}
   document.body.style.overflow='hidden';
   let el=document.getElementById('watch');
   if(!el){el=document.createElement('div');el.id='watch';el.className='watch';document.body.appendChild(el);
     document.addEventListener('keydown',_watchKeys);}
   el.innerHTML=`<div class="watch-bar"><span class="logo"><span class="lg">C</span>ClipCart</span>
-    <button class="watch-x" onclick="closeWatch()" title="Close (Esc)">×</button></div>
+    <button class="watch-x" onclick="closeWatch()" title="Back (Esc)">×</button></div>
     <div class="watch-body"><div id="wmain" style="color:#8f8899">Loading…</div>
     <div class="wside" id="wside"></div></div>`;
   await renderWatch(slug);
 }
 function _watchKeys(e){if(e.key==='Escape')closeWatch();if(e.key==='ArrowRight')watchNav(1);if(e.key==='ArrowLeft')watchNav(-1);}
-function closeWatch(){const el=document.getElementById('watch');if(el)el.remove();document.body.style.overflow='';document.removeEventListener('keydown',_watchKeys);}
-function watchNav(d){const i=_watchIdx+d;if(i<0||i>=_watchQueue.length)return;_watchIdx=i;renderWatch(_watchQueue[i]);}
+// silent=true → just tear down DOM (router already moved us). else → go Back in history.
+function closeWatch(silent){
+  const el=document.getElementById('watch');if(el)el.remove();
+  document.body.style.overflow='';document.removeEventListener('keydown',_watchKeys);
+  if(silent!==true){ if(history.length>1&&(document.referrer||location.hash))history.back(); else go('browse'); }
+}
+function watchNav(d){const i=_watchIdx+d;if(i<0||i>=_watchQueue.length)return;_watchIdx=i;
+  // replace hash (don't stack every prev/next in history), then render
+  const slug=_watchQueue[i];history.replaceState(null,'','#/watch/'+encodeURIComponent(slug));renderWatch(slug);}
+// jump to a related clip inside the player (append to queue, replace hash so Back still exits the player once)
+function watchNavTo(slug){if(!_watchQueue.includes(slug)){_watchQueue.splice(_watchIdx+1,0,slug);}_watchIdx=_watchQueue.indexOf(slug);
+  history.replaceState(null,'','#/watch/'+encodeURIComponent(slug));renderWatch(slug);}
 
 async function renderWatch(slug){
   const main=document.getElementById('wmain'),side=document.getElementById('wside');
@@ -386,10 +442,11 @@ async function renderWatch(slug){
           ${c.language?`<span>${h(c.language)}</span>`:''}
           ${(c.layers||[]).slice(0,4).map(l=>`<span>${h(l)}</span>`).join('')}
         </div>
-        <button class="btn" style="max-width:340px" onclick="${TOKEN?`go('pricing');closeWatch()`:`go('register');closeWatch()`}">
-          ✨ Customize &amp; export in the app
-        </button>
-        <p style="color:#8f8899;font-size:13px;margin-top:10px;max-width:520px">Edit captions, add your logo and export in full HD — all on your phone. Web is for browsing &amp; subscribing.</p>
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:16px 18px;margin-top:6px;max-width:560px">
+          <b style="font-size:14.5px;color:#fff">✨ Edit &amp; export in the ClipCart app</b>
+          <p style="color:#9d95ad;font-size:13px;margin:6px 0 0;line-height:1.5">Add your text, logo &amp; subtitles and export in full HD — right on your phone. Web is for browsing &amp; subscribing.</p>
+          ${storeBtns(true)}
+        </div>
       </div>`;
     const v=document.getElementById('wv');if(v){v.muted=false;v.volume=1;v.play().catch(()=>{v.muted=true;const m=document.getElementById('wmute');if(m)m.textContent='🔇';v.play().catch(()=>{});});}
     // ---- related / more like this ----
@@ -404,7 +461,7 @@ async function renderWatch(slug){
     side.innerHTML='<h3>More like this</h3>'+(rel.length?rel.map(relItem).join(''):'<div style="color:#8f8899;font-size:13px">No related clips yet.</div>');
   }catch(e){main.style.color='';main.innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
-function relItem(c){const[a,b]=g(c.id);return `<div class="rel-item" onclick="openWatch('${c.slug}')">
+function relItem(c){const[a,b]=g(c.id);return `<div class="rel-item" onclick="watchNavTo('${c.slug}')">
   <div class="rt" style="${c.thumb?'':`background:linear-gradient(150deg,${a},${b})`}">
     ${c.thumb?`<img src="${c.thumb}" loading="lazy">`:''}
     <span class="d">${dur(c.duration_sec)}</span>
@@ -479,7 +536,7 @@ async function vAccount(){
 }
 async function rmDev(id){try{await api('/auth/devices/'+id,'DELETE');vAccount();}catch(e){alert(e.message);}}
 
-window.addEventListener('hashchange',()=>{const v=location.hash.slice(2);if(v&&v!=='browse')return;});
+window.addEventListener('hashchange',route);
 boot();
 </script>
 </body>

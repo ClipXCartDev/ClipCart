@@ -45,5 +45,11 @@ class Settings(BaseSettings):
     # CORS — allowed web/admin origins ("*" for dev, comma-separated for prod).
     CORS_ORIGINS: str = "*"
 
+    # App store links — surfaced on web so users know editing happens in the apps.
+    # Customisable from backend via env (no redeploy of the web needed).
+    IOS_APP_URL: str = ""      # App Store link (empty → "coming soon")
+    ANDROID_APP_URL: str = ""  # Play Store link
+    APK_DIRECT_URL: str = "https://clipscart.app/downloads"  # sideload / direct APK
+
 
 settings = Settings()

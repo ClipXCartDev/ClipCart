@@ -67,6 +67,18 @@ def showcase(db: Session = Depends(get_db)) -> dict:
     return {"items": items}
 
 
+@router.get("/app-config")
+def app_config() -> dict:
+    """PUBLIC — client config surfaced on web/app. Store links are env-driven so
+    they can be changed from the backend without redeploying the web."""
+    from app.core.config import settings
+    return {
+        "ios_url": settings.IOS_APP_URL or None,
+        "android_url": settings.ANDROID_APP_URL or None,
+        "apk_url": settings.APK_DIRECT_URL or None,
+    }
+
+
 @router.get("/clips/{slug}", response_model=ClipOut)
 def get_clip(slug: str, db: Session = Depends(get_db)) -> ClipOut:
     clip = db.scalar(select(Clip).where(Clip.slug == slug, Clip.status == ClipStatus.approved))
