@@ -1173,7 +1173,7 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  // ---------- playbar ----------
+  // ---------- transport row (play + timer, left) | action pills (right) ----------
   Widget _playbar() {
     return ValueListenableBuilder<VideoPlayerValue>(
       valueListenable: _vc!,
@@ -1181,44 +1181,42 @@ class _EditorScreenState extends State<EditorScreen> {
         final ended = v.position >= v.duration - const Duration(milliseconds: 80) && !v.isPlaying;
         return Container(
           color: _kBg,
-          padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+          padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
           child: Row(children: [
             IconButton(
               visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               icon: Icon(v.isPlaying ? Icons.pause_circle_filled : (ended ? Icons.replay_circle_filled : Icons.play_circle_fill), color: Colors.white, size: 32),
               onPressed: _togglePlay,
             ),
+            const SizedBox(width: 2),
             Text('${_fmt(v.position)} / ${_fmt(v.duration)}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
             const Spacer(),
-            // Row-scrollable action pills so they never overflow / truncate on narrow screens.
-            Flexible(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                reverse: true,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  _pill('Layers', Icons.layers_rounded, _openLayers),
-                  const SizedBox(width: 8),
-                  _pill(_project!.aspect.label, Icons.crop, _pickAspect),
-                  const SizedBox(width: 8),
-                  _pill(_trimMode ? 'Trim ✓' : 'Trim', Icons.content_cut, () => setState(() => _trimMode = !_trimMode), on: _trimMode),
-                ]),
-              ),
-            ),
+            // Compact icon-only action buttons — never truncate, always fit.
+            _actionIcon('Layers', Icons.layers_rounded, _openLayers),
+            const SizedBox(width: 4),
+            _actionIcon(_project!.aspect.label, Icons.crop_rounded, _pickAspect),
+            const SizedBox(width: 4),
+            _actionIcon('Trim', Icons.content_cut_rounded, () => setState(() => _trimMode = !_trimMode), on: _trimMode),
           ]),
         );
       },
     );
   }
 
-  Widget _pill(String label, IconData icon, VoidCallback onTap, {bool on = false}) => GestureDetector(
+  /// Compact labelled icon button for the transport row (icon over a tiny label).
+  Widget _actionIcon(String label, IconData icon, VoidCallback onTap, {bool on = false}) => InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(9)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 14, color: Colors.white),
-            const SizedBox(width: 5),
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+          width: 52,
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          decoration: BoxDecoration(color: on ? _kAccent : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 19, color: Colors.white),
+            const SizedBox(height: 2),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700)),
           ]),
         ),
       );
@@ -1228,79 +1226,109 @@ class _EditorScreenState extends State<EditorScreen> {
   // ---------- timeline (scrub + trim + subtitle track) ----------
   Widget _timeline() {
     final dur = _duration;
+    final p = _project!;
+    final hasLayers = p.subtitles.isNotEmpty || p.stickers.isNotEmpty;
+    // Height adapts: base track always, + a lane for text, + a lane for stickers.
+    final laneCount = (p.subtitles.isNotEmpty ? 1 : 0) + (p.stickers.isNotEmpty ? 1 : 0);
+    final trackH = 26.0;
+    final laneH = 20.0;
+    final totalH = 8 + trackH + (laneCount * (laneH + 4)) + 8;
     return Container(
-      height: 62,
       color: const Color(0xFF0F0D12),
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+      height: totalH.clamp(50.0, 130.0),
       child: LayoutBuilder(builder: (context, c) {
         final w = c.maxWidth;
         double x(double sec) => dur <= 0 ? 0 : (sec / dur) * w;
         double sec(double px) => dur <= 0 ? 0 : (px / w) * dur;
-        final p = _project!;
         return ValueListenableBuilder<VideoPlayerValue>(
           valueListenable: _vc!,
           builder: (context, v, _) {
             final ph = x(v.position.inMilliseconds / 1000.0);
+            double laneTop = trackH + 4;
+            final textTop = laneTop;
+            if (p.subtitles.isNotEmpty) laneTop += laneH + 4;
+            final stkTop = laneTop;
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTapDown: (d) => _seek(sec(d.localPosition.dx)),
               onHorizontalDragUpdate: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx.clamp(0, w))),
               child: Stack(clipBehavior: Clip.none, children: [
-                Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)))),
-                // trimmed-out dim regions
-                if (p.trimStart > 0) Positioned(left: 0, width: x(p.trimStart), top: 0, bottom: 0, child: _dim()),
-                if (p.outEnd < dur) Positioned(left: x(p.outEnd), right: 0, top: 0, bottom: 0, child: _dim()),
-                // subtitle blocks (top lane)
+                // ---- base video track (filmstrip look) ----
+                Positioned(
+                  left: 0, right: 0, top: 0, height: trackH,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(7),
+                    child: Container(
+                      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF2A2430), Color(0xFF1C1822)])),
+                      child: Row(children: [
+                        for (int i = 0; i < 10; i++)
+                          Expanded(child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                            decoration: BoxDecoration(border: Border(right: BorderSide(color: Colors.white.withOpacity(0.05)))),
+                            child: Center(child: Icon(Icons.movie_creation_outlined, size: 12, color: Colors.white.withOpacity(0.10))),
+                          )),
+                      ]),
+                    ),
+                  ),
+                ),
+                // trimmed-out dim regions (over the base track)
+                if (p.trimStart > 0) Positioned(left: 0, width: x(p.trimStart), top: 0, height: trackH, child: _dim()),
+                if (p.outEnd < dur) Positioned(left: x(p.outEnd), right: 0, top: 0, height: trackH, child: _dim()),
+                // empty hint (sits ON the base track so it never overflows below)
+                if (!hasLayers)
+                  Positioned(
+                    left: 0, right: 0, top: 0, height: trackH,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), borderRadius: BorderRadius.circular(10)),
+                          child: Text('Tap Add text, Emoji or Sticker to begin', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 10.5, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                  ),
+                // ---- text lane ----
                 for (final s in p.subtitles)
                   Positioned(
-                    left: x(s.start), width: (x(s.end) - x(s.start)).clamp(24, w), top: 4, height: 18,
-                    child: GestureDetector(
+                    left: x(s.start), width: (x(s.end) - x(s.start)).clamp(30, w), top: textTop, height: laneH,
+                    child: _timelineBlock(
+                      label: s.text.isEmpty ? 'Text' : s.text,
+                      icon: Icons.title_rounded,
+                      selected: identical(_selected, s),
+                      gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]),
                       onTap: () => setState(() => _selected = s),
-                      onHorizontalDragUpdate: (d) => setState(() {
+                      onDrag: (dx) => setState(() {
                         final len = s.end - s.start;
-                        s.start = (s.start + sec(d.delta.dx)).clamp(0, dur - len);
+                        s.start = (s.start + sec(dx)).clamp(0, dur - len);
                         s.end = s.start + len;
                       }),
-                      child: Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]),
-                          borderRadius: BorderRadius.circular(5),
-                          border: identical(_selected, s) ? Border.all(color: Colors.white, width: 1.5) : null,
-                        ),
-                        child: Text(s.text.isEmpty ? 'Text' : s.text, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700)),
-                      ),
                     ),
                   ),
-                // sticker/emoji blocks (bottom lane)
+                // ---- sticker/emoji lane ----
                 for (final s in p.stickers)
                   Positioned(
-                    left: x(s.start), width: (x((s.end >= 9998 ? dur : s.end)) - x(s.start)).clamp(24, w), top: 24, height: 18,
-                    child: GestureDetector(
+                    left: x(s.start), width: (x((s.end >= 9998 ? dur : s.end)) - x(s.start)).clamp(30, w), top: stkTop, height: laneH,
+                    child: _timelineBlock(
+                      label: s.emoji != null ? '${s.emoji}  Emoji' : 'Sticker',
+                      icon: s.emoji != null ? null : Icons.auto_awesome_motion_rounded,
+                      selected: identical(_selected, s),
+                      color: const Color(0xFF7B61FF),
                       onTap: () => setState(() => _selected = s),
-                      onHorizontalDragUpdate: (d) => setState(() {
+                      onDrag: (dx) => setState(() {
                         final end = s.end >= 9998 ? dur : s.end;
                         final len = end - s.start;
-                        s.start = (s.start + sec(d.delta.dx)).clamp(0, dur - len);
+                        s.start = (s.start + sec(dx)).clamp(0, dur - len);
                         s.end = s.start + len;
                       }),
-                      child: Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7B61FF),
-                          borderRadius: BorderRadius.circular(5),
-                          border: identical(_selected, s) ? Border.all(color: Colors.white, width: 1.5) : null,
-                        ),
-                        child: Text(s.emoji ?? 'Sticker', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700)),
-                      ),
                     ),
                   ),
-                // trim handles
-                if (_trimMode) ..._trimHandles(x, sec, w, p, dur),
-                // playhead
-                Positioned(left: ph.clamp(0, w) - 1, top: 0, bottom: 0, child: Container(width: 2.5, color: Colors.white)),
+                // trim handles (only affect the base track region)
+                if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
+                // playhead across the whole timeline
+                Positioned(left: ph.clamp(0, w) - 1, top: -2, bottom: -2, child: IgnorePointer(child: Container(width: 2, color: Colors.white))),
+                Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)))),
               ]),
             );
           },
@@ -1309,11 +1337,41 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Widget _dim() => DecoratedBox(decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(8)));
+  Widget _timelineBlock({
+    required String label,
+    IconData? icon,
+    required bool selected,
+    LinearGradient? gradient,
+    Color? color,
+    required VoidCallback onTap,
+    required void Function(double) onDrag,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
+      child: Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          color: color,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: selected ? Colors.white : Colors.white.withOpacity(0.15), width: selected ? 1.6 : 1),
+          boxShadow: selected ? [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4)] : null,
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (icon != null) ...[Icon(icon, size: 12, color: Colors.white), const SizedBox(width: 4)],
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700))),
+        ]),
+      ),
+    );
+  }
 
-  List<Widget> _trimHandles(double Function(double) x, double Function(double) sec, double w, EditorProject p, double dur) {
+  Widget _dim() => DecoratedBox(decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(7)));
+
+  List<Widget> _trimHandles(double Function(double) x, double Function(double) sec, double w, EditorProject p, double dur, double trackH) {
     Widget handle(double left, void Function(double) onDrag) => Positioned(
-          left: left - 9, top: 0, bottom: 0,
+          left: left - 9, top: 0, height: trackH,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onHorizontalDragUpdate: (d) => setState(() => onDrag(d.delta.dx)),
