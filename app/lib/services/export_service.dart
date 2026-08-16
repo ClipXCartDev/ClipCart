@@ -32,6 +32,7 @@ class ExportService {
       textPaths.add(await TextRenderService.renderToPng(s, i));
     }
     final hasLogo = p.logoPath != null && !p.logoHidden;
+    final stickers = p.stickers.where((s) => !s.hidden && File(s.path).existsSync()).toList();
 
     // Aspect crop (center).
     String cropFilter = 'null';
@@ -59,11 +60,17 @@ class ExportService {
       parts.addAll(['-i', '"$tp"']);
       textIdx.add(idx++);
     }
+    final stickerIdx = <int>[];
+    for (final st in stickers) {
+      parts.addAll(['-i', '"${st.path}"']);
+      stickerIdx.add(idx++);
+    }
 
     // Overlay list sorted by z (ascending → highest z composited last = on top).
     final ovs = <Map<String, dynamic>>[
-      if (hasLogo) {'z': p.logoZ, 'logo': true, 'ii': logoIdx},
-      for (var i = 0; i < texts.length; i++) {'z': texts[i].z, 'logo': false, 'ii': textIdx[i], 'seg': texts[i]},
+      if (hasLogo) {'z': p.logoZ, 'kind': 'logo', 'ii': logoIdx},
+      for (var i = 0; i < texts.length; i++) {'z': texts[i].z, 'kind': 'text', 'ii': textIdx[i], 'seg': texts[i]},
+      for (var i = 0; i < stickers.length; i++) {'z': stickers[i].z, 'kind': 'sticker', 'ii': stickerIdx[i], 'stk': stickers[i]},
     ]..sort((a, b) => (a['z'] as double).compareTo(b['z'] as double));
 
     // Filtergraph (no spaces; commas inside filter args escaped as \,).
@@ -75,15 +82,30 @@ class ExportService {
     for (var k = 0; k < ovs.length; k++) {
       final o = ovs[k];
       final ii = o['ii'] as int;
-      if (o['logo'] == true) {
+      final kind = o['kind'] as String;
+      if (kind == 'logo') {
         fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(0.18 * p.logoScale)}':h=-1[lg$k][bgl$k];");
         fc.write('[lg$k]rotate=${_f(p.logoRotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[lgr$k];');
         fc.write("[bgl$k][lgr$k]overlay=x='main_w*${_f(p.logoDx)}-overlay_w/2':y='main_h*${_f(p.logoDy)}-overlay_h/2'[o$k];");
+      } else if (kind == 'sticker') {
+        final s = o['stk'] as StickerOverlay;
+        final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
+        final en = ((s.end >= 9998 ? p.outEnd : s.end) - off).clamp(st, double.infinity).toDouble();
+        // scale to fraction of frame width (against a reference of the current bg)
+        fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(s.baseWidthFrac * s.scale)}':h=-1[sg$k][bgs$k];");
+        String lbl = 'sg$k';
+        final fade = _fadeChain(s.fadeIn, s.fadeOut, st, en, 'sg$k', 'sf$k');
+        if (fade != null) { fc.write(fade); lbl = 'sf$k'; }
+        fc.write('[$lbl]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[sr$k];');
+        fc.write("[bgs$k][sr$k]overlay=x='main_w*${_f(s.dx)}-overlay_w/2':y='main_h*${_f(s.dy)}-overlay_h/2':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
       } else {
         final s = o['seg'] as SubtitleSegment;
         final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
         final en = (s.end - off) < st ? st : (s.end - off);
-        fc.write('[$ii:v]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[t$k];');
+        String src = '$ii:v';
+        final fade = _fadeChain(s.fadeIn, s.fadeOut, st, en, src, 'tf$k');
+        if (fade != null) { fc.write(fade); src = 'tf$k'; }
+        fc.write('[$src]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[t$k];');
         fc.write("[$cur][t$k]overlay=x='main_w*${_f(s.dx)}-overlay_w/2':y='main_h*${_f(s.dy)}-overlay_h/2':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
       }
       cur = 'o$k';
@@ -110,6 +132,24 @@ class ExportService {
       saved = true;
     } catch (_) {}
     return ExportResult(output, saved);
+  }
+
+  /// Builds a filter chain that fades an overlay's ALPHA in/out over its visible
+  /// window [st,en] (seconds on the main timeline). Returns null if no fade.
+  /// The still image is looped into a timed stream so fade PTS align with the clip.
+  String? _fadeChain(double fadeIn, double fadeOut, double st, double en, String src, String out) {
+    if (fadeIn <= 0.01 && fadeOut <= 0.01) return null;
+    final dur = (en - st).clamp(0.1, double.infinity);
+    final fin = fadeIn.clamp(0.0, dur);
+    final fout = fadeOut.clamp(0.0, dur);
+    final b = StringBuffer('[$src]format=rgba,loop=loop=-1:size=1:start=0,'
+        'setpts=N/FRAME_RATE/TB');
+    if (fin > 0.01) b.write(',fade=t=in:st=0:d=${_f(fin, 3)}:alpha=1');
+    if (fout > 0.01) b.write(',fade=t=out:st=${_f(dur - fout, 3)}:d=${_f(fout, 3)}:alpha=1');
+    // trim to the window length, then shift PTS so the faded stream's t=0 lands at
+    // main-time `st` (overlay syncs by PTS; enable gates placement to [st,en]).
+    b.write(',trim=0:${_f(dur, 3)},setpts=PTS-STARTPTS+${_f(st, 3)}/TB[$out];');
+    return b.toString();
   }
 
   String _f(num v, [int d = 4]) => v.toStringAsFixed(d);

@@ -24,6 +24,8 @@ class SubtitleSegment {
     this.align = TextAlignH.center,
     this.z = 0,
     this.hidden = false,
+    this.fadeIn = 0,
+    this.fadeOut = 0,
   });
 
   String text;
@@ -44,21 +46,33 @@ class SubtitleSegment {
   TextAlignH align;
   double z; // stacking order (higher = on top)
   bool hidden; // layer visibility
+  double fadeIn; // seconds, 0 = none
+  double fadeOut; // seconds, 0 = none
 
   double get effectiveSize => fontSize * scale;
   Color get uiColor => Color(color);
+
+  /// Preview opacity multiplier at time [t] given this segment's fade in/out.
+  double opacityAt(double t) {
+    var a = 1.0;
+    if (fadeIn > 0 && t < start + fadeIn) a = ((t - start) / fadeIn).clamp(0.0, 1.0);
+    if (fadeOut > 0 && t > end - fadeOut) a = math_min(a, ((end - t) / fadeOut).clamp(0.0, 1.0));
+    return a.clamp(0.0, 1.0);
+  }
 
   SubtitleSegment copy() => SubtitleSegment(
         text: text, start: start, end: end, fontFamily: fontFamily,
         fontFilePath: fontFilePath, color: color, fontSize: fontSize, dx: dx, dy: dy,
         scale: scale, rotation: rotation, strokeWidth: strokeWidth, strokeColor: strokeColor,
         bgEnabled: bgEnabled, bgColor: bgColor, align: align, z: z, hidden: hidden,
+        fadeIn: fadeIn, fadeOut: fadeOut,
       );
 
   Map<String, dynamic> toJson() => {
         't': text, 's': start, 'e': end, 'ff': fontFamily, 'fp': fontFilePath,
         'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
         'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index, 'z': z, 'hid': hidden,
+        'fi': fadeIn, 'fo': fadeOut,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -70,6 +84,68 @@ class SubtitleSegment {
         strokeColor: (j['scol'] as int?) ?? 0xFF000000, bgEnabled: (j['bg'] as bool?) ?? true,
         bgColor: (j['bgc'] as int?) ?? 0x80000000, align: TextAlignH.values[(j['al'] as int?) ?? 1],
         z: (j['z'] as num?)?.toDouble() ?? 0, hidden: (j['hid'] as bool?) ?? false,
+        fadeIn: (j['fi'] as num?)?.toDouble() ?? 0, fadeOut: (j['fo'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+double math_min(double a, double b) => a < b ? a : b;
+
+/// An image/emoji sticker layer — positioned/scaled/rotated/time-gated, composited
+/// on export exactly like the logo (transparent PNG overlay). [emoji] is set when
+/// created from the emoji picker (rendered to a PNG at export/preview time via [path]).
+class StickerOverlay {
+  StickerOverlay({
+    required this.path,
+    this.emoji,
+    this.start = 0.0,
+    this.end = 9999.0,
+    this.dx = 0.5,
+    this.dy = 0.5,
+    this.scale = 1.0,
+    this.rotation = 0.0,
+    this.z = 500,
+    this.hidden = false,
+    this.fadeIn = 0,
+    this.fadeOut = 0,
+    this.baseWidthFrac = 0.22,
+  });
+
+  String path; // transparent PNG on disk
+  String? emoji; // source emoji, if any
+  double start, end; // seconds visible window
+  double dx, dy; // 0..1 center
+  double scale;
+  double rotation; // radians
+  double z;
+  bool hidden;
+  double fadeIn, fadeOut; // seconds
+  double baseWidthFrac; // base width as fraction of canvas before scale
+
+  double opacityAt(double t) {
+    var a = 1.0;
+    if (fadeIn > 0 && t < start + fadeIn) a = ((t - start) / fadeIn).clamp(0.0, 1.0);
+    if (fadeOut > 0 && t > end - fadeOut) a = math_min(a, ((end - t) / fadeOut).clamp(0.0, 1.0));
+    return a.clamp(0.0, 1.0);
+  }
+
+  StickerOverlay copy() => StickerOverlay(
+        path: path, emoji: emoji, start: start, end: end, dx: dx, dy: dy,
+        scale: scale, rotation: rotation, z: z, hidden: hidden, fadeIn: fadeIn, fadeOut: fadeOut, baseWidthFrac: baseWidthFrac,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'p': path, 'em': emoji, 's': start, 'e': end, 'dx': dx, 'dy': dy,
+        'sc': scale, 'rot': rotation, 'z': z, 'hid': hidden, 'fi': fadeIn, 'fo': fadeOut, 'bw': baseWidthFrac,
+      };
+
+  factory StickerOverlay.fromJson(Map<String, dynamic> j) => StickerOverlay(
+        path: j['p'] as String, emoji: j['em'] as String?,
+        start: (j['s'] as num?)?.toDouble() ?? 0, end: (j['e'] as num?)?.toDouble() ?? 9999,
+        dx: (j['dx'] as num).toDouble(), dy: (j['dy'] as num).toDouble(),
+        scale: (j['sc'] as num?)?.toDouble() ?? 1.0, rotation: (j['rot'] as num?)?.toDouble() ?? 0.0,
+        z: (j['z'] as num?)?.toDouble() ?? 500, hidden: (j['hid'] as bool?) ?? false,
+        fadeIn: (j['fi'] as num?)?.toDouble() ?? 0, fadeOut: (j['fo'] as num?)?.toDouble() ?? 0,
+        baseWidthFrac: (j['bw'] as num?)?.toDouble() ?? 0.22,
       );
 }
 
@@ -95,6 +171,7 @@ class EditorProject {
     required this.baseClipPath,
     required this.defaultFontPath,
     List<SubtitleSegment>? subtitles,
+    List<StickerOverlay>? stickers,
     this.logoPath,
     this.logoDx = 0.85,
     this.logoDy = 0.10,
@@ -106,11 +183,13 @@ class EditorProject {
     this.trimEnd,
     this.duration = 0.0,
     this.aspect = AspectOption.original,
-  }) : subtitles = subtitles ?? [];
+  })  : subtitles = subtitles ?? [],
+        stickers = stickers ?? [];
 
   String baseClipPath;
   String defaultFontPath;
   List<SubtitleSegment> subtitles;
+  List<StickerOverlay> stickers;
   String? logoPath;
   double logoDx; // 0..1 center X
   double logoDy; // 0..1 center Y
@@ -133,6 +212,7 @@ class EditorProject {
   /// Snapshot for undo/redo (deep). Excludes immutable base paths.
   Map<String, dynamic> snapshot() => {
         'subs': subtitles.map((s) => s.toJson()).toList(),
+        'stk': stickers.map((s) => s.toJson()).toList(),
         'logoPath': logoPath, 'logoDx': logoDx, 'logoDy': logoDy,
         'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
@@ -140,6 +220,7 @@ class EditorProject {
 
   void restore(Map<String, dynamic> s) {
     subtitles = (s['subs'] as List).map((e) => SubtitleSegment.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    stickers = ((s['stk'] as List?) ?? []).map((e) => StickerOverlay.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     logoPath = s['logoPath'] as String?;
     logoDx = (s['logoDx'] as num).toDouble();
     logoDy = (s['logoDy'] as num).toDouble();

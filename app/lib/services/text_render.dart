@@ -84,4 +84,27 @@ class TextRenderService {
     await File(path).writeAsBytes(bytes!.buffer.asUint8List());
     return path;
   }
+
+  /// Renders an emoji glyph to a high-res transparent PNG for use as a sticker.
+  /// Persisted with a stable name so the same emoji reuses one file.
+  static Future<String> renderEmojiToPng(String emoji) async {
+    const px = 256.0;
+    final tp = TextPainter(
+      text: TextSpan(text: emoji, style: const TextStyle(fontSize: px)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final w = tp.width.ceil().clamp(1, 4096);
+    final h = tp.height.ceil().clamp(1, 4096);
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    tp.paint(canvas, Offset.zero);
+    final img = await rec.endRecording().toImage(w, h);
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    final dir = await getApplicationDocumentsDirectory();
+    final stk = Directory('${dir.path}/stickers')..createSync(recursive: true);
+    final code = emoji.runes.map((r) => r.toRadixString(16)).join('_');
+    final path = '${stk.path}/emoji_$code.png';
+    await File(path).writeAsBytes(bytes!.buffer.asUint8List());
+    return path;
+  }
 }

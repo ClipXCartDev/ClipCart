@@ -12,6 +12,7 @@ import '../../models/editor_state.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
+import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
 import 'subtitle_editor_sheet.dart';
 
@@ -171,6 +172,9 @@ class _EditorScreenState extends State<EditorScreen> {
     for (final s in _project!.subtitles) {
       if (s.z > m) m = s.z;
     }
+    for (final s in _project!.stickers) {
+      if (s.z > m) m = s.z;
+    }
     return m + 1;
   }
 
@@ -245,6 +249,7 @@ class _EditorScreenState extends State<EditorScreen> {
       builder: (_) => StatefulBuilder(builder: (ctx, setSheet) {
         final ordered = <MapEntry<double, Object>>[
           for (final s in _project!.subtitles) MapEntry(s.z, s),
+          for (final s in _project!.stickers) MapEntry(s.z, s),
           if (_project!.logoPath != null) MapEntry(_project!.logoZ, 'logo'),
         ]..sort((a, b) => b.key.compareTo(a.key)); // top layer first
 
@@ -253,6 +258,8 @@ class _EditorScreenState extends State<EditorScreen> {
             final z = (ordered.length - i).toDouble();
             final it = ordered[i].value;
             if (it is SubtitleSegment) {
+              it.z = z;
+            } else if (it is StickerOverlay) {
               it.z = z;
             } else {
               _project!.logoZ = z;
@@ -263,10 +270,13 @@ class _EditorScreenState extends State<EditorScreen> {
         Widget rowFor(Object it) {
           final isLogo = it == 'logo';
           final s = it is SubtitleSegment ? it : null;
-          final hidden = isLogo ? _project!.logoHidden : (s?.hidden ?? false);
-          final selected = isLogo ? _selected == 'logo' : identical(_selected, s);
+          final stk = it is StickerOverlay ? it : null;
+          final hidden = isLogo ? _project!.logoHidden : (s?.hidden ?? stk?.hidden ?? false);
+          final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
+          final label = isLogo ? 'Logo' : stk != null ? (stk.emoji != null ? '${stk.emoji} Emoji' : 'Sticker') : (s!.text.trim().isEmpty ? 'Text' : s.text);
+          final icon = isLogo ? Icons.image_outlined : stk != null ? Icons.auto_awesome_motion : Icons.title;
           return Container(
-            key: isLogo ? const ValueKey('logo') : ObjectKey(s),
+            key: isLogo ? const ValueKey('logo') : ObjectKey(it),
             margin: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
               color: selected ? _kAccent.withOpacity(0.18) : _kChip,
@@ -278,13 +288,13 @@ class _EditorScreenState extends State<EditorScreen> {
               leading: Container(
                 width: 34, height: 34,
                 decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
-                child: Icon(isLogo ? Icons.image_outlined : Icons.title, color: Colors.white70, size: 18),
+                child: Icon(icon, color: Colors.white70, size: 18),
               ),
-              title: Text(isLogo ? 'Logo' : (s!.text.trim().isEmpty ? 'Text' : s.text),
+              title: Text(label,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: hidden ? Colors.white38 : Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
               onTap: () {
-                setState(() => _selected = isLogo ? 'logo' : s);
+                setState(() => _selected = isLogo ? 'logo' : it);
                 Navigator.pop(context);
               },
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -296,6 +306,8 @@ class _EditorScreenState extends State<EditorScreen> {
                     setState(() {
                       if (isLogo) {
                         _project!.logoHidden = !_project!.logoHidden;
+                      } else if (stk != null) {
+                        stk.hidden = !stk.hidden;
                       } else {
                         s!.hidden = !s.hidden;
                       }
@@ -311,6 +323,8 @@ class _EditorScreenState extends State<EditorScreen> {
                     setState(() {
                       if (isLogo) {
                         _project!.logoPath = null;
+                      } else if (stk != null) {
+                        _project!.stickers.remove(stk);
                       } else {
                         _project!.subtitles.remove(s);
                       }
@@ -487,20 +501,31 @@ class _EditorScreenState extends State<EditorScreen> {
       );
 
   void _duplicateSelected() {
-    if (_selected is! SubtitleSegment) return;
     _snapshot();
-    final s = (_selected as SubtitleSegment).copy();
-    s.dy = (s.dy + 0.06).clamp(0.05, 0.95);
-    setState(() {
-      _project!.subtitles.add(s);
-      _selected = s;
-    });
+    if (_selected is SubtitleSegment) {
+      final s = (_selected as SubtitleSegment).copy();
+      s.dy = (s.dy + 0.06).clamp(0.05, 0.95);
+      setState(() {
+        _project!.subtitles.add(s);
+        _selected = s;
+      });
+    } else if (_selected is StickerOverlay) {
+      final s = (_selected as StickerOverlay).copy();
+      s.dx = (s.dx + 0.05).clamp(0.05, 0.95);
+      s.dy = (s.dy + 0.05).clamp(0.05, 0.95);
+      s.z = _topZ();
+      setState(() {
+        _project!.stickers.add(s);
+        _selected = s;
+      });
+    }
   }
 
   void _deleteSelected() {
     _snapshot();
     setState(() {
       if (_selected is SubtitleSegment) _project!.subtitles.remove(_selected);
+      if (_selected is StickerOverlay) _project!.stickers.remove(_selected);
       if (_selected == 'logo') _project!.logoPath = null;
       _selected = null;
     });
@@ -523,6 +548,124 @@ class _EditorScreenState extends State<EditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Font added: ${f.name}')));
     }
   }
+
+  // ---------- stickers / emoji ----------
+  Future<void> _pickSticker() async {
+    final res = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (res != null && res.files.single.path != null) {
+      _addSticker(res.files.single.path!);
+    }
+  }
+
+  void _addSticker(String path, {String? emoji}) {
+    _snapshot();
+    final st = StickerOverlay(
+      path: path,
+      emoji: emoji,
+      start: _t,
+      end: (_t + 3).clamp(0.5, _duration == 0 ? 9999 : _duration).toDouble(),
+      z: _topZ(),
+    );
+    setState(() {
+      _project!.stickers.add(st);
+      _selected = st;
+    });
+  }
+
+  static const _emojiSet = [
+    '😂','🤣','😭','😍','🥰','😎','🤔','😳','😱','🤯','🥶','🤨','😏','🙄','😤','🤡',
+    '🔥','💯','✨','⭐','💥','🎉','🎊','❤️','💔','💀','👀','👍','👎','🙏','👏','🤝',
+    '💪','🧠','👑','🚀','⚡','💰','💎','🏆','🎯','📈','🤑','😴','🥳','😇','😈','🤙',
+  ];
+
+  Future<void> _openEmojiPicker() async {
+    final emoji = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: _kPanel,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Add emoji', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 260,
+              child: GridView.count(
+                crossAxisCount: 6,
+                mainAxisSpacing: 6,
+                crossAxisSpacing: 6,
+                children: [
+                  for (final e in _emojiSet)
+                    InkWell(
+                      onTap: () => Navigator.pop(context, e),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(10)),
+                        child: Center(child: Text(e, style: const TextStyle(fontSize: 28))),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+    if (emoji == null) return;
+    try {
+      final path = await TextRenderService.renderEmojiToPng(emoji);
+      if (mounted) _addSticker(path, emoji: emoji);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not add emoji')));
+    }
+  }
+
+  /// In/out fade + visible-window timing for the selected sticker or text overlay.
+  Future<void> _openFadeSheet() async {
+    final sel = _selected;
+    if (sel is! SubtitleSegment && sel is! StickerOverlay) return;
+    double getFI() => sel is SubtitleSegment ? sel.fadeIn : (sel as StickerOverlay).fadeIn;
+    double getFO() => sel is SubtitleSegment ? sel.fadeOut : (sel as StickerOverlay).fadeOut;
+    void setFI(double v) => sel is SubtitleSegment ? sel.fadeIn = v : (sel as StickerOverlay).fadeIn = v;
+    void setFO(double v) => sel is SubtitleSegment ? sel.fadeOut = v : (sel as StickerOverlay).fadeOut = v;
+    _snapshot();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Animation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const SizedBox(height: 6),
+              Text('Fade the layer in when it appears and out when it leaves.', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.5)),
+              const SizedBox(height: 14),
+              _fadeRow('Fade in', getFI(), (v) => setSheet(() { setFI(v); setState(() {}); })),
+              const SizedBox(height: 6),
+              _fadeRow('Fade out', getFO(), (v) => setSheet(() { setFO(v); setState(() {}); })),
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fadeRow(String label, double value, ValueChanged<double> onChanged) => Row(children: [
+        SizedBox(width: 78, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+        Expanded(
+          child: SliderTheme(
+            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: _kAccent, inactiveTrackColor: Colors.white24, overlayColor: _kAccent.withOpacity(0.15)),
+            child: Slider(value: value.clamp(0, 2), min: 0, max: 2, divisions: 20, onChanged: onChanged),
+          ),
+        ),
+        SizedBox(width: 44, child: Text('${value.toStringAsFixed(1)}s', textAlign: TextAlign.right, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12))),
+      ]);
 
   void _mutate(VoidCallback fn) {
     _snapshot();
@@ -677,8 +820,10 @@ class _EditorScreenState extends State<EditorScreen> {
               builder: (context, v, _) {
                 final t = v.position.inMilliseconds / 1000.0;
                 final subs = _project!.subtitles.where((s) => !s.hidden && (identical(_selected, s) || (t >= s.start && t <= s.end)));
+                final stks = _project!.stickers.where((s) => !s.hidden && (identical(_selected, s) || (t >= s.start && t <= s.end)));
                 final overlays = <MapEntry<double, Widget>>[
-                  for (final s in subs) MapEntry(s.z, _subOverlay(s, w, h, scale)),
+                  for (final s in subs) MapEntry(s.z, _subOverlay(s, w, h, scale, t)),
+                  for (final s in stks) MapEntry(s.z, _stickerOverlay(s, w, h, t)),
                   if (_project!.logoPath != null && !_project!.logoHidden) MapEntry(_project!.logoZ, _logoOverlay(w, h)),
                 ]..sort((a, b) => a.key.compareTo(b.key));
                 return Stack(
@@ -745,7 +890,7 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Widget _subOverlay(SubtitleSegment s, double w, double h, double scale) {
+  Widget _subOverlay(SubtitleSegment s, double w, double h, double scale, double t) {
     final selected = identical(_selected, s);
     bool moved = false;
     final text = Container(
@@ -804,7 +949,10 @@ class _EditorScreenState extends State<EditorScreen> {
             _snapX = _snapY = false;
             _hint = null;
           }),
-          child: Transform.rotate(angle: s.rotation, child: text),
+          child: Opacity(
+            opacity: selected ? 1.0 : s.opacityAt(t).clamp(0.15, 1.0),
+            child: Transform.rotate(angle: s.rotation, child: text),
+          ),
         ),
         if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle(s, w, h, rotate: true)),
       ]),
@@ -815,6 +963,7 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _resizeHandle(Object target, double w, double h, {required bool rotate}) {
     Offset center() {
       if (target is SubtitleSegment) return Offset(target.dx * w, target.dy * h);
+      if (target is StickerOverlay) return Offset(target.dx * w, target.dy * h);
       return Offset(_project!.logoDx * w, _project!.logoDy * h);
     }
 
@@ -827,8 +976,16 @@ class _EditorScreenState extends State<EditorScreen> {
         final c = center();
         _gDist = f == null ? 1 : math.max(8, (f - c).distance);
         _gAngle = f == null ? 0 : math.atan2(f.dy - c.dy, f.dx - c.dx);
-        _gScale = target is SubtitleSegment ? target.scale : _project!.logoScale;
-        _gRot = target is SubtitleSegment ? target.rotation : _project!.logoRotation;
+        _gScale = target is SubtitleSegment
+            ? target.scale
+            : target is StickerOverlay
+                ? target.scale
+                : _project!.logoScale;
+        _gRot = target is SubtitleSegment
+            ? target.rotation
+            : target is StickerOverlay
+                ? target.rotation
+                : _project!.logoRotation;
       },
       onPanUpdate: (d) => setState(() {
         if (!moved) {
@@ -842,6 +999,9 @@ class _EditorScreenState extends State<EditorScreen> {
         final ns = (_gScale * dist / _gDist).clamp(0.3, 5.0);
         final nr = rotate ? _snapAngle(_gRot + (math.atan2(f.dy - c.dy, f.dx - c.dx) - _gAngle)) : _gRot;
         if (target is SubtitleSegment) {
+          target.scale = ns;
+          target.rotation = nr;
+        } else if (target is StickerOverlay) {
           target.scale = ns;
           target.rotation = nr;
         } else {
@@ -906,6 +1066,58 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
         ),
         if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
+      ]),
+    );
+  }
+
+  Widget _stickerOverlay(StickerOverlay st, double w, double h, double t) {
+    final selected = identical(_selected, st);
+    bool moved = false;
+    return Align(
+      alignment: Alignment(st.dx * 2 - 1, st.dy * 2 - 1),
+      child: Stack(clipBehavior: Clip.none, children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _selected = st),
+          onScaleStart: (d) {
+            setState(() => _selected = st);
+            moved = false;
+            _gDx = st.dx;
+            _gDy = st.dy;
+            _gScale = st.scale;
+            _gRot = st.rotation;
+          },
+          onScaleUpdate: (d) => setState(() {
+            if (!moved) {
+              _snapshot();
+              moved = true;
+            }
+            _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
+            _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
+            st.dx = _snap(_gDx, 0.5).clamp(0.03, 0.97).toDouble();
+            st.dy = _snap(_gDy, 0.5).clamp(0.03, 0.97).toDouble();
+            _snapX = (st.dx - 0.5).abs() < 0.001;
+            _snapY = (st.dy - 0.5).abs() < 0.001;
+            if (d.scale != 1.0) st.scale = (_gScale * d.scale).clamp(0.3, 5.0);
+            st.rotation = _snapAngle(_gRot + d.rotation);
+            _hint = '${(st.scale * 100).round()}%   ${_deg(st.rotation)}°';
+          }),
+          onScaleEnd: (_) => setState(() {
+            _snapX = _snapY = false;
+            _hint = null;
+          }),
+          child: Opacity(
+            opacity: selected ? 1.0 : st.opacityAt(t).clamp(0.15, 1.0),
+            child: Transform.rotate(
+              angle: st.rotation,
+              child: Container(
+                decoration: BoxDecoration(border: selected ? Border.all(color: _kAccent, width: 1.5) : null),
+                child: Image.file(File(st.path), width: w * st.baseWidthFrac * st.scale),
+              ),
+            ),
+          ),
+        ),
+        if (selected) Positioned(right: -11, bottom: -11, child: _resizeHandle(st, w, h, rotate: true)),
       ]),
     );
   }
@@ -1049,6 +1261,17 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(s.bgEnabled ? Icons.check_box : Icons.check_box_outline_blank, 'BG', () => _mutate(() => s.bgEnabled = !s.bgEnabled)),
         _tool(Icons.border_color, 'Outline', () => _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3)),
         _tool(_alignIcon(s.align), 'Align', () => _mutate(() => s.align = TextAlignH.values[(s.align.index + 1) % 3])),
+        _tool(Icons.animation, 'Animate', _openFadeSheet, active: s.fadeIn > 0 || s.fadeOut > 0),
+        _tool(Icons.copy, 'Copy', _duplicateSelected),
+        _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
+      ]);
+    } else if (_selected is StickerOverlay) {
+      final st = _selected as StickerOverlay;
+      tools.addAll([
+        _tool(Icons.rotate_left, 'Rotate', () => _mutate(() => st.rotation -= math.pi / 12)),
+        _tool(Icons.rotate_right, '', () => _mutate(() => st.rotation += math.pi / 12)),
+        _tool(Icons.flip, 'Reset', () => _mutate(() { st.rotation = 0; st.scale = 1; })),
+        _tool(Icons.animation, 'Animate', _openFadeSheet, active: st.fadeIn > 0 || st.fadeOut > 0),
         _tool(Icons.copy, 'Copy', _duplicateSelected),
         _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
       ]);
@@ -1062,6 +1285,8 @@ class _EditorScreenState extends State<EditorScreen> {
     } else {
       tools.addAll([
         _tool(Icons.text_fields, 'Add text', _addSubtitle),
+        _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
+        _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
         _tool(Icons.image_outlined, 'Logo', _pickLogo),
         _tool(Icons.font_download_outlined, 'Font', _uploadFont),
       ]);
@@ -1122,14 +1347,22 @@ class _EditorScreenState extends State<EditorScreen> {
     if (a != null) _mutate(() => _project!.aspect = a);
   }
 
-  Widget _tool(IconData icon, String label, VoidCallback onTap, {bool danger = false}) {
+  Widget _tool(IconData icon, String label, VoidCallback onTap, {bool danger = false, bool active = false}) {
     final c = danger ? const Color(0xFFF04438) : Colors.white;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: InkWell(
         onTap: onTap,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(width: 44, height: 44, decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: c, size: 22)),
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: active ? _kAccent : _kChip,
+              borderRadius: BorderRadius.circular(12),
+              border: active ? Border.all(color: _kAccent, width: 1) : null,
+            ),
+            child: Icon(icon, color: c, size: 22),
+          ),
           if (label.isNotEmpty) ...[
             const SizedBox(height: 5),
             Text(label, style: TextStyle(color: c.withOpacity(0.9), fontSize: 10.5, fontWeight: FontWeight.w700)),
