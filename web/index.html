@@ -197,7 +197,9 @@ localStorage.setItem('cc_api',API);
 let TOKEN=localStorage.getItem('cc_web')||'';
 let ME=null;
 
-function h(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function h(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// safe value for a single-quoted JS string inside an inline handler: url-encode so quotes/backslashes can't break out (decode in handler)
+function js(s){return encodeURIComponent(s==null?'':String(s)).replace(/'/g,'%27');}
 const GRAD=[['#ff7a59','#ff4d8d'],['#12c7a0','#3b9eff'],['#ff9247','#ff2d6b'],['#f5a623','#ff4d6d'],['#7b61ff','#4c9aff'],['#1a2740','#c0304a']];
 function g(id){let n=0;for(const c of id)n=(n+c.charCodeAt(0))%GRAD.length;return GRAD[n];}
 async function api(path,method='GET',body){
@@ -269,8 +271,8 @@ function vLegal(kind){
 function toggleTheme(){const d=document.documentElement.getAttribute('data-theme')==='dark';const nx=d?'light':'dark';document.documentElement.setAttribute('data-theme',nx);localStorage.setItem('cc_theme',nx);renderNav();}
 (function(){const t=localStorage.getItem('cc_theme');if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');})();
 
-function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" data-slug="${c.slug}" onclick="showClip('${c.slug}')">
-  <div class="thumb" onmouseenter="playPrev(this)" onmouseleave="stopPrev(this)" data-prev="${c.preview||''}" style="background:${c.thumb?`url('${c.thumb}')`:`linear-gradient(150deg,${a},${b})`};background-size:cover;background-position:center">
+function clipCard(c){const[a,b]=g(c.id);return `<div class="tpl" data-slug="${h(c.slug)}" onclick="showClip('${js(c.slug)}')">
+  <div class="thumb" onmouseenter="playPrev(this)" onmouseleave="stopPrev(this)" data-prev="${h(c.preview||'')}" style="background:${c.thumb?`url('${h(c.thumb)}')`:`linear-gradient(150deg,${a},${b})`};background-size:cover;background-position:center">
     ${c.preview?`<video class="pv" muted loop playsinline preload="metadata"></video>`:''}
     <span class="badge ${c.access==='pro'?'b-pro':'b-free'}">${c.access}</span>
     <span class="dur">${dur(c.duration_sec)}</span>
@@ -349,9 +351,10 @@ function renderFilters(){
   const sorts=[['trending','🔥 Trending'],['newest','🆕 Newest'],['popular','⭐ Popular']];
   const cats=[['All',null]].concat(_cats.map(c=>[c.name,c.slug]));
   p.innerHTML=`<div class="lbl">Sort by</div><div class="chips">${sorts.map(([v,l])=>`<span class="chip ${_sort===v?'on':''}" onclick="_sort='${v}';loadBrowse();renderFilters()">${l}</span>`).join('')}</div>
-    <div class="lbl">Category</div><div class="chips" style="margin-bottom:0">${cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`'${s}'`:'null'};loadBrowse();renderFilters()">${h(l)}</span>`).join('')}</div>`;
+    <div class="lbl">Category</div><div class="chips" style="margin-bottom:0">${cats.map(([l,s])=>`<span class="chip ${_cat===s?'on':''}" onclick="_cat=${s?`decodeURIComponent('${js(s)}')`:'null'};loadBrowse();renderFilters()">${h(l)}</span>`).join('')}</div>`;
 }
 async function loadBrowse(){ // reset + first page (called on category/search/sort change)
+  const qi=document.getElementById('q');if(qi)_q=qi.value.trim(); // pick up typed-but-not-entered text
   _off=0;_more=true;
   const fb=document.getElementById('fbtn');if(fb)fb.classList.toggle('on',_fopen||_fActive());
   const gr=document.getElementById('gr'); if(gr)gr.innerHTML='';
@@ -378,6 +381,7 @@ function clipDetail(slug){ return showClip(slug); }
 
 // click entry point — pushes a history state so Back closes the player
 function showClip(slug){
+  slug=decodeURIComponent(slug);
   const cards=[...document.querySelectorAll('.tpl[data-slug]')].map(el=>el.dataset.slug);
   _watchQueue=cards.length?cards:[slug];
   location.hash='#/watch/'+encodeURIComponent(slug); // → route() → openWatch()
@@ -397,8 +401,10 @@ async function openWatch(slug){
   await renderWatch(slug);
 }
 function _watchKeys(e){if(e.key==='Escape')closeWatch();if(e.key==='ArrowRight')watchNav(1);if(e.key==='ArrowLeft')watchNav(-1);}
+function _killWatchVideo(){const v=document.getElementById('wv');if(v){try{v.pause();v.removeAttribute('src');v.load();}catch(e){}}}
 // silent=true → just tear down DOM (router already moved us). else → go Back in history.
 function closeWatch(silent){
+  _killWatchVideo();
   const el=document.getElementById('watch');if(el)el.remove();
   document.body.style.overflow='';document.removeEventListener('keydown',_watchKeys);
   if(silent!==true){ if(history.length>1&&(document.referrer||location.hash))history.back(); else go('browse'); }
@@ -407,24 +413,27 @@ function watchNav(d){const i=_watchIdx+d;if(i<0||i>=_watchQueue.length)return;_w
   // replace hash (don't stack every prev/next in history), then render
   const slug=_watchQueue[i];history.replaceState(null,'','#/watch/'+encodeURIComponent(slug));renderWatch(slug);}
 // jump to a related clip inside the player (append to queue, replace hash so Back still exits the player once)
-function watchNavTo(slug){if(!_watchQueue.includes(slug)){_watchQueue.splice(_watchIdx+1,0,slug);}_watchIdx=_watchQueue.indexOf(slug);
+function watchNavTo(slug){slug=decodeURIComponent(slug);if(!_watchQueue.includes(slug)){_watchQueue.splice(_watchIdx+1,0,slug);}_watchIdx=_watchQueue.indexOf(slug);
   history.replaceState(null,'','#/watch/'+encodeURIComponent(slug));renderWatch(slug);}
 
 async function renderWatch(slug){
+  _killWatchVideo(); // stop the outgoing clip before we replace the player
   const main=document.getElementById('wmain'),side=document.getElementById('wside');
   const el=document.getElementById('watch');
+  if(!main||!side)return; // overlay torn down
   // reset scroll to top of overlay when switching
   if(el)el.scrollTop=0;
   main.style.color='#8f8899';main.innerHTML='Loading…';side.innerHTML='';
   try{
     const c=await api('/clips/'+slug);const[a,b]=g(c.id);
+    if(!document.getElementById('watch'))return; // user pressed Back during fetch
     const hasP=_watchIdx>0,hasN=_watchIdx<_watchQueue.length-1;
     main.style.color='';
     main.innerHTML=`
       <div class="wplayer">
-        ${c.preview?`<video id="wv" src="${c.preview}" autoplay loop playsinline poster="${c.thumb||''}"></video>
+        ${c.preview?`<video id="wv" src="${h(c.preview)}" autoplay loop playsinline poster="${h(c.thumb||'')}"></video>
         <button id="wmute" onclick="var v=wv;v.muted=!v.muted;this.textContent=v.muted?'🔇':'🔊'" style="position:absolute;bottom:14px;right:14px;background:rgba(0,0,0,.55);color:#fff;border:0;border-radius:24px;padding:9px 14px;font-size:16px;cursor:pointer;backdrop-filter:blur(6px);z-index:2">🔊</button>`
-        :(c.thumb?`<img src="${c.thumb}" style="height:100%;object-fit:contain">`:`<div style="position:absolute;inset:0;background:linear-gradient(150deg,${a},${b})"></div>`)}
+        :(c.thumb?`<img src="${h(c.thumb)}" style="height:100%;object-fit:contain">`:`<div style="position:absolute;inset:0;background:linear-gradient(150deg,${a},${b})"></div>`)}
         ${hasP?`<button class="wnav p" onclick="watchNav(-1)" title="Previous">‹</button>`:''}
         ${hasN?`<button class="wnav n" onclick="watchNav(1)" title="Next">›</button>`:''}
       </div>
@@ -458,12 +467,13 @@ async function renderWatch(slug){
       if(rel.length<6){const r=await api('/clips?limit=12&sort=popular');rel=[...rel,...(r.items||[]).filter(x=>x.slug!==slug&&!rel.some(y=>y.slug===x.slug))];}
     }catch(e){}
     rel=rel.slice(0,8);
+    if(!document.getElementById('wside'))return; // torn down during related fetch
     side.innerHTML='<h3>More like this</h3>'+(rel.length?rel.map(relItem).join(''):'<div style="color:#8f8899;font-size:13px">No related clips yet.</div>');
-  }catch(e){main.style.color='';main.innerHTML='<p class="err">'+h(e.message)+'</p>';}
+  }catch(e){const m=document.getElementById('wmain');if(m){m.style.color='';m.innerHTML='<p class="err">'+h(e.message)+'</p>';}}
 }
-function relItem(c){const[a,b]=g(c.id);return `<div class="rel-item" onclick="watchNavTo('${c.slug}')">
+function relItem(c){const[a,b]=g(c.id);return `<div class="rel-item" onclick="watchNavTo('${js(c.slug)}')">
   <div class="rt" style="${c.thumb?'':`background:linear-gradient(150deg,${a},${b})`}">
-    ${c.thumb?`<img src="${c.thumb}" loading="lazy">`:''}
+    ${c.thumb?`<img src="${h(c.thumb)}" loading="lazy">`:''}
     <span class="d">${dur(c.duration_sec)}</span>
   </div>
   <div class="ri"><div class="t">${h(c.title)}</div>
@@ -472,18 +482,19 @@ function relItem(c){const[a,b]=g(c.id);return `<div class="rel-item" onclick="wa
 
 async function vPricing(){
   view('<h2 class="sec">Simple plans</h2><p class="muted">Crypto only · Binance Pay · manual renewal.</p><div class="cols3" id="pl">Loading…</div>');
-  try{const plans=await api('/billing/plans');
-    document.getElementById('pl').innerHTML=plans.map((p,i)=>`<div class="plan ${i===plans.length-1?'hot':''}">
+  try{let plans=await api('/billing/plans');plans=Array.isArray(plans)?plans:(plans&&plans.items)||[];const pl=document.getElementById('pl');if(!pl)return;
+    pl.innerHTML=plans.map((p,i)=>`<div class="plan ${i===plans.length-1?'hot':''}">
       <div style="font-weight:800;font-size:16px">${h(p.name)}</div>
-      <div class="p">$${p.price_usd}<span class="muted" style="font-size:13px">/mo</span></div>
-      <ul><li>${p.export_limit==null?'Unlimited exports':p.export_limit+' exports/mo'}</li><li>${h(p.quality)} · ${p.max_devices} devices</li>${(p.features||[]).map(f=>'<li>'+h(f)+'</li>').join('')}</ul>
-      ${p.price_usd>0?`<button class="btn" style="width:100%" onclick="subscribe('${p.id}')">Subscribe</button>`:'<div class="muted">Free</div>'}</div>`).join('')||'<p class="muted">No plans.</p>';
+      <div class="p">$${h(p.price_usd)}<span class="muted" style="font-size:13px">/mo</span></div>
+      <ul><li>${p.export_limit==null?'Unlimited exports':h(p.export_limit)+' exports/mo'}</li><li>${h(p.quality)} · ${h(p.max_devices)} devices</li>${(p.features||[]).map(f=>'<li>'+h(f)+'</li>').join('')}</ul>
+      ${p.price_usd>0?`<button class="btn" style="width:100%" onclick="subscribe('${js(p.id)}')">Subscribe</button>`:'<div class="muted">Free</div>'}</div>`).join('')||'<p class="muted">No plans.</p>';
   }catch(e){document.getElementById('pl').innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
 async function subscribe(planId){
+  planId=decodeURIComponent(planId);
   if(!TOKEN){alert('Please log in first');return go('login');}
   try{const o=await api('/billing/checkout','POST',{plan_id:planId});
-    view(`<div class="center-box card" style="text-align:center"><h2>Pay ${o.amount} ${o.currency}</h2>
+    view(`<div class="center-box card" style="text-align:center"><h2>Pay ${h(o.amount)} ${h(o.currency)}</h2>
       <p class="muted">Binance Pay · USDT · BEP20</p><div class="qr" style="margin:10px auto"></div>
       <p style="font-size:12px;word-break:break-all">${h(o.qr_content||o.checkout_url)}</p>
       <p class="muted" style="font-size:13px">Pay in the Binance app — your plan unlocks automatically once confirmed. No need to refresh.</p>
@@ -508,8 +519,8 @@ async function vRegister(){
 async function doAuth(kind){
   const email=document.getElementById('e').value,password=document.getElementById('p').value;
   const body=kind==='register'?{name:document.getElementById('n').value,email,password}:{email,password};
-  try{const r=await api('/auth/'+kind,'POST',body);TOKEN=r.tokens.access_token;localStorage.setItem('cc_web',TOKEN);ME=r.user;renderNav();go('account');}
-  catch(e){document.getElementById('ae').textContent=e.message;}
+  try{const r=await api('/auth/'+kind,'POST',body);const tok=r?.tokens?.access_token||r?.access_token;if(!tok)throw new Error('Unexpected login response');TOKEN=tok;localStorage.setItem('cc_web',TOKEN);ME=r.user;renderNav();go('account');}
+  catch(e){const ae=document.getElementById('ae');if(ae)ae.textContent=e.message;}
 }
 
 let _acctab='sub';
@@ -521,20 +532,20 @@ async function vAccount(){
    <span class="chip ${_acctab==='dev'?'on':''}" onclick="_acctab='dev';vAccount()">Devices</span></div>
    <div id="ac">Loading…</div>`);
   try{
-    if(_acctab==='sub'){const s=await api('/billing/subscription');
-      document.getElementById('ac').innerHTML=s?`<div class="card"><b style="font-size:17px">${h(s.plan_name)}</b> <span class="pill p-ok">${h(s.status)}</span>
+    if(_acctab==='sub'){const s=await api('/billing/subscription');const ac=document.getElementById('ac');if(ac)
+      ac.innerHTML=s?`<div class="card"><b style="font-size:17px">${h(s.plan_name)}</b> <span class="pill p-ok">${h(s.status)}</span>
         <p class="muted">Expires ${h((s.expires_at||'').split('T')[0])} · manual renewal</p>
         <button class="btn sm" onclick="go('pricing')">Renew / change</button></div>`
         :`<div class="card"><p class="muted">No active subscription.</p><button class="btn sm" onclick="go('pricing')">See plans</button></div>`;
-    } else if(_acctab==='pay'){const ps=await api('/billing/payments');
-      document.getElementById('ac').innerHTML='<div class="card"><table><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th></tr>'+
-        (ps.map(p=>`<tr><td>${h((p.created_at||'').split('T')[0])}</td><td>${h(p.plan_name)}</td><td>${p.amount} ${h(p.currency)}</td><td><span class="pill p-ok">${h(p.status)}</span></td></tr>`).join('')||'<tr><td colspan=4 class="muted">No payments</td></tr>')+'</table></div>';
-    } else {const ds=await api('/auth/devices');
-      document.getElementById('ac').innerHTML='<div class="card">'+(ds.map(d=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><b>${h(d.os||'Device')}</b><span class="muted" style="flex:1">${h(d.country||'')} · ${h((d.last_active||'').split('T')[0])}</span><button class="btn sm sec" onclick="rmDev('${d.id}')">Remove</button></div>`).join('')||'<p class="muted">No devices</p>')+'</div>';
+    } else if(_acctab==='pay'){let ps=await api('/billing/payments');ps=Array.isArray(ps)?ps:(ps&&ps.items)||[];const ac=document.getElementById('ac');if(ac)
+      ac.innerHTML='<div class="card"><table><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th></tr>'+
+        (ps.map(p=>`<tr><td>${h((p.created_at||'').split('T')[0])}</td><td>${h(p.plan_name)}</td><td>${h(p.amount)} ${h(p.currency)}</td><td><span class="pill p-ok">${h(p.status)}</span></td></tr>`).join('')||'<tr><td colspan=4 class="muted">No payments</td></tr>')+'</table></div>';
+    } else {let ds=await api('/auth/devices');ds=Array.isArray(ds)?ds:(ds&&ds.items)||[];const ac=document.getElementById('ac');if(ac)
+      ac.innerHTML='<div class="card">'+(ds.map(d=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)"><b>${h(d.os||'Device')}</b><span class="muted" style="flex:1">${h(d.country||'')} · ${h((d.last_active||'').split('T')[0])}</span><button class="btn sm sec" onclick="rmDev('${js(d.id)}')">Remove</button></div>`).join('')||'<p class="muted">No devices</p>')+'</div>';
     }
-  }catch(e){document.getElementById('ac').innerHTML='<p class="err">'+h(e.message)+'</p>';}
+  }catch(e){const ac=document.getElementById('ac');if(ac)ac.innerHTML='<p class="err">'+h(e.message)+'</p>';}
 }
-async function rmDev(id){try{await api('/auth/devices/'+id,'DELETE');vAccount();}catch(e){alert(e.message);}}
+async function rmDev(id){id=decodeURIComponent(id);try{await api('/auth/devices/'+encodeURIComponent(id),'DELETE');vAccount();}catch(e){alert(e.message);}}
 
 window.addEventListener('hashchange',route);
 boot();
