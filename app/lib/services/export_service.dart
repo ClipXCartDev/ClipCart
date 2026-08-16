@@ -65,6 +65,14 @@ class ExportService {
       parts.addAll(['-i', '"${st.path}"']);
       stickerIdx.add(idx++);
     }
+    // optional music input (seek into the track with -ss before -i)
+    final hasMusic = p.musicPath != null && File(p.musicPath!).existsSync();
+    int? musicIdx;
+    if (hasMusic) {
+      if (p.musicStart > 0.01) parts.addAll(['-ss', _f(p.musicStart, 3)]);
+      parts.addAll(['-i', '"${p.musicPath}"']);
+      musicIdx = idx++;
+    }
 
     // Overlay list sorted by z (ascending → highest z composited last = on top).
     final ovs = <Map<String, dynamic>>[
@@ -114,11 +122,25 @@ class ExportService {
     }
     fc.write('[$cur]null[vout]');
 
-    parts.addAll(['-filter_complex', fc.toString(), '-map', '"[vout]"', '-map', '"0:a?"']);
+    // ---- audio: original (0:a) optionally ducked under an added music track ----
+    final dur = p.outDuration;
+    String audioMap = '"0:a?"'; // default: passthrough original
+    if (hasMusic) {
+      // original at originalVolume, music at musicVolume, both trimmed to clip length,
+      // mixed (normalize=0 so per-stream volumes are honored), music fades out at end.
+      fc.write(";[0:a]volume=${_f(p.originalVolume, 2)},aresample=44100[oa];");
+      fc.write("[$musicIdx:a]atrim=0:${_f(dur, 3)},asetpts=PTS-STARTPTS,volume=${_f(p.musicVolume, 2)},aresample=44100");
+      final fadeSt = (dur - 0.8).clamp(0.0, dur);
+      fc.write(",afade=t=out:st=${_f(fadeSt, 3)}:d=0.8[ma];");
+      fc.write("[oa][ma]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]");
+      audioMap = '"[aout]"';
+    }
+
+    parts.addAll(['-filter_complex', fc.toString(), '-map', '"[vout]"', '-map', audioMap]);
     if (trimmed) parts.addAll(['-t', _f(p.outDuration, 3)]);
     parts.addAll([
       '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23',
-      '-c:a', 'aac', '-movflags', '+faststart', '"$output"',
+      '-c:a', 'aac', '-movflags', '+faststart', '-shortest', '"$output"',
     ]);
 
     final session = await FFmpegKit.execute(parts.join(' '));

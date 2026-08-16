@@ -645,6 +645,63 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFFFF7A00, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
   ];
 
+  // ---------- Music ----------
+  Future<void> _openMusicSheet() async {
+    final p = _project!;
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.music_note_rounded, color: _kAccent, size: 20),
+                const SizedBox(width: 8),
+                const Text('Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Spacer(),
+                if (p.musicPath != null)
+                  TextButton(onPressed: () { _mutate(() => p.musicPath = null); setSheet(() {}); }, child: const Text('Remove', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
+              ]),
+              const SizedBox(height: 6),
+              Text(p.musicPath == null ? 'Add a music track — mixed under the clip audio on export.' : 'Music: ${p.musicPath!.split('/').last}', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    FilePickerResult? res;
+                    try {
+                      res = await FilePicker.platform.pickFiles(type: FileType.audio);
+                    } catch (_) {
+                      res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg']);
+                    }
+                    if (res != null && res.files.single.path != null) {
+                      _mutate(() => p.musicPath = res!.files.single.path);
+                      setSheet(() {});
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  icon: const Icon(Icons.library_music_rounded, size: 18),
+                  label: Text(p.musicPath == null ? 'Choose from device' : 'Change track'),
+                ),
+              ),
+              if (p.musicPath != null) ...[
+                const SizedBox(height: 16),
+                _fadeRowGeneric('Music vol', p.musicVolume, 0, 1, (v) => setSheet(() { p.musicVolume = v; setState(() {}); }), suffix: ''),
+                _fadeRowGeneric('Clip vol', p.originalVolume, 0, 1, (v) => setSheet(() { p.originalVolume = v; setState(() {}); }), suffix: ''),
+              ],
+              const SizedBox(height: 12),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ---------- Brand Kit ----------
   Future<void> _openBrandKit() async {
     final bk = context.read<BrandKitService>();
@@ -784,7 +841,7 @@ class _EditorScreenState extends State<EditorScreen> {
       s.fontFamily = t['font'] as String?;
       // resolve font file path for FFmpeg export from the loaded builtins
       if (s.fontFamily != null) {
-        final match = context.read<FontService>().builtins.where((f) => f.family == s.fontFamily);
+        final match = context.read<FontService>().all.where((f) => f.family == s.fontFamily);
         s.fontFilePath = match.isNotEmpty ? match.first.path : s.fontFilePath;
       }
       s.color = t['color'] as int;
@@ -2036,6 +2093,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.text_fields, 'Add text', _addSubtitle),
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
+        _tool(Icons.music_note_rounded, 'Music', _openMusicSheet, active: _project!.musicPath != null),
         _tool(Icons.image_outlined, 'Logo', _pickLogo),
         _tool(Icons.palette_rounded, 'Brand', _openBrandKit),
       ]);

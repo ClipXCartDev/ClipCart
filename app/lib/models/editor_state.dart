@@ -316,6 +316,10 @@ class EditorProject {
     this.trimEnd,
     this.duration = 0.0,
     this.aspect = AspectOption.original,
+    this.musicPath,
+    this.musicVolume = 0.7,
+    this.musicStart = 0.0,
+    this.originalVolume = 1.0,
   })  : subtitles = subtitles ?? [],
         stickers = stickers ?? [];
 
@@ -330,6 +334,10 @@ class EditorProject {
   double logoRotation; // radians
   double logoZ; // stacking order
   bool logoHidden; // layer visibility
+  String? musicPath; // added music track (null = none)
+  double musicVolume; // 0..1
+  double musicStart; // seconds into the music to start from
+  double originalVolume; // 0..1 volume of the clip's own audio
   double trimStart; // seconds
   double? trimEnd; // seconds (null = clip end)
   double duration; // full clip duration seconds
@@ -349,9 +357,14 @@ class EditorProject {
         'logoPath': logoPath, 'logoDx': logoDx, 'logoDy': logoDy,
         'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
+        'musicPath': musicPath, 'musicVolume': musicVolume, 'musicStart': musicStart, 'originalVolume': originalVolume,
       };
 
   void restore(Map<String, dynamic> s) {
+    musicPath = s['musicPath'] as String?;
+    musicVolume = (s['musicVolume'] as num?)?.toDouble() ?? 0.7;
+    musicStart = (s['musicStart'] as num?)?.toDouble() ?? 0.0;
+    originalVolume = (s['originalVolume'] as num?)?.toDouble() ?? 1.0;
     subtitles = (s['subs'] as List).map((e) => SubtitleSegment.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     stickers = ((s['stk'] as List?) ?? []).map((e) => StickerOverlay.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     logoPath = s['logoPath'] as String?;
