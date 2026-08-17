@@ -31,7 +31,7 @@ class ExportService {
       texts.add(s);
       textPaths.add(await TextRenderService.renderToPng(s, i));
     }
-    final hasLogo = p.logoPath != null && !p.logoHidden;
+    final hasLogo = p.logoPath != null && !p.logoHidden && File(p.logoPath!).existsSync();
     final stickers = p.stickers.where((s) => !s.hidden && File(s.path).existsSync()).toList();
 
     // Aspect crop (center).

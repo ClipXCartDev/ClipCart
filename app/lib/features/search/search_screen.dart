@@ -7,6 +7,7 @@ import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
 import '../../widgets/premium_empty_state.dart';
+import '../../widgets/skeleton_grid.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -136,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
+          return const SkeletonGrid(count: 9);
         }
         if (snap.hasError) {
           return Center(

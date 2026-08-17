@@ -24,6 +24,26 @@ editor_or_admin = require_role(Role.editor, Role.admin)
 # M3: only real video clips may be uploaded — presign requires a whitelisted content type.
 ALLOWED_UPLOAD_TYPES = {"video/mp4", "video/quicktime"}
 
+# H3: base_clip_path must be a key the app itself minted via /upload-url, which always
+# presigns under `clips/{uuid}/{filename}`. Reject anything that doesn't match that shape
+# so an editor can't point a clip at an arbitrary object (another editor's key) in the bucket.
+_BASE_CLIP_KEY_RE = re.compile(
+    r"^clips/[0-9a-fA-F-]{36}/[A-Za-z0-9._-]{1,80}$"
+)
+
+
+def _validate_base_clip_path(path: str | None) -> None:
+    if path is None:
+        return
+    if not _BASE_CLIP_KEY_RE.match(path):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "invalid_base_clip_path",
+                "message": "base_clip_path must be a key issued by /creator/upload-url (clips/{id}/{file}).",
+            },
+        )
+
 
 @router.post("/upload-url")
 def upload_url(body: UploadUrlIn, _: User = Depends(editor_or_admin)) -> dict:
@@ -40,6 +60,7 @@ def upload_url(body: UploadUrlIn, _: User = Depends(editor_or_admin)) -> dict:
 
 @router.post("/clips", response_model=ClipOut, status_code=status.HTTP_201_CREATED)
 def create_clip(body: ClipCreate, user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> ClipOut:
+    _validate_base_clip_path(body.base_clip_path)
     clip = Clip(
         title=body.title,
         slug=slugify(body.title),
@@ -77,6 +98,8 @@ def _own_editable(db: Session, clip_id: uuid.UUID, user: User) -> Clip:
 def update_clip(clip_id: uuid.UUID, body: ClipUpdate, user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> ClipOut:
     clip = _own_editable(db, clip_id, user)
     data = body.model_dump(exclude_unset=True)
+    if "base_clip_path" in data:
+        _validate_base_clip_path(data["base_clip_path"])
     if "access" in data:
         data["access"] = Access(data["access"])
     for k, v in data.items():

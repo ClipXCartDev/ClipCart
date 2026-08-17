@@ -157,7 +157,9 @@ class ClipTile extends StatelessWidget {
     final g = _cardGradients[clip.id.hashCode.abs() % _cardGradients.length];
     return GestureDetector(
       onTap: () { HapticFeedback.lightImpact(); onTap?.call(); },
-      child: ClipRRect(
+      child: Hero(
+        tag: 'clip_${clip.id}',
+        child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: AspectRatio(
           aspectRatio: masonryAspect(clip.id),
@@ -194,6 +196,7 @@ class ClipTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

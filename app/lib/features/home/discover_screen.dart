@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
+import '../../widgets/skeleton_grid.dart';
 import 'home_shell.dart';
 
 class DiscoverScreen extends StatefulWidget {
@@ -179,7 +180,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         child: RefreshIndicator(
           onRefresh: _boot,
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)))
+              ? Column(children: [
+                  _header(),
+                  const Expanded(child: SkeletonGrid(count: 15)),
+                ])
               : _error != null
                   ? _Message('Could not load clips.', onRetry: _boot)
                   : CustomScrollView(

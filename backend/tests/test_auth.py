@@ -36,7 +36,7 @@ def test_duplicate_email_rejected(client):
 
 def test_login_wrong_password(client):
     _register(client)
-    r = client.post("/api/v1/auth/login", json={"email": "a@x.com", "password": "nope"})
+    r = client.post("/api/v1/auth/login", json={"email": "a@x.com", "password": "nope", "device": {"device_id": "dev-1"}})
     assert r.status_code == 401
 
 

@@ -17,18 +17,18 @@ class RegisterIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    device: DeviceInfo | None = None
+    device: DeviceInfo
 
 
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
-    device: DeviceInfo | None = None
+    device: DeviceInfo
 
 
 class GoogleIn(BaseModel):
     id_token: str
-    device: DeviceInfo | None = None
+    device: DeviceInfo
 
 
 class RefreshIn(BaseModel):

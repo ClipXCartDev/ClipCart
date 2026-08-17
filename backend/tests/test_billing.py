@@ -20,7 +20,7 @@ def _auth(uid: str) -> dict:
 
 
 def _mk(client, db, email, role=Role.customer) -> str:
-    uid = client.post(API + "/auth/register", json={"name": "U", "email": email, "password": "supersecret1"}).json()["user"]["id"]
+    uid = client.post(API + "/auth/register", json={"name": "U", "email": email, "password": "supersecret1", "device": {"device_id": "dev-" + email}}).json()["user"]["id"]
     if role != Role.customer:
         u = db.get(User, uuid.UUID(uid))
         u.role = role

@@ -15,7 +15,7 @@ def _auth(user_id: str) -> dict:
 
 
 def _make_user(client, db, email, role=Role.customer) -> str:
-    r = client.post(API + "/auth/register", json={"name": "U", "email": email, "password": "supersecret1"})
+    r = client.post(API + "/auth/register", json={"name": "U", "email": email, "password": "supersecret1", "device": {"device_id": "dev-" + email}})
     assert r.status_code == 201, r.text
     uid = r.json()["user"]["id"]
     if role != Role.customer:
