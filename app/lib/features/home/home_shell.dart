@@ -224,7 +224,7 @@ class _AccountTab extends StatelessWidget {
                 _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
                 if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
                 _MenuRow(Icons.download_rounded, 'My exports', () => homeTab.value = 3),
-                _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/plans')),
+                _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/devices')),
               ]),
               const SizedBox(height: 14),
               _MenuCard(children: [

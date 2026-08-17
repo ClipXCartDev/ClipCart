@@ -47,10 +47,16 @@ def register(body: RegisterIn, request: Request, db: Session = Depends(get_db)) 
         role=Role.customer,
     )
     db.add(user)
-    db.commit()
+    # Bind the device BEFORE committing the user so a device-limit 409 rolls the
+    # new user back instead of leaving an orphan account that can't log in.
+    db.flush()  # assign user.id without committing
+    try:
+        bind_device(db, user, body.device, _client_ip(request))
+    except HTTPException:
+        db.rollback()
+        raise
     db.refresh(user)
 
-    bind_device(db, user, body.device, _client_ip(request))
     tokens = issue_tokens(db, user)
     return AuthOut(user=UserOut.model_validate(user), tokens=tokens)
 

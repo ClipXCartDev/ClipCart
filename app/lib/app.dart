@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme.dart';
+import 'features/auth/devices_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/auth/register_screen.dart';
@@ -65,6 +66,7 @@ class _ClipCartAppState extends State<ClipCartApp> {
           },
         ),
         GoRoute(path: '/plans', builder: (_, __) => const PlansScreen()),
+        GoRoute(path: '/devices', builder: (_, __) => const DevicesScreen()),
         GoRoute(path: '/creator', builder: (_, __) => const CreatorDashboard()),
         GoRoute(path: '/creator/upload', builder: (_, __) => const UploadClipScreen()),
       ],

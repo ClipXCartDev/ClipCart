@@ -1319,19 +1319,9 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _export() async {
-    // Gate (Pro-access + monthly quota) at export time, not on editor open.
-    if (widget.clip != null) {
-      try {
-        await context.read<CatalogService>().recordExport(widget.clip!.id);
-      } on DioException catch (e) {
-        final detail = e.response?.data is Map ? (e.response!.data['detail']) : null;
-        final msg = e.response?.statusCode == 402
-            ? (detail is Map && detail['message'] != null ? detail['message'].toString() : 'Subscribe to export this clip')
-            : 'Could not start export. Try again.';
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-        return;
-      }
-    }
+    // Quota/Pro gating only applies to catalog clips (there's a creator to pay
+    // and a server-side monthly quota). A picked local file (widget.clip == null)
+    // is the user's own content with no creator to pay, so it stays ungated.
     setState(() => _busy = true);
     // Progress dialog. Capture the ROOT navigator so we always pop the dialog
     // itself (never the editor screen), and block the Android back button from
@@ -1362,6 +1352,26 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     try {
       final res = await ExportService().export(_project!);
+      // Only charge the monthly quota / creator download AFTER a successful
+      // render, so a failed FFmpeg render never costs the user a quota slot.
+      // For a picked local file (clip == null) there is nothing to record.
+      if (widget.clip != null) {
+        try {
+          await context.read<CatalogService>().recordExport(widget.clip!.id);
+        } on DioException catch (e) {
+          final detail = e.response?.data is Map ? (e.response!.data['detail']) : null;
+          final msg = e.response?.statusCode == 402
+              ? (detail is Map && detail['message'] != null ? detail['message'].toString() : 'Subscribe to export this clip')
+              : 'Could not record this export.';
+          closeProgress();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$msg (Your video was rendered and saved on this device.)')),
+            );
+          }
+          return;
+        }
+      }
       closeProgress();
       if (mounted) {
         showDialog(

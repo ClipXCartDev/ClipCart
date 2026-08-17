@@ -66,5 +66,17 @@ class AuthService {
     return AppUser.fromJson(r.data as Map<String, dynamic>);
   }
 
+  /// Devices bound to the account (max-2 anti-piracy control).
+  Future<List<Map<String, dynamic>>> devices() async {
+    final r = await api.dio.get('/auth/devices');
+    final list = r.data as List;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  /// Unbind a device by its server id, freeing a slot.
+  Future<void> removeDevice(String id) async {
+    await api.dio.delete('/auth/devices/$id');
+  }
+
   Future<void> logout() => api.tokens.clear();
 }
