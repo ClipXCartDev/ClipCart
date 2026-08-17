@@ -33,7 +33,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (items.isEmpty) return;
       final it = items.first as Map;
       if (mounted) setState(() => _thumb = it['thumb'] as String?);
-      final c = VideoPlayerController.networkUrl(Uri.parse(it['raw'] as String)); // full quality
+      final c = VideoPlayerController.networkUrl(Uri.parse((it['preview'] ?? it['raw']) as String)); // 720p preview (raw removed from public showcase)
       await c.initialize();
       await c.setLooping(true);
       await c.setVolume(0);

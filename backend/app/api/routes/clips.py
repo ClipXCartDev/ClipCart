@@ -60,8 +60,9 @@ def showcase(db: Session = Depends(get_db)) -> dict:
     items = []
     for c in db.scalars(stmt).all():
         items.append({
+            # PUBLIC endpoint — 720p preview + thumb only. Never expose the full-res
+            # `raw` original here (was a paywall bypass for anonymous users).
             "preview": storage.presign_download(f"previews/{c.id}.mp4", expires=3600),
-            "raw": storage.presign_download(c.base_clip_path, expires=3600),
             "thumb": storage.presign_download(f"thumbs/{c.id}.jpg", expires=3600),
         })
     return {"items": items}
@@ -178,13 +179,23 @@ def preview_url(
     db: Session = Depends(get_db),
 ) -> dict:
     """Presigned GET for the optimized in-app preview (reels player) — a small 720p
-    H.264+AAC transcode (fast streaming, real audio). Falls back to the raw base clip
-    if no preview exists. No download recorded, no quota — viewing is free."""
+    H.264+AAC transcode (fast streaming, real audio). Viewing is free.
+
+    The full-res `raw` original is ONLY returned when the user is actually allowed
+    to export this clip (Pro-access + monthly quota) — otherwise a free user could
+    grab the paywalled full-quality file straight from this 'preview' endpoint."""
     clip = _approved_clip(db, clip_id)
     if not clip.base_clip_path:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Clip has no uploaded file")
     key = f"previews/{clip.id}.mp4"
-    return {"url": storage.presign_download(key, expires=3600), "raw": storage.presign_download(clip.base_clip_path, expires=3600)}
+    out = {"url": storage.presign_download(key, expires=3600)}
+    # gate the raw original behind the same rule as export
+    try:
+        assert_can_export(db, user, clip)
+        out["raw"] = storage.presign_download(clip.base_clip_path, expires=3600)
+    except HTTPException:
+        pass  # not entitled → preview only, no full-res leak
+    return out
 
 
 @router.get("/me/downloads", response_model=list[DownloadOut])

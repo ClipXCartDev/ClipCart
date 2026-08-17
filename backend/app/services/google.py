@@ -29,11 +29,16 @@ def verify_google_token(id_token: str) -> GoogleIdentity:
     except ImportError as exc:  # pragma: no cover
         raise GoogleAuthError("google-auth not installed") from exc
 
+    # Require a configured client id so the token audience (`aud`) is always
+    # verified — without it, a token minted for ANY other Google app would be
+    # accepted (account takeover for the matching email).
+    if not settings.GOOGLE_CLIENT_ID:
+        raise GoogleAuthError("Google login not configured")
     try:
         info = google_id_token.verify_oauth2_token(
             id_token,
             google_requests.Request(),
-            settings.GOOGLE_CLIENT_ID or None,
+            settings.GOOGLE_CLIENT_ID,
         )
     except Exception as exc:  # noqa: BLE001 - normalise to our error type
         raise GoogleAuthError(str(exc)) from exc

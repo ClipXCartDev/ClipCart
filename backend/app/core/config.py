@@ -53,3 +53,15 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Fail fast in non-dev if security-critical secrets are still the insecure defaults
+# (a default JWT secret lets anyone forge tokens / impersonate any user).
+if settings.ENV != "dev":
+    _bad = []
+    if settings.JWT_SECRET in ("", "change-me-in-prod"):
+        _bad.append("JWT_SECRET")
+    # storage HMAC secret only matters for the local-signing provider (R2 signs its own)
+    if settings.STORAGE_PROVIDER == "local" and settings.STORAGE_URL_SECRET in ("", "change-me-storage-secret"):
+        _bad.append("STORAGE_URL_SECRET")
+    if _bad:
+        raise RuntimeError(f"Insecure default secret(s) in prod: {', '.join(_bad)}. Set strong env values.")
