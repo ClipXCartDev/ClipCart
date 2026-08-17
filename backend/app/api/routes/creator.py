@@ -21,9 +21,18 @@ router = APIRouter(prefix="/creator", tags=["creator"])
 editor_or_admin = require_role(Role.editor, Role.admin)
 
 
+# M3: only real video clips may be uploaded — presign requires a whitelisted content type.
+ALLOWED_UPLOAD_TYPES = {"video/mp4", "video/quicktime"}
+
+
 @router.post("/upload-url")
 def upload_url(body: UploadUrlIn, _: User = Depends(editor_or_admin)) -> dict:
     """Presigned PUT URL — editor uploads the base clip directly to storage (R2/local)."""
+    if body.content_type not in ALLOWED_UPLOAD_TYPES:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "unsupported_type", "message": f"content_type must be one of {sorted(ALLOWED_UPLOAD_TYPES)}"},
+        )
     safe = re.sub(r"[^A-Za-z0-9._-]", "_", body.filename)[:80] or "clip.mp4"
     key = f"clips/{uuid.uuid4()}/{safe}"
     return storage.presign_upload(key, body.content_type)
@@ -107,6 +116,15 @@ def my_earnings(user: User = Depends(editor_or_admin), db: Session = Depends(get
 
 @router.post("/payouts", response_model=PayoutOut, status_code=status.HTTP_201_CREATED)
 def request_payout(body: PayoutCreate, user: User = Depends(editor_or_admin), db: Session = Depends(get_db)) -> PayoutOut:
+    # H4: lock this editor's existing payout rows so two concurrent requests can't both
+    # read the same balance and both pass the check (double-spend). Postgres does the
+    # real FOR UPDATE; SQLite (tests) ignores with_for_update, which is fine there.
+    if db.bind is not None and db.bind.dialect.name == "postgresql":
+        db.execute(
+            select(Payout.id).where(Payout.editor_id == user.id).with_for_update()
+        ).all()
+
+    # Recompute available INSIDE the locked transaction.
     available = compute_earnings(db, user)["available"]
     if body.amount > available:
         raise HTTPException(

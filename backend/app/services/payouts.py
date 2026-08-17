@@ -11,11 +11,13 @@ from app.models import Clip, Download, Payout, PayoutStatus, User
 def compute_earnings(db: Session, editor: User) -> dict:
     rate = settings.PAYOUT_RATE_PER_DOWNLOAD
 
+    # M5: an editor must NOT earn payouts by downloading their own clips — exclude
+    # self-downloads (downloader == clip owner) from the earning count.
     downloads = db.scalar(
         select(func.count())
         .select_from(Download)
         .join(Clip, Clip.id == Download.clip_id)
-        .where(Clip.editor_id == editor.id)
+        .where(Clip.editor_id == editor.id, Download.user_id != editor.id)
     ) or 0
     earned = round(downloads * rate, 2)
 

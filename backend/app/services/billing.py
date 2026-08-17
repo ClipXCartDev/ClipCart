@@ -33,9 +33,55 @@ def current_subscription(db: Session, user: User) -> Subscription | None:
     )
 
 
-def activate_from_payment(db: Session, payment: Payment) -> Subscription:
-    """Mark payment paid and create/extend the user's subscription (manual renewal)."""
+def activate_from_payment(
+    db: Session,
+    payment: Payment,
+    paid_amount: object = None,
+    paid_currency: str | None = None,
+) -> Subscription:
+    """Mark payment paid and create/extend the user's subscription (manual renewal).
+
+    Security (C3): when the webhook reports a paid amount/currency, they MUST match the
+    stored payment before we activate — otherwise an attacker could underpay and still
+    unlock a subscription. Also idempotent: a payment already marked paid is never
+    re-activated (replay protection).
+    """
     now = datetime.now(timezone.utc)
+
+    # Idempotency / replay guard — never re-activate an already-paid payment.
+    if payment.status == PaymentStatus.paid:
+        existing = db.scalar(
+            select(Subscription).where(
+                Subscription.user_id == payment.user_id,
+                Subscription.status == SubStatus.active,
+            ).order_by(Subscription.expires_at.desc())
+        )
+        if existing:
+            return existing
+
+    # Verify the webhook-reported amount/currency equals the stored payment (C3).
+    if paid_amount is not None:
+        from decimal import Decimal, InvalidOperation
+        try:
+            reported = Decimal(str(paid_amount))
+            expected = Decimal(str(payment.amount))
+        except (InvalidOperation, ValueError):
+            reported = expected = None
+        if reported is None or reported != expected:
+            payment.status = PaymentStatus.failed
+            db.commit()
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail={"code": "amount_mismatch", "message": "Paid amount does not match order."},
+            )
+    if paid_currency is not None and str(paid_currency).upper() != str(payment.currency).upper():
+        payment.status = PaymentStatus.failed
+        db.commit()
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail={"code": "currency_mismatch", "message": "Paid currency does not match order."},
+        )
+
     payment.status = PaymentStatus.paid
     payment.paid_at = now
 

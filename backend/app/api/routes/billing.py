@@ -80,18 +80,25 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> dict:
     inner = data.get("data")
     if isinstance(inner, str):
         try:
-            order_ref = json.loads(inner).get("merchantTradeNo")
+            inner = json.loads(inner)
         except json.JSONDecodeError:
-            order_ref = None
-    elif isinstance(inner, dict):
+            inner = None
+    if isinstance(inner, dict):
         order_ref = inner.get("merchantTradeNo")
+    else:
+        inner = {}
     order_ref = order_ref or data.get("merchantTradeNo")
+
+    # Binance webhook data carries the settled amount/currency (totalFee/currency).
+    paid_amount = inner.get("totalFee", inner.get("orderAmount", data.get("totalFee")))
+    paid_currency = inner.get("currency", data.get("currency"))
 
     payment = db.scalar(select(Payment).where(Payment.provider_order_id == order_ref))
     if payment and payment.status != PaymentStatus.paid:
         payment.raw = data
         if biz_status == "PAY_SUCCESS":
-            activate_from_payment(db, payment)
+            # Verifies amount/currency match + idempotent (C3); rejects underpayment.
+            activate_from_payment(db, payment, paid_amount=paid_amount, paid_currency=paid_currency)
         elif biz_status in ("PAY_CLOSED", "PAY_EXPIRED"):
             payment.status = PaymentStatus.expired if biz_status == "PAY_EXPIRED" else PaymentStatus.failed
             db.commit()
