@@ -21,6 +21,10 @@ class HomeShell extends StatefulWidget {
 /// Lets child tabs request a tab switch (e.g. Discover's search icon → Search).
 final ValueNotifier<int> homeTab = ValueNotifier<int>(0);
 
+/// Scroll-heavy screens (the gallery) set this true on scroll-down so the dock
+/// minimizes to a pill, and false on scroll-up so it springs back.
+final ValueNotifier<bool> navMinimized = ValueNotifier<bool>(false);
+
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
@@ -50,96 +54,126 @@ class _HomeShellState extends State<HomeShell> {
       _AccountTab(),
     ];
     return Scaffold(
-      extendBody: true, // gallery scrolls BEHIND the glassy floating nav bar
-      body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: _GlassNavBar(
-        index: _index,
-        onSelect: (i) { homeTab.value = i; setState(() => _index = i); },
-      ),
+      extendBody: true, // gallery scrolls BEHIND the floating dock
+      body: Stack(children: [
+        IndexedStack(index: _index, children: tabs),
+        // floating Liquid Dock overlaid at the bottom
+        Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(top: false, child: _LiquidDock(
+          index: _index,
+          onSelect: (i) { navMinimized.value = false; homeTab.value = i; setState(() => _index = i); },
+        ))),
+      ]),
     );
   }
 }
 
-/// Frosted-glass floating nav bar — semi-transparent with a blur so the gallery
-/// shows through and the footer feels embedded in the content.
-class _GlassNavBar extends StatelessWidget {
-  const _GlassNavBar({required this.index, required this.onSelect});
+// Icon set per destination: (unselected, selected, label).
+const _dockItems = [
+  (Icons.home_outlined, Icons.home_rounded, 'Home'),
+  (Icons.search_rounded, Icons.search_rounded, 'Search'),
+  (Icons.favorite_border_rounded, Icons.favorite_rounded, 'Liked'),
+  (Icons.download_outlined, Icons.download_rounded, 'Exports'),
+  (Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
+];
+
+/// iOS-26 "Liquid Glass" / M3-Expressive style floating dock: a detached frosted
+/// capsule with a coral pill that springs between icons, and which minimizes to a
+/// compact pill on scroll-down (gallery owns the screen) and springs back on scroll-up.
+class _LiquidDock extends StatelessWidget {
+  const _LiquidDock({required this.index, required this.onSelect});
   final int index;
   final ValueChanged<int> onSelect;
 
-  static const _items = [
-    (Icons.home_outlined, Icons.home_rounded, 'Home'),
-    (Icons.search_rounded, Icons.search_rounded, 'Search'),
-    (Icons.favorite_border_rounded, Icons.favorite_rounded, 'Liked'),
-    (Icons.download_outlined, Icons.download_rounded, 'Exports'),
-    (Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
-  ];
+  static const _h = 60.0; // expanded height
+  static const _slot = 56.0; // per-icon slot width
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final tint = dark ? Colors.black : Colors.white;
-    return ClipRect(
-      child: BackdropFilter(
-        // stronger blur + very low tint so the gallery reads clearly THROUGH the
-        // bar; a top→bottom fade blends the content into the footer (no hard edge).
-        filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [tint.withOpacity(0.0), tint.withOpacity(0.30), tint.withOpacity(0.52)],
-              stops: const [0.0, 0.35, 1.0],
+    final surface = (dark ? const Color(0xFF14111C) : Colors.white).withOpacity(dark ? 0.72 : 0.82);
+    final restIcon = (dark ? Colors.white : const Color(0xFF171221)).withOpacity(0.58);
+    final n = _dockItems.length;
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: navMinimized,
+      builder: (context, mini, _) {
+        final expandedW = _slot * n + 20;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: AnimatedAlign(
+            alignment: mini ? Alignment.centerRight : Alignment.center,
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 460),
+              curve: Curves.easeOutBack,
+              width: mini ? _slot + 22 : expandedW,
+              height: mini ? 52 : _h,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: surface,
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white.withOpacity(dark ? 0.12 : 0.5), width: 1),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(dark ? 0.42 : 0.16), blurRadius: 30, offset: const Offset(0, 12))],
+                    ),
+                    child: mini
+                        // minimized: only the active icon, tap to expand
+                        ? GestureDetector(
+                            onTap: () => navMinimized.value = false,
+                            behavior: HitTestBehavior.opaque,
+                            child: Center(child: Icon(_dockItems[index].$2, color: AppColors.accent, size: 24)),
+                          )
+                        // expanded: sliding pill + all icons
+                        : Stack(alignment: Alignment.centerLeft, children: [
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 420),
+                              curve: Curves.easeOutBack,
+                              left: 10 + index * _slot + (_slot - 44) / 2,
+                              top: (_h - 44) / 2,
+                              child: Container(
+                                width: 44, height: 44,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: AppColors.gradient),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(0.5), blurRadius: 14, offset: const Offset(0, 5))],
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                for (var i = 0; i < n; i++)
+                                  GestureDetector(
+                                    onTap: () { HapticFeedback.selectionClick(); onSelect(i); },
+                                    behavior: HitTestBehavior.opaque,
+                                    child: SizedBox(
+                                      width: _slot, height: _h,
+                                      child: AnimatedScale(
+                                        scale: index == i ? 1.1 : 1.0,
+                                        duration: const Duration(milliseconds: 220),
+                                        curve: Curves.easeOutBack,
+                                        child: Icon(
+                                          index == i ? _dockItems[i].$2 : _dockItems[i].$1,
+                                          color: index == i ? Colors.white : restIcon,
+                                          size: 23,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ]),
+                            ),
+                          ]),
+                  ),
+                ),
+              ),
             ),
           ),
-          padding: EdgeInsets.only(top: 14, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              for (var i = 0; i < _items.length; i++)
-                _NavItem(
-                  icon: index == i ? _items[i].$2 : _items[i].$1,
-                  label: _items[i].$3,
-                  selected: index == i,
-                  onTap: () { HapticFeedback.selectionClick(); onSelect(i); },
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = selected ? AppColors.accent : Theme.of(context).colorScheme.onSurface.withOpacity(0.72);
-    // soft shadow keeps icons/labels legible over bright gallery tiles behind the glass
-    final shadow = [Shadow(color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.7), blurRadius: 6)];
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          AnimatedScale(
-            scale: selected ? 1.12 : 1.0,
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            child: Icon(icon, color: c, size: 24, shadows: shadow),
-          ),
-          const SizedBox(height: 3),
-          Text(label, style: TextStyle(color: c, fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600, shadows: shadow)),
-        ]),
-      ),
+        );
+      },
     );
   }
 }

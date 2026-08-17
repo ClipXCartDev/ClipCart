@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -93,6 +94,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   void _onScroll() {
     if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 700) _loadMore();
+    // drive the floating dock: minimize on scroll-down, expand on scroll-up / near top
+    final dir = _scroll.position.userScrollDirection;
+    if (_scroll.position.pixels < 120) {
+      navMinimized.value = false;
+    } else if (dir == ScrollDirection.reverse) {
+      navMinimized.value = true;
+    } else if (dir == ScrollDirection.forward) {
+      navMinimized.value = false;
+    }
   }
 
   void _open(List<Clip> list, int i) => context.push('/player', extra: {'clips': list, 'index': i});
