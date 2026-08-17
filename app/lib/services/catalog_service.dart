@@ -95,4 +95,14 @@ class CatalogService {
     final r = await api.dio.get('/me/favorites');
     return (r.data as List).map((e) => Clip.fromJson(e as Map<String, dynamic>)).toList();
   }
+
+  /// Set of clip ids the current user has favorited (to seed heart state).
+  Future<Set<String>> favoriteIds() async {
+    try {
+      final favs = await favorites();
+      return favs.map((c) => c.id).toSet();
+    } catch (_) {
+      return {};
+    }
+  }
 }

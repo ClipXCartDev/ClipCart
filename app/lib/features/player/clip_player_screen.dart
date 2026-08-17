@@ -1,6 +1,8 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
@@ -74,6 +76,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   Future<void> _toggleFav(Clip clip) async {
     final id = clip.id;
     final wasFav = _faved.contains(id);
+    HapticFeedback.selectionClick();
     setState(() => wasFav ? _faved.remove(id) : _faved.add(id));
     try {
       final cs = context.read<CatalogService>();
@@ -96,6 +99,11 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     _current = widget.startIndex;
     _pc = PageController(initialPage: _current);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    // seed the heart state from the server so an already-saved clip shows filled
+    // (prevents a silent unsave when the user taps a heart that was wrongly empty).
+    context.read<CatalogService>().favoriteIds().then((ids) {
+      if (mounted && ids.isNotEmpty) setState(() => _faved.addAll(ids));
+    });
   }
 
   @override
@@ -221,7 +229,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           if (clip.thumb != null)
             ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-              child: Image.network(clip.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _grad()),
+              child: CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.cover, errorWidget: (_, __, ___) => _grad()),
             )
           else
             _grad(),
@@ -232,8 +240,9 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               child: SizedBox(width: c.value.size.width, height: c.value.size.height, child: VideoPlayer(c)),
             )
           else if (clip.thumb != null)
-            Image.network(clip.thumb!, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-          if (!ready) const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D))),
+            CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.contain, errorWidget: (_, __, ___) => const SizedBox.shrink()),
+          // only show a spinner when there's no thumbnail to communicate content
+          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D))),
           if (ready && !c.value.isPlaying)
             IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white.withOpacity(0.85)))),
           // bottom gradient scrim + meta

@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../core/theme.dart';
 import '../models/clip.dart';
@@ -154,7 +156,7 @@ class ClipTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = _cardGradients[clip.id.hashCode.abs() % _cardGradients.length];
     return GestureDetector(
-      onTap: onTap,
+      onTap: () { HapticFeedback.lightImpact(); onTap?.call(); },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: AspectRatio(
@@ -164,9 +166,14 @@ class ClipTile extends StatelessWidget {
             children: [
               DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g, begin: Alignment.topLeft, end: Alignment.bottomRight))),
               if (clip.thumb != null)
-                Image.network(clip.thumb!, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                    loadingBuilder: (ctx, child, prog) => prog == null ? child : DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g)))),
+                CachedNetworkImage(
+                  imageUrl: clip.thumb!,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 320, // downscale — tiles are ~130px wide
+                  fadeInDuration: const Duration(milliseconds: 200),
+                  placeholder: (ctx, _) => DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g))),
+                  errorWidget: (ctx, _, __) => const SizedBox.shrink(),
+                ),
               // subtle bottom scrim
               const DecoratedBox(
                 decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.transparent, Color(0xB3000000)], stops: [0.0, 0.55, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter)),

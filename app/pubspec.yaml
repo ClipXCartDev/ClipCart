@@ -23,6 +23,8 @@ dependencies:
   gal: ^2.3.0                    # save exported MP4 to the phone Gallery
   share_plus: ^10.1.4            # share exported MP4 to Instagram/etc from the Exports tab
   flutter_staggered_grid_view: ^0.7.0 # dense masonry gallery (RenderForest-style)
+  cached_network_image: ^3.4.1  # cache + downscale thumbnails (perf)
+  shimmer: ^3.0.0               # skeleton loaders (premium loading feel)
 
 dev_dependencies:
   flutter_test:
