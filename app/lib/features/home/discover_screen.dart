@@ -20,7 +20,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   static const _page = 30;
   final _scroll = ScrollController();
   final List<Clip> _grid = [];
-  List<Clip> _featured = [];
   List<Map<String, dynamic>> _cats = [];
   String? _cat;
   String _sort = 'trending';
@@ -51,16 +50,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       _error = null;
     });
     try {
-      final featured = await _cs.listClips(featured: true, limit: 10, sort: 'trending');
       List<Map<String, dynamic>> cats = [];
       try {
         cats = await _cs.categories();
       } catch (_) {}
       if (!mounted) return;
-      setState(() {
-        _featured = featured.where((c) => c.thumb != null).toList();
-        _cats = cats;
-      });
+      setState(() => _cats = cats);
       await _reloadGrid();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
@@ -191,14 +186,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       controller: _scroll,
                       slivers: [
                         SliverToBoxAdapter(child: _header()),
-                        if (_featured.isNotEmpty && !_filtered) ...[
-                          SliverToBoxAdapter(child: _sectionTitle('🔥 Trending now', 'Fresh drops this week')),
-                          SliverToBoxAdapter(child: _featuredRow()),
-                        ],
-                        SliverToBoxAdapter(child: _resultsBar()),
-                        // dense masonry gallery — small varied tiles, minimal gaps, no white space
+                        // active-filter chips (only when a filter is applied)
+                        if (_filtered) SliverToBoxAdapter(child: _resultsBar()),
+                        // one clean dense masonry gallery — default sort = trending; user
+                        // changes order/filters via the Sort & filter sheet (tune icon).
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+                          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                           sliver: SliverMasonryGrid.count(
                             crossAxisCount: 3,
                             mainAxisSpacing: 5,
@@ -287,75 +280,6 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  Widget _featuredRow() {
-    return SizedBox(
-      height: 260,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _featured.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 13),
-        itemBuilder: (context, i) => _FeaturedCard(clip: _featured[i], onTap: () => _open(_featured, i)),
-      ),
-    );
-  }
-}
-
-class _FeaturedCard extends StatelessWidget {
-  const _FeaturedCard({required this.clip, this.onTap});
-  final Clip clip;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 178,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (clip.thumb != null)
-                Image.network(clip.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF241E28)))
-              else
-                const ColoredBox(color: Color(0xFF241E28)),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [Colors.transparent, Color(0x11000000), Color(0xE6000000)], stops: [0.28, 0.58, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter),
-                ),
-              ),
-              Positioned(
-                top: 12, left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(color: clip.isPro ? const Color(0xFFF5A623) : const Color(0xFF12B76A), borderRadius: BorderRadius.circular(7)),
-                  child: Text(clip.isPro ? 'PRO' : 'FREE', style: TextStyle(color: clip.isPro ? const Color(0xFF3A2600) : Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900)),
-                ),
-              ),
-              Positioned(
-                top: 10, right: 10,
-                child: Container(
-                  width: 32, height: 32,
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), shape: BoxShape.circle),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
-                ),
-              ),
-              Positioned(
-                left: 13, right: 13, bottom: 13,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(clip.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15, height: 1.15)),
-                  const SizedBox(height: 4),
-                  Text('${clip.category ?? clip.genre ?? 'clip'} · ${clip.durationLabel}', style: const TextStyle(color: Colors.white70, fontSize: 11.5, fontWeight: FontWeight.w600)),
-                ]),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _Message extends StatelessWidget {
