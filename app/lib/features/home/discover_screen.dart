@@ -202,7 +202,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         ),
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.only(top: 8, bottom: 24 + MediaQuery.of(context).viewPadding.bottom),
+                            padding: EdgeInsets.only(top: 8, bottom: 80 + MediaQuery.of(context).viewPadding.bottom),
                             child: Center(
                               child: _more
                                   ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFFFF4D6D)))

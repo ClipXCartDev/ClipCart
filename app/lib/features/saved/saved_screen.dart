@@ -42,7 +42,7 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Saved', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Liked', style: TextStyle(fontWeight: FontWeight.w800))),
       body: RefreshIndicator(
         onRefresh: () async => setState(() => _future = context.read<CatalogService>().favorites()),
         child: FutureBuilder<List<Clip>>(
@@ -68,13 +68,13 @@ class _SavedScreenState extends State<SavedScreen> {
                 SizedBox(height: 80),
                 PremiumEmptyState(
                   icon: Icons.favorite_border_rounded,
-                  title: 'No saved clips yet',
-                  subtitle: 'Tap the heart on any clip to save it here\nfor quick access later.',
+                  title: 'No liked clips yet',
+                  subtitle: 'Tap the heart on any clip to like it\nfor quick access later.',
                 ),
               ]);
             }
             return MasonryGridView.count(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.fromLTRB(8, 8, 8, 80 + MediaQuery.of(context).viewPadding.bottom),
               crossAxisCount: 3,
               mainAxisSpacing: 5,
               crossAxisSpacing: 5,

@@ -155,7 +155,7 @@ class _SearchScreenState extends State<SearchScreen> {
           );
         }
         return MasonryGridView.count(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.fromLTRB(8, 8, 8, 80 + MediaQuery.of(context).viewPadding.bottom),
           crossAxisCount: 3,
           mainAxisSpacing: 5,
           crossAxisSpacing: 5,

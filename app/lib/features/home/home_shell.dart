@@ -1,7 +1,11 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
 import '../exports/exports_screen.dart';
 import '../saved/saved_screen.dart';
@@ -46,17 +50,87 @@ class _HomeShellState extends State<HomeShell> {
       _AccountTab(),
     ];
     return Scaffold(
+      extendBody: true, // gallery scrolls BEHIND the glassy floating nav bar
       body: IndexedStack(index: _index, children: tabs),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) { homeTab.value = i; setState(() => _index = i); },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
-          NavigationDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Saved'),
-          NavigationDestination(icon: Icon(Icons.download_outlined), label: 'Exports'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Me'),
-        ],
+      bottomNavigationBar: _GlassNavBar(
+        index: _index,
+        onSelect: (i) { homeTab.value = i; setState(() => _index = i); },
+      ),
+    );
+  }
+}
+
+/// Frosted-glass floating nav bar — semi-transparent with a blur so the gallery
+/// shows through and the footer feels embedded in the content.
+class _GlassNavBar extends StatelessWidget {
+  const _GlassNavBar({required this.index, required this.onSelect});
+  final int index;
+  final ValueChanged<int> onSelect;
+
+  static const _items = [
+    (Icons.home_outlined, Icons.home_rounded, 'Home'),
+    (Icons.search_rounded, Icons.search_rounded, 'Search'),
+    (Icons.favorite_border_rounded, Icons.favorite_rounded, 'Liked'),
+    (Icons.download_outlined, Icons.download_rounded, 'Exports'),
+    (Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final glass = (dark ? Colors.black : Colors.white).withOpacity(0.62);
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: Container(
+          decoration: BoxDecoration(
+            color: glass,
+            border: Border(top: BorderSide(color: (dark ? Colors.white : Colors.black).withOpacity(0.06))),
+          ),
+          padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              for (var i = 0; i < _items.length; i++)
+                _NavItem(
+                  icon: index == i ? _items[i].$2 : _items[i].$1,
+                  label: _items[i].$3,
+                  selected: index == i,
+                  onTap: () { HapticFeedback.selectionClick(); onSelect(i); },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({required this.icon, required this.label, required this.selected, required this.onTap});
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = selected ? AppColors.accent : Theme.of(context).colorScheme.onSurface.withOpacity(0.55);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          AnimatedScale(
+            scale: selected ? 1.12 : 1.0,
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            child: Icon(icon, color: c, size: 24),
+          ),
+          const SizedBox(height: 3),
+          Text(label, style: TextStyle(color: c, fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
+        ]),
       ),
     );
   }

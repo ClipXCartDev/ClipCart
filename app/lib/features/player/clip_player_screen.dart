@@ -283,7 +283,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                       color: _faved.contains(clip.id) ? const Color(0xFFFF4D6D) : Colors.white, size: 22),
                 ),
                 const SizedBox(height: 2),
-                Text(_faved.contains(clip.id) ? 'Saved' : 'Save', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                Text(_faved.contains(clip.id) ? 'Liked' : 'Like', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
               ]),
             ),
           ),
