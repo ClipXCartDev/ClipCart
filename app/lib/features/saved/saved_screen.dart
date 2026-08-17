@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -72,12 +73,13 @@ class _SavedScreenState extends State<SavedScreen> {
                 ),
               ]);
             }
-            return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.70),
+            return MasonryGridView.count(
+              padding: const EdgeInsets.all(8),
+              crossAxisCount: 3,
+              mainAxisSpacing: 5,
+              crossAxisSpacing: 5,
               itemCount: clips.length,
-              itemBuilder: (context, i) => ClipCard(clip: clips[i], onTap: () => context.push('/player', extra: {'clips': clips, 'index': i})),
+              itemBuilder: (context, i) => ClipTile(clip: clips[i], onTap: () => context.push('/player', extra: {'clips': clips, 'index': i})),
             );
           },
         ),

@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -195,16 +196,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           SliverToBoxAdapter(child: _featuredRow()),
                         ],
                         SliverToBoxAdapter(child: _resultsBar()),
+                        // dense masonry gallery — small varied tiles, minimal gaps, no white space
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
-                          sliver: SliverGrid(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2, mainAxisSpacing: 16, crossAxisSpacing: 14, childAspectRatio: 0.70,
-                            ),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, i) => ClipCard(clip: _grid[i], onTap: () => _open(_grid, i)),
-                              childCount: _grid.length,
-                            ),
+                          padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+                          sliver: SliverMasonryGrid.count(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 5,
+                            crossAxisSpacing: 5,
+                            childCount: _grid.length,
+                            itemBuilder: (context, i) => ClipTile(clip: _grid[i], onTap: () => _open(_grid, i)),
                           ),
                         ),
                         SliverToBoxAdapter(

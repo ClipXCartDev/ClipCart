@@ -135,3 +135,59 @@ class _Badge extends StatelessWidget {
         child: Text(text, style: TextStyle(color: fg, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.4)),
       );
 }
+
+/// Deterministic varied aspect ratio for a masonry tile (0.72 → 1.5) so the
+/// packed grid has the Pinterest/RenderForest "no white space" staggered look.
+double masonryAspect(String id) {
+  const ratios = [0.72, 0.8, 1.0, 1.33, 0.66, 1.0, 0.8, 1.2];
+  return ratios[id.hashCode.abs() % ratios.length];
+}
+
+/// Compact masonry tile for a DENSE RenderForest-style gallery — small thumbnail,
+/// minimal overlay (only a PRO/FREE dot + duration + tiny title), tight radius.
+class ClipTile extends StatelessWidget {
+  const ClipTile({super.key, required this.clip, this.onTap});
+  final Clip clip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = _cardGradients[clip.id.hashCode.abs() % _cardGradients.length];
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AspectRatio(
+          aspectRatio: masonryAspect(clip.id),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g, begin: Alignment.topLeft, end: Alignment.bottomRight))),
+              if (clip.thumb != null)
+                Image.network(clip.thumb!, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    loadingBuilder: (ctx, child, prog) => prog == null ? child : DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g)))),
+              // subtle bottom scrim
+              const DecoratedBox(
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.transparent, Color(0xB3000000)], stops: [0.0, 0.55, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+              ),
+              // PRO dot (top-left) — tiny
+              if (clip.isPro)
+                Positioned(top: 6, left: 6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(5)), child: const Text('PRO', style: TextStyle(color: Color(0xFF3A2600), fontSize: 8, fontWeight: FontWeight.w900)))),
+              // duration (top-right)
+              Positioned(top: 6, right: 6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(5)), child: Text(clip.durationLabel, style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w800)))),
+              // small play glyph center
+              Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white.withOpacity(0.85), size: 30, shadows: const [Shadow(color: Colors.black45, blurRadius: 6)])),
+              // tiny title at bottom
+              Positioned(
+                left: 7, right: 7, bottom: 6,
+                child: Text(clip.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10.5, shadows: [Shadow(color: Colors.black87, blurRadius: 4)])),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
