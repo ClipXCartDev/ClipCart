@@ -1,12 +1,20 @@
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/editor_state.dart';
 import 'text_render.dart';
+
+/// Probed facts about the base clip we need before building the filtergraph.
+class _ClipProbe {
+  _ClipProbe(this.hasAudio, this.width, this.height);
+  final bool hasAudio;
+  final int? width, height;
+}
 
 class ExportResult {
   ExportResult(this.path, this.savedToGallery);
@@ -19,50 +27,80 @@ class ExportResult {
 /// with the editor canvas. Optional trim + aspect-ratio crop.
 class ExportService {
   Future<ExportResult> export(EditorProject p) async {
-    final trimmed = p.trimStart > 0.01 || p.outEnd < p.duration - 0.01;
     final off = p.trimStart;
 
-    // Render each VISIBLE subtitle to a PNG at video-pixel size.
+    // Probe the base clip ONCE: does it have an audio stream (so we never wire a
+    // non-existent [0:a] pad into the mix), and its native w/h (to remap overlay
+    // positions when an aspect crop shrinks the frame).
+    final probe = await _probe(p.baseClipPath);
+
+    bool inWindow(double start, double end) {
+      // Overlay must intersect the exported window [trimStart, outEnd] (original
+      // timeline coords). Fully-before or fully-after overlays are dropped so a
+      // trim never silently burns a degenerate between(t,0,0) gate.
+      final e = end >= 9998 ? p.outEnd : end;
+      return e > p.trimStart + 0.001 && start < p.outEnd - 0.001;
+    }
+
+    // Render each VISIBLE, in-window subtitle to a PNG at video-pixel size.
     final texts = <SubtitleSegment>[];
     final textPaths = <String>[];
     for (var i = 0; i < p.subtitles.length; i++) {
       final s = p.subtitles[i];
-      if (s.hidden) continue;
+      if (s.hidden || !inWindow(s.start, s.end)) continue;
       texts.add(s);
       textPaths.add(await TextRenderService.renderToPng(s, i));
     }
     final hasLogo = p.logoPath != null && !p.logoHidden && File(p.logoPath!).existsSync();
-    final stickers = p.stickers.where((s) => !s.hidden && File(s.path).existsSync()).toList();
+    final stickers = p.stickers.where((s) => !s.hidden && inWindow(s.start, s.end) && File(s.path).existsSync()).toList();
 
-    // Aspect crop (center).
+    // Aspect crop (center). Also compute the crop GEOMETRY in source pixels so we
+    // can convert overlay full-frame fractions → cropped-frame fractions, keeping
+    // export positions WYSIWYG with the preview (which positions on the full frame).
     String cropFilter = 'null';
     final ar = p.aspect.ratio;
+    // full-frame center fraction → cropped-frame fraction (identity when no crop)
+    double Function(double) cropDx = (dx) => dx;
+    double Function(double) cropDy = (dy) => dy;
+    double cropScaleW = 1.0; // multiply overlay width fractions by this under a crop
     if (ar != null) {
       cropFilter = "crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})',setsar=1";
+      final iw = (probe.width ?? 0).toDouble();
+      final ih = (probe.height ?? 0).toDouble();
+      if (iw > 0 && ih > 0) {
+        final cw = (iw < ih * ar) ? iw : ih * ar; // min(iw, ih*ar)
+        final ch = (ih < iw / ar) ? ih : iw / ar; // min(ih, iw/ar)
+        final x0 = (iw - cw) / 2, y0 = (ih - ch) / 2;
+        cropDx = (dx) => ((iw * dx - x0) / cw).clamp(0.0, 1.0);
+        cropDy = (dy) => ((ih * dy - y0) / ch).clamp(0.0, 1.0);
+        cropScaleW = iw / cw; // 0.18*iw source px → (0.18*iw/cw) of cropped main_w
+      }
     }
 
     final outDir = Directory('${(await getApplicationDocumentsDirectory()).path}/exports')
       ..createSync(recursive: true);
     final output = '${outDir.path}/clip_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
-    // Inputs: base [0], logo [1?], text PNGs [next..].
+    // Inputs: base [0], logo [1?], text PNGs [next..]. Built as a raw arg LIST and
+    // run via executeWithArguments — no shell splitting, so paths with spaces,
+    // apostrophes, unicode (emoji filenames) etc. never break the command.
     final parts = <String>['-y'];
     if (p.trimStart > 0.01) parts.addAll(['-ss', _f(p.trimStart, 3)]);
-    parts.addAll(['-i', '"${p.baseClipPath}"']);
+    parts.addAll(['-i', p.baseClipPath]);
     int idx = 1;
     int? logoIdx;
     if (hasLogo) {
-      parts.addAll(['-i', '"${p.logoPath}"']);
+      parts.addAll(['-i', p.logoPath!]);
       logoIdx = idx++;
     }
     final textIdx = <int>[];
     for (final tp in textPaths) {
-      parts.addAll(['-i', '"$tp"']);
+      parts.addAll(['-i', tp]);
       textIdx.add(idx++);
     }
     final stickerIdx = <int>[];
     for (final st in stickers) {
-      parts.addAll(['-i', '"${st.path}"']);
+      parts.addAll(['-i', st.path]);
       stickerIdx.add(idx++);
     }
     // optional music input (seek into the track with -ss before -i)
@@ -70,7 +108,7 @@ class ExportService {
     int? musicIdx;
     if (hasMusic) {
       if (p.musicStart > 0.01) parts.addAll(['-ss', _f(p.musicStart, 3)]);
-      parts.addAll(['-i', '"${p.musicPath}"']);
+      parts.addAll(['-i', p.musicPath!]);
       musicIdx = idx++;
     }
 
@@ -92,30 +130,41 @@ class ExportService {
       final ii = o['ii'] as int;
       final kind = o['kind'] as String;
       if (kind == 'logo') {
-        fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(0.18 * p.logoScale)}':h=-1[lg$k][bgl$k];");
+        // width fraction scaled up under a crop so on-screen size matches preview
+        fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(0.18 * p.logoScale * cropScaleW)}':h=-1[lg$k][bgl$k];");
         fc.write('[lg$k]rotate=${_f(p.logoRotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[lgr$k];');
-        fc.write("[bgl$k][lgr$k]overlay=x='main_w*${_f(p.logoDx)}-overlay_w/2':y='main_h*${_f(p.logoDy)}-overlay_h/2'[o$k];");
+        fc.write("[bgl$k][lgr$k]overlay=x='main_w*${_f(cropDx(p.logoDx))}-overlay_w/2':y='main_h*${_f(cropDy(p.logoDy))}-overlay_h/2'[o$k];");
       } else if (kind == 'sticker') {
         final s = o['stk'] as StickerOverlay;
         final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
-        final en = ((s.end >= 9998 ? p.outEnd : s.end) - off).clamp(st, double.infinity).toDouble();
+        // Bound the window to the exported length so a stray large `end` (e.g. 60
+        // on a 10s clip) can't create a multi-thousand-second fade/loop.
+        final rawEnd = (s.end >= 9998 ? p.outEnd : s.end);
+        final en = (rawEnd.clamp(0.0, p.outEnd) - off).clamp(st, double.infinity).toDouble();
         // scale to fraction of frame width (against a reference of the current bg)
-        fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(s.baseWidthFrac * s.scale)}':h=-1[sg$k][bgs$k];");
+        fc.write("[$ii:v][$cur]scale2ref=w='main_w*${_f(s.baseWidthFrac * s.scale * cropScaleW)}':h=-1[sg$k][bgs$k];");
         String lbl = 'sg$k';
         final fade = _fadeChain(_animFadeIn(s.anim, s.fadeIn), s.fadeOut, st, en, 'sg$k', 'sf$k');
         if (fade != null) { fc.write(fade); lbl = 'sf$k'; }
         fc.write('[$lbl]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[sr$k];');
-        final sxy = _animXY(s.anim, st, en, "main_w*${_f(s.dx)}-overlay_w/2", "main_h*${_f(s.dy)}-overlay_h/2");
+        final sxy = _animXY(s.anim, st, en, "main_w*${_f(cropDx(s.dx))}-overlay_w/2", "main_h*${_f(cropDy(s.dy))}-overlay_h/2");
         fc.write("[bgs$k][sr$k]overlay=x='${sxy['x']}':y='${sxy['y']}':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
       } else {
         final s = o['seg'] as SubtitleSegment;
         final st = (s.start - off) < 0 ? 0.0 : (s.start - off);
-        final en = (s.end - off) < st ? st : (s.end - off);
+        final enRaw = (s.end.clamp(0.0, p.outEnd) - off);
+        final en = enRaw < st ? st : enRaw;
         String src = '$ii:v';
+        // Scale the text PNG up under a crop so it keeps its on-screen size (text
+        // is composited 1:1, so pre-scale it against the cropped frame).
+        if (cropScaleW != 1.0) {
+          fc.write("[$src]scale=w='iw*${_f(cropScaleW)}':h=-1[ts$k];");
+          src = 'ts$k';
+        }
         final fade = _fadeChain(_animFadeIn(s.anim, s.fadeIn), s.fadeOut, st, en, src, 'tf$k');
         if (fade != null) { fc.write(fade); src = 'tf$k'; }
         fc.write('[$src]rotate=${_f(s.rotation, 4)}:fillcolor=0x00000000:ow=hypot(iw\\,ih):oh=hypot(iw\\,ih)[t$k];');
-        final xy = _animXY(s.anim, st, en, "main_w*${_f(s.dx)}-overlay_w/2", "main_h*${_f(s.dy)}-overlay_h/2");
+        final xy = _animXY(s.anim, st, en, "main_w*${_f(cropDx(s.dx))}-overlay_w/2", "main_h*${_f(cropDy(s.dy))}-overlay_h/2");
         fc.write("[$cur][t$k]overlay=x='${xy['x']}':y='${xy['y']}':enable=between(t\\,${_f(st, 2)}\\,${_f(en, 2)})[o$k];");
       }
       cur = 'o$k';
@@ -124,29 +173,39 @@ class ExportService {
 
     // ---- audio: original (0:a) optionally ducked under an added music track ----
     final dur = p.outDuration;
-    String audioMap = '"0:a?"'; // default: passthrough original
+    String audioMap = '0:a?'; // default: passthrough original (optional → silent if none)
     if (hasMusic) {
-      // original at originalVolume, music at musicVolume, both trimmed to clip length,
-      // mixed (normalize=0 so per-stream volumes are honored), music fades out at end.
-      fc.write(";[0:a]volume=${_f(p.originalVolume, 2)},aresample=44100[oa];");
-      fc.write("[$musicIdx:a]atrim=0:${_f(dur, 3)},asetpts=PTS-STARTPTS,volume=${_f(p.musicVolume, 2)},aresample=44100");
       final fadeSt = (dur - 0.8).clamp(0.0, dur);
-      fc.write(",afade=t=out:st=${_f(fadeSt, 3)}:d=0.8[ma];");
-      fc.write("[oa][ma]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]");
-      audioMap = '"[aout]"';
+      // Music is always trimmed to the clip length and faded out at the end.
+      final musicChain =
+          "[$musicIdx:a]atrim=0:${_f(dur, 3)},asetpts=PTS-STARTPTS,volume=${_f(p.musicVolume, 2)},aresample=44100,afade=t=out:st=${_f(fadeSt, 3)}:d=0.8";
+      if (probe.hasAudio) {
+        // Duck the original under the music. duration=longest (music is already
+        // trimmed to dur) so a SHORT original audio can't truncate the mix.
+        fc.write(";[0:a]volume=${_f(p.originalVolume, 2)},aresample=44100[oa];");
+        fc.write("$musicChain[ma];");
+        fc.write("[oa][ma]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]");
+      } else {
+        // No original audio stream → NEVER reference [0:a] (that would abort the
+        // graph). Map music alone.
+        fc.write(";$musicChain[aout]");
+      }
+      audioMap = '[aout]';
     }
 
-    parts.addAll(['-filter_complex', fc.toString(), '-map', '"[vout]"', '-map', audioMap]);
-    if (trimmed) parts.addAll(['-t', _f(p.outDuration, 3)]);
+    parts.addAll(['-filter_complex', fc.toString(), '-map', '[vout]', '-map', audioMap]);
+    // Always cap to the intended clip length: with duration=longest the mix can
+    // now run longer than the video, so -t guarantees both land at outDuration.
+    parts.addAll(['-t', _f(p.outDuration, 3)]);
     parts.addAll([
       // High-quality HD export: crf 18 ≈ visually lossless, medium preset for good
       // quality-per-bit (veryfast+crf23 was destroying quality → tiny files).
       '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
       '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
-      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', '"$output"',
+      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', output,
     ]);
 
-    final session = await FFmpegKit.execute(parts.join(' '));
+    final session = await FFmpegKit.executeWithArguments(parts);
     final rc = await session.getReturnCode();
     if (!ReturnCode.isSuccess(rc)) {
       final logs = await session.getAllLogsAsString();
@@ -219,4 +278,28 @@ class ExportService {
   }
 
   String _f(num v, [int d = 4]) => v.toStringAsFixed(d);
+
+  /// Probes the base clip for an audio stream + native dimensions. Failures are
+  /// non-fatal: we default to hasAudio=true (matches the previous always-`0:a`
+  /// behavior for clips that DO have audio) and null dims (crop remap becomes a
+  /// no-op, i.e. the previous full-frame behavior).
+  Future<_ClipProbe> _probe(String path) async {
+    try {
+      final session = await FFprobeKit.getMediaInformation(path);
+      final info = session.getMediaInformation();
+      final streams = info?.getStreams() ?? [];
+      final hasAudio = streams.any((s) => s.getType() == 'audio');
+      int? w, h;
+      for (final s in streams) {
+        if (s.getType() == 'video') {
+          w = s.getWidth();
+          h = s.getHeight();
+          break;
+        }
+      }
+      return _ClipProbe(hasAudio, w, h);
+    } catch (_) {
+      return _ClipProbe(true, null, null);
+    }
+  }
 }

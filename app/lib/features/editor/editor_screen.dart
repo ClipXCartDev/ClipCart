@@ -74,6 +74,11 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // gesture start state
   double _gDx = 0, _gDy = 0, _gScale = 1, _gRot = 0, _gDist = 1, _gAngle = 0;
+  // One-shot guard so a whole drag/pinch pushes exactly ONE undo snapshot.
+  // MUST be a State field (not a per-build local) — every onScaleUpdate calls
+  // setState → rebuild → a fresh local would reset to false every frame and
+  // flood the undo stack (one snapshot per frame). Reset in every gesture start.
+  bool _gestureSnapped = false;
 
   Offset? _toCanvas(Offset global) {
     final box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
@@ -146,16 +151,33 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   bool _endHandled = false;
-  /// When playback reaches the end, stop and rewind to the start so the big play
-  /// button reappears (no infinite loop).
+  // Trim window in ms. When no trim is set, outEnd == full duration and trimStart
+  // == 0, so all of this collapses to normal full-clip behavior.
+  int get _startMs => ((_project?.trimStart ?? 0) * 1000).round();
+  int get _endMs => ((_project?.outEnd ?? _duration) * 1000).round();
+
+  /// Playback respects the trim window: stop + rewind to trimStart at outEnd so the
+  /// preview matches the exported cut (which is -ss trimStart -t outDuration).
   void _playbackTick() {
-    final v = _vc?.value;
-    if (v == null || !v.isInitialized) return;
-    final atEnd = v.position >= v.duration - const Duration(milliseconds: 60);
-    if (atEnd && v.isPlaying == false && !_endHandled) {
-      _endHandled = true;
-      _vc?.seekTo(Duration.zero);
-    } else if (!atEnd) {
+    final vc = _vc;
+    final v = vc?.value;
+    if (vc == null || v == null || !v.isInitialized) return;
+    final pos = v.position.inMilliseconds;
+    final atEnd = pos >= _endMs - 60;
+    if (atEnd) {
+      // Stop at the trim end (video may still have footage past outEnd) and rewind.
+      if (v.isPlaying) {
+        vc.pause();
+        vc.seekTo(Duration(milliseconds: _startMs));
+        _endHandled = true;
+      } else if (!_endHandled) {
+        _endHandled = true;
+        vc.seekTo(Duration(milliseconds: _startMs));
+      }
+    } else if (pos < _startMs - 60) {
+      // Scrubbed/seeked before the window start → clamp forward.
+      vc.seekTo(Duration(milliseconds: _startMs));
+    } else {
       _endHandled = false;
     }
   }
@@ -172,7 +194,7 @@ class _EditorScreenState extends State<EditorScreen> {
   double get _duration => (_vc?.value.duration.inMilliseconds ?? 0) / 1000.0;
   double get _t => (_vc?.value.position.inMilliseconds ?? 0) / 1000.0;
 
-  /// Play/pause. If at the end, restart from the beginning.
+  /// Play/pause. Restarts from trimStart when parked at/outside the trim window.
   void _togglePlay() {
     final vc = _vc;
     if (vc == null) return;
@@ -180,8 +202,9 @@ class _EditorScreenState extends State<EditorScreen> {
     if (v.isPlaying) {
       vc.pause();
     } else {
-      if (v.position >= v.duration - const Duration(milliseconds: 80)) {
-        vc.seekTo(Duration.zero);
+      final pos = v.position.inMilliseconds;
+      if (pos >= _endMs - 80 || pos < _startMs) {
+        vc.seekTo(Duration(milliseconds: _startMs));
       }
       vc.play();
     }
@@ -227,7 +250,13 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _addSubtitle() {
     _snapshot();
-    final seg = SubtitleSegment(text: '', start: _t, end: (_t + 3).clamp(0, _duration), z: _topZ());
+    // Guarantee a usable, non-degenerate window even when parked at/near the end
+    // (the common "punchline" case). Back-shift start so [start,end] is >= 0.5s;
+    // otherwise a zero-length caption silently never renders in preview or export.
+    final dz = _duration;
+    final s0 = dz <= 0 ? _t : _t.clamp(0.0, (dz - 0.5).clamp(0.0, dz));
+    final e0 = dz <= 0 ? s0 + 3 : (s0 + 3).clamp(s0 + 0.5, dz);
+    final seg = SubtitleSegment(text: '', start: s0, end: e0, z: _topZ());
     setState(() {
       _project!.subtitles.add(seg);
       _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
@@ -270,41 +299,45 @@ class _EditorScreenState extends State<EditorScreen> {
     await fs.loadBuiltins();
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: _kPanel,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Text('Font', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () async {
-                    final f = await fs.uploadFont();
-                    if (f != null) { _mutate(() { s.fontFamily = f.family; s.fontFilePath = f.path; }); setSheet(() {}); }
-                  },
-                  icon: const Icon(Icons.add, size: 18, color: _kAccent),
-                  label: const Text('Import', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w800)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Text('Font', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final f = await fs.uploadFont();
+                      if (f != null) { _mutate(() { s.fontFamily = f.family; s.fontFilePath = f.path; }); setSheet(() {}); }
+                    },
+                    icon: const Icon(Icons.add, size: 18, color: _kAccent),
+                    label: const Text('Import', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w800)),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: GridView.count(
+                    shrinkWrap: true,
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 0.92,
+                    children: [
+                      // Default (system) option
+                      _fontChip('Default', null, null, s, setSheet),
+                      for (final f in fs.all) _fontChip(f.name, f.family, f.path, s, setSheet),
+                    ],
+                  ),
                 ),
               ]),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 210,
-                child: GridView.count(
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 0.92,
-                  children: [
-                    // Default (system) option
-                    _fontChip('Default', null, null, s, setSheet),
-                    for (final f in fs.all) _fontChip(f.name, f.family, f.path, s, setSheet),
-                  ],
-                ),
-              ),
-            ]),
+            ),
           ),
         ),
       ),
@@ -339,31 +372,37 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _openStyleSheet() async {
     if (_selected is! SubtitleSegment) return;
     final s = _selected as SubtitleSegment;
-    _snapshot();
+    // Snapshot lazily on the FIRST edit only — opening + closing without touching
+    // anything must not pollute the undo stack.
+    var snapped = false;
+    void snap() { if (!snapped) { _snapshot(); snapped = true; } }
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: _kPanel,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Adjust', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-              const SizedBox(height: 14),
-              Row(children: [
-                _adjToggle('B', s.bold, () => setSheet(() { s.bold = !s.bold; setState(() {}); }), bold: true),
-                const SizedBox(width: 10),
-                _adjToggle('I', s.italic, () => setSheet(() { s.italic = !s.italic; setState(() {}); }), italic: true),
-                const SizedBox(width: 10),
-                _adjIconToggle(Icons.format_color_fill, 'Shadow', s.shadow, () => setSheet(() { s.shadow = !s.shadow; setState(() {}); })),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Adjust', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 14),
+                Row(children: [
+                  _adjToggle('B', s.bold, () { snap(); setSheet(() { s.bold = !s.bold; setState(() {}); }); }, bold: true),
+                  const SizedBox(width: 10),
+                  _adjToggle('I', s.italic, () { snap(); setSheet(() { s.italic = !s.italic; setState(() {}); }); }, italic: true),
+                  const SizedBox(width: 10),
+                  _adjIconToggle(Icons.format_color_fill, 'Shadow', s.shadow, () { snap(); setSheet(() { s.shadow = !s.shadow; setState(() {}); }); }),
+                ]),
+                const SizedBox(height: 16),
+                _fadeRowGeneric('Letter spacing', s.letterSpacing, -3, 12, (v) { snap(); setSheet(() { s.letterSpacing = v; setState(() {}); }); }, suffix: 'px'),
+                _fadeRowGeneric('Line height', s.lineHeight, 0.8, 2.0, (v) { snap(); setSheet(() { s.lineHeight = v; setState(() {}); }); }, suffix: 'x'),
+                const SizedBox(height: 12),
+                SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
               ]),
-              const SizedBox(height: 16),
-              _fadeRowGeneric('Letter spacing', s.letterSpacing, -3, 12, (v) => setSheet(() { s.letterSpacing = v; setState(() {}); }), suffix: 'px'),
-              _fadeRowGeneric('Line height', s.lineHeight, 0.8, 2.0, (v) => setSheet(() { s.lineHeight = v; setState(() {}); }), suffix: 'x'),
-              const SizedBox(height: 12),
-              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
-            ]),
+            ),
           ),
         ),
       ),
@@ -565,10 +604,10 @@ class _EditorScreenState extends State<EditorScreen> {
             _chipDivider(),
             for (final p in _textPresets) _presetChip(s, p),
             _chipDivider(),
-            // color dots
+            // color dots (undoable)
             for (final c in colors)
               GestureDetector(
-                onTap: () => setState(() => s?.color = c),
+                onTap: () { if (s != null) _mutate(() => s.color = c); },
                 child: Container(
                   width: 22, height: 22, margin: const EdgeInsets.only(right: 7),
                   alignment: Alignment.center,
@@ -579,9 +618,10 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
               ),
             _chipDivider(),
-            _miniToggle(Icons.border_color, (s?.strokeWidth ?? 0) > 0, () => setState(() => s?.strokeWidth = (s.strokeWidth) > 0 ? 0 : 4)),
-            _miniToggle(Icons.title, s?.bgEnabled ?? false, () => setState(() => s?.bgEnabled = !(s.bgEnabled))),
-            _miniToggle(_alignIcon(s?.align ?? TextAlignH.center), true, () => setState(() => s?.align = TextAlignH.values[((s.align.index) + 1) % 3])),
+            // Outline stroke matches the toolbar 'Outline' width (3) for consistency.
+            _miniToggle(Icons.border_color, (s?.strokeWidth ?? 0) > 0, () { if (s != null) _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3); }),
+            _miniToggle(Icons.title, s?.bgEnabled ?? false, () { if (s != null) _mutate(() => s.bgEnabled = !s.bgEnabled); }),
+            _miniToggle(_alignIcon(s?.align ?? TextAlignH.center), true, () { if (s != null) _mutate(() => s.align = TextAlignH.values[(s.align.index + 1) % 3]); }),
           ]),
         ),
         const SizedBox(height: 8),
@@ -648,14 +688,18 @@ class _EditorScreenState extends State<EditorScreen> {
   // ---------- Music ----------
   Future<void> _openMusicSheet() async {
     final p = _project!;
+    var volSnapped = false; // one snapshot for a whole volume-adjust session
+    void snapVol() { if (!volSnapped) { _snapshot(); volSnapped = true; } }
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: _kPanel,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+          child: SingleChildScrollView(
+            child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 const Icon(Icons.music_note_rounded, color: _kAccent, size: 20),
@@ -690,12 +734,16 @@ class _EditorScreenState extends State<EditorScreen> {
               ),
               if (p.musicPath != null) ...[
                 const SizedBox(height: 16),
-                _fadeRowGeneric('Music vol', p.musicVolume, 0, 1, (v) => setSheet(() { p.musicVolume = v; setState(() {}); }), suffix: ''),
-                _fadeRowGeneric('Clip vol', p.originalVolume, 0, 1, (v) => setSheet(() { p.originalVolume = v; setState(() {}); }), suffix: ''),
+                _fadeRowGeneric('Music vol', p.musicVolume, 0, 1, (v) { snapVol(); setSheet(() { p.musicVolume = v; setState(() {}); }); }, suffix: ''),
+                _fadeRowGeneric('Clip vol', p.originalVolume, 0, 1, (v) { snapVol(); setSheet(() { p.originalVolume = v; setState(() {}); }); }, suffix: ''),
+                // Start offset into the track (seek in). Range 0..30s is plenty for
+                // picking the "drop"; export already seeks via -ss musicStart.
+                _fadeRowGeneric('Start at', p.musicStart, 0, 30, (v) { snapVol(); setSheet(() { p.musicStart = v; setState(() {}); }); }, suffix: 's'),
               ],
               const SizedBox(height: 12),
               SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
             ]),
+          ),
           ),
         ),
       ),
@@ -707,7 +755,10 @@ class _EditorScreenState extends State<EditorScreen> {
     final bk = context.read<BrandKitService>();
     await bk.ensureLoaded();
     await context.read<FontService>().loadBuiltins();
-    final kit = bk.kit ?? BrandKit();
+    // Work on a DEEP COPY so dismissing the sheet (tap-outside / back) does NOT
+    // leak unsaved color/font/logo edits into the shared service kit. Only Save
+    // / Apply commit the copy via bk.saveKit.
+    final kit = bk.kit != null ? BrandKit.fromJson(bk.kit!.toJson()) : BrandKit();
     await showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
@@ -889,12 +940,15 @@ class _EditorScreenState extends State<EditorScreen> {
     await bk.ensureLoaded();
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: _kPanel,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+            child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Styles', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
               const SizedBox(height: 4),
@@ -942,6 +996,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
               ),
             ]),
+          ),
           ),
         ),
       ),
@@ -1092,11 +1147,15 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _addSticker(String path, {String? emoji}) {
     _snapshot();
+    // Same near-end guard as text. Keep the 9999 sentinel when duration is unknown
+    // (export maps it to outEnd); otherwise back-shift start for a >= 0.5s window.
+    final dz = _duration;
+    final s0 = dz <= 0 ? _t : _t.clamp(0.0, (dz - 0.5).clamp(0.0, dz));
     final st = StickerOverlay(
       path: path,
       emoji: emoji,
-      start: _t,
-      end: (_t + 3).clamp(0.5, _duration == 0 ? 9999 : _duration).toDouble(),
+      start: s0,
+      end: dz <= 0 ? 9999.0 : (s0 + 3).clamp(s0 + 0.5, dz),
       z: _topZ(),
     );
     setState(() {
@@ -1130,8 +1189,10 @@ class _EditorScreenState extends State<EditorScreen> {
               final cats = svc.categories;
               final useR2 = cats.isNotEmpty;
               return SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+                  child: Padding(
+                  padding: EdgeInsets.fromLTRB(14, 14, 14, 10 + MediaQuery.of(context).viewPadding.bottom),
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Text('Stickers & emoji', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
                     const SizedBox(height: 10),
@@ -1155,8 +1216,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         ]),
                       ),
                       const SizedBox(height: 10),
-                      SizedBox(
-                        height: 280,
+                      Flexible(
                         child: GridView.count(
                           crossAxisCount: 6,
                           mainAxisSpacing: 8,
@@ -1178,8 +1238,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       ),
                     ] else
                       // fallback: local platform emoji set (rendered to PNG)
-                      SizedBox(
-                        height: 280,
+                      Flexible(
                         child: GridView.count(
                           crossAxisCount: 6, mainAxisSpacing: 6, crossAxisSpacing: 6,
                           children: [
@@ -1195,6 +1254,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     if (svc.attribution != null)
                       Padding(padding: const EdgeInsets.only(top: 8), child: Text(svc.attribution!, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 9.5))),
                   ]),
+                ),
                 ),
               );
             },
@@ -1231,15 +1291,18 @@ class _EditorScreenState extends State<EditorScreen> {
     OverlayAnim getAnim() => sel is SubtitleSegment ? sel.anim : (sel as StickerOverlay).anim;
     void setAnim(OverlayAnim a) => sel is SubtitleSegment ? sel.anim = a : (sel as StickerOverlay).anim = a;
     final segStart = sel is SubtitleSegment ? sel.start : ((sel as StickerOverlay).start >= 9998 ? 0.0 : sel.start);
-    _snapshot();
+    var snapped = false;
+    void snap() { if (!snapped) { _snapshot(); snapped = true; } }
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: _kPanel,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+          child: SingleChildScrollView(
+            child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 18 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Animation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
               const SizedBox(height: 4),
@@ -1256,6 +1319,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     for (final a in OverlayAnim.values)
                       GestureDetector(
                         onTap: () {
+                          snap();
                           setSheet(() { setAnim(a); });
                           setState(() {});
                           _previewAnimFrom(segStart); // play the entry so the user sees it
@@ -1279,11 +1343,12 @@ class _EditorScreenState extends State<EditorScreen> {
               const SizedBox(height: 14),
               const Text('Fade', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
               const SizedBox(height: 6),
-              _fadeRow('Fade in', getFI(), (v) => setSheet(() { setFI(v); setState(() {}); })),
-              _fadeRow('Fade out', getFO(), (v) => setSheet(() { setFO(v); setState(() {}); })),
+              _fadeRow('Fade in', getFI(), (v) { snap(); setSheet(() { setFI(v); setState(() {}); }); }),
+              _fadeRow('Fade out', getFO(), (v) { snap(); setSheet(() { setFO(v); setState(() {}); }); }),
               const SizedBox(height: 12),
               SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
             ]),
+          ),
           ),
         ),
       ),
@@ -1570,7 +1635,6 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _subOverlay(SubtitleSegment s, double w, double h, double scale, double t) {
     final selected = identical(_selected, s);
-    bool moved = false;
     final text = Container(
       constraints: BoxConstraints(maxWidth: w * 0.92),
       padding: EdgeInsets.symmetric(horizontal: s.bgEnabled ? 7 : 3, vertical: s.bgEnabled ? 3 : 2),
@@ -1585,7 +1649,11 @@ class _EditorScreenState extends State<EditorScreen> {
         style: TextStyle(
           fontFamily: s.fontFamily,
           color: s.uiColor,
-          fontSize: (s.effectiveSize * scale).clamp(9, 90),
+          // Only a lower legibility floor — no upper cap, so the on-screen size
+          // tracks the export 1:1 (export composites the PNG at effectiveSize,
+          // no ceiling). A hard 90px cap here made big text look smaller than it
+          // exported on short clips / large canvases (WYSIWYG break).
+          fontSize: (s.effectiveSize * scale).clamp(9, double.infinity),
           fontWeight: s.bold ? FontWeight.w800 : FontWeight.w500,
           fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
           letterSpacing: s.letterSpacing * scale,
@@ -1604,16 +1672,16 @@ class _EditorScreenState extends State<EditorScreen> {
           onTap: () => setState(() => _selected = s),
           onScaleStart: (d) {
             setState(() => _selected = s);
-            moved = false;
+            _gestureSnapped = false;
             _gDx = s.dx;
             _gDy = s.dy;
             _gScale = s.scale;
             _gRot = s.rotation;
           },
           onScaleUpdate: (d) => setState(() {
-            if (!moved) {
+            if (!_gestureSnapped) {
               _snapshot();
-              moved = true;
+              _gestureSnapped = true;
             }
             _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
             _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
@@ -1627,6 +1695,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _hint = '${(s.scale * 100).round()}%   ${_deg(s.rotation)}°';
           }),
           onScaleEnd: (_) => setState(() {
+            _gestureSnapped = false;
             _snapX = _snapY = false;
             _hint = null;
           }),
@@ -1674,11 +1743,10 @@ class _EditorScreenState extends State<EditorScreen> {
       return Offset(_project!.logoDx * w, _project!.logoDy * h);
     }
 
-    bool moved = false;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: (d) {
-        moved = false;
+        _gestureSnapped = false;
         final f = _toCanvas(d.globalPosition);
         final c = center();
         _gDist = f == null ? 1 : math.max(8, (f - c).distance);
@@ -1695,9 +1763,9 @@ class _EditorScreenState extends State<EditorScreen> {
                 : _project!.logoRotation;
       },
       onPanUpdate: (d) => setState(() {
-        if (!moved) {
+        if (!_gestureSnapped) {
           _snapshot();
-          moved = true;
+          _gestureSnapped = true;
         }
         final f = _toCanvas(d.globalPosition);
         if (f == null) return;
@@ -1717,7 +1785,7 @@ class _EditorScreenState extends State<EditorScreen> {
         }
         _hint = '${(ns * 100).round()}%   ${_deg(nr)}°';
       }),
-      onPanEnd: (_) => setState(() => _hint = null),
+      onPanEnd: (_) => setState(() { _gestureSnapped = false; _hint = null; }),
       child: Container(
         width: 24,
         height: 24,
@@ -1730,7 +1798,6 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _logoOverlay(double w, double h) {
     final selected = _selected == 'logo';
     final p = _project!;
-    bool moved = false;
     return Align(
       alignment: Alignment(p.logoDx * 2 - 1, p.logoDy * 2 - 1),
       child: Stack(clipBehavior: Clip.none, children: [
@@ -1739,16 +1806,16 @@ class _EditorScreenState extends State<EditorScreen> {
           onTap: () => setState(() => _selected = 'logo'),
           onScaleStart: (d) {
             setState(() => _selected = 'logo');
-            moved = false;
+            _gestureSnapped = false;
             _gDx = p.logoDx;
             _gDy = p.logoDy;
             _gScale = p.logoScale;
             _gRot = p.logoRotation;
           },
           onScaleUpdate: (d) => setState(() {
-            if (!moved) {
+            if (!_gestureSnapped) {
               _snapshot();
-              moved = true;
+              _gestureSnapped = true;
             }
             _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
             _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
@@ -1762,6 +1829,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _hint = '${(p.logoScale * 100).round()}%   ${_deg(p.logoRotation)}°';
           }),
           onScaleEnd: (_) => setState(() {
+            _gestureSnapped = false;
             _snapX = _snapY = false;
             _hint = null;
           }),
@@ -1783,7 +1851,6 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _stickerOverlay(StickerOverlay st, double w, double h, double t) {
     final selected = identical(_selected, st);
-    bool moved = false;
     return Align(
       alignment: Alignment(st.dx * 2 - 1, st.dy * 2 - 1),
       child: Stack(clipBehavior: Clip.none, children: [
@@ -1792,16 +1859,16 @@ class _EditorScreenState extends State<EditorScreen> {
           onTap: () => setState(() => _selected = st),
           onScaleStart: (d) {
             setState(() => _selected = st);
-            moved = false;
+            _gestureSnapped = false;
             _gDx = st.dx;
             _gDy = st.dy;
             _gScale = st.scale;
             _gRot = st.rotation;
           },
           onScaleUpdate: (d) => setState(() {
-            if (!moved) {
+            if (!_gestureSnapped) {
               _snapshot();
-              moved = true;
+              _gestureSnapped = true;
             }
             _gDx = (_gDx + d.focalPointDelta.dx / w).clamp(0.0, 1.0).toDouble();
             _gDy = (_gDy + d.focalPointDelta.dy / h).clamp(0.0, 1.0).toDouble();
@@ -1815,6 +1882,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _hint = '${(st.scale * 100).round()}%   ${_deg(st.rotation)}°';
           }),
           onScaleEnd: (_) => setState(() {
+            _gestureSnapped = false;
             _snapX = _snapY = false;
             _hint = null;
           }),
@@ -1853,7 +1921,7 @@ class _EditorScreenState extends State<EditorScreen> {
     return ValueListenableBuilder<VideoPlayerValue>(
       valueListenable: _vc!,
       builder: (context, v, _) {
-        final ended = v.position >= v.duration - const Duration(milliseconds: 80) && !v.isPlaying;
+        final ended = v.position.inMilliseconds >= _endMs - 80 && !v.isPlaying;
         return Container(
           color: _kBg,
           padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
@@ -1866,7 +1934,7 @@ class _EditorScreenState extends State<EditorScreen> {
               onPressed: _togglePlay,
             ),
             const SizedBox(width: 2),
-            Text('${_fmt(v.position)} / ${_fmt(v.duration)}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
+            Text('${_fmt(Duration(milliseconds: (v.position.inMilliseconds - _startMs).clamp(0, _endMs - _startMs)))} / ${_fmt(Duration(milliseconds: _endMs - _startMs))}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
             const Spacer(),
             // Compact icon-only action buttons — never truncate, always fit.
             _actionIcon('Layers', Icons.layers_rounded, _openLayers),
@@ -2023,6 +2091,7 @@ class _EditorScreenState extends State<EditorScreen> {
   }) {
     return GestureDetector(
       onTap: onTap,
+      onHorizontalDragStart: (_) => _snapshot(), // fires once per drag → move is undoable
       onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
       child: Container(
         alignment: Alignment.centerLeft,
@@ -2049,6 +2118,7 @@ class _EditorScreenState extends State<EditorScreen> {
           left: left - 9, top: 0, height: trackH,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (_) => _snapshot(), // trim change is undoable
             onHorizontalDragUpdate: (d) => setState(() => onDrag(d.delta.dx)),
             child: Container(
               width: 18,
@@ -2064,7 +2134,9 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _seek(double s) {
-    final ms = (s.clamp(0, _duration) * 1000).round();
+    // Clamp tap/drag seeks to the trim window so the preview stays inside the cut.
+    final lo = _startMs / 1000.0, hi = _endMs / 1000.0;
+    final ms = (s.clamp(lo, hi) * 1000).round();
     _vc!.seekTo(Duration(milliseconds: ms));
   }
 
@@ -2089,8 +2161,8 @@ class _EditorScreenState extends State<EditorScreen> {
     } else if (_selected is StickerOverlay) {
       final st = _selected as StickerOverlay;
       tools.addAll([
-        _tool(Icons.rotate_left, 'Rotate', () => _mutate(() => st.rotation -= math.pi / 12)),
-        _tool(Icons.rotate_right, '', () => _mutate(() => st.rotation += math.pi / 12)),
+        _tool(Icons.rotate_left, 'Left', () => _mutate(() => st.rotation -= math.pi / 12)),
+        _tool(Icons.rotate_right, 'Right', () => _mutate(() => st.rotation += math.pi / 12)),
         _tool(Icons.flip, 'Reset', () => _mutate(() { st.rotation = 0; st.scale = 1; })),
         _tool(Icons.animation, 'Animate', _openFadeSheet, active: st.anim != OverlayAnim.none || st.fadeIn > 0 || st.fadeOut > 0),
         _tool(Icons.copy, 'Copy', _duplicateSelected),
@@ -2098,8 +2170,8 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     } else if (_selected == 'logo') {
       tools.addAll([
-        _tool(Icons.rotate_left, 'Rotate', () => _mutate(() => _project!.logoRotation -= math.pi / 12)),
-        _tool(Icons.rotate_right, '', () => _mutate(() => _project!.logoRotation += math.pi / 12)),
+        _tool(Icons.rotate_left, 'Left', () => _mutate(() => _project!.logoRotation -= math.pi / 12)),
+        _tool(Icons.rotate_right, 'Right', () => _mutate(() => _project!.logoRotation += math.pi / 12)),
         _tool(Icons.refresh, 'Reset', () => _mutate(() { _project!.logoRotation = 0; _project!.logoScale = 1; })),
         _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
       ]);
