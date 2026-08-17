@@ -74,6 +74,7 @@ class SubtitleSegment {
     this.bold = true,
     this.italic = false,
     this.shadow = false,
+    this.opacity = 1.0,
   });
 
   String text;
@@ -102,6 +103,7 @@ class SubtitleSegment {
   bool bold;
   bool italic;
   bool shadow; // soft drop shadow
+  double opacity; // 0..1 layer opacity (multiplies fade/anim opacity)
 
   double get effectiveSize => fontSize * scale;
   Color get uiColor => Color(color);
@@ -124,6 +126,7 @@ class SubtitleSegment {
         bgEnabled: bgEnabled, bgColor: bgColor, align: align, z: z, hidden: hidden,
         fadeIn: fadeIn, fadeOut: fadeOut, anim: anim,
         letterSpacing: letterSpacing, lineHeight: lineHeight, bold: bold, italic: italic, shadow: shadow,
+        opacity: opacity,
       );
 
   Map<String, dynamic> toJson() => {
@@ -131,7 +134,7 @@ class SubtitleSegment {
         'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
         'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index, 'z': z, 'hid': hidden,
         'fi': fadeIn, 'fo': fadeOut, 'an': anim.index,
-        'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow,
+        'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow, 'op': opacity,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -147,6 +150,7 @@ class SubtitleSegment {
         anim: OverlayAnim.values[(j['an'] as int?) ?? 0],
         letterSpacing: (j['ls'] as num?)?.toDouble() ?? 0, lineHeight: (j['lh'] as num?)?.toDouble() ?? 1.15,
         bold: (j['bo'] as bool?) ?? true, italic: (j['it'] as bool?) ?? false, shadow: (j['sh'] as bool?) ?? false,
+        opacity: (j['op'] as num?)?.toDouble() ?? 1.0,
       );
 }
 
@@ -320,6 +324,7 @@ class EditorProject {
     this.musicVolume = 0.7,
     this.musicStart = 0.0,
     this.originalVolume = 1.0,
+    this.watermarkOn = true,
   })  : subtitles = subtitles ?? [],
         stickers = stickers ?? [];
 
@@ -342,6 +347,7 @@ class EditorProject {
   double? trimEnd; // seconds (null = clip end)
   double duration; // full clip duration seconds
   AspectOption aspect;
+  bool watermarkOn; // burn the app watermark (Pro can turn it off)
 
   double get outStart => trimStart;
   double get outEnd => trimEnd ?? duration;
@@ -358,6 +364,7 @@ class EditorProject {
         'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
         'musicPath': musicPath, 'musicVolume': musicVolume, 'musicStart': musicStart, 'originalVolume': originalVolume,
+        'watermarkOn': watermarkOn,
       };
 
   void restore(Map<String, dynamic> s) {
@@ -377,6 +384,7 @@ class EditorProject {
     trimStart = (s['trimStart'] as num).toDouble();
     trimEnd = (s['trimEnd'] as num?)?.toDouble();
     aspect = AspectOption.all[s['aspect'] as int];
+    watermarkOn = (s['watermarkOn'] as bool?) ?? true;
   }
 
   static int _aspectIndex(AspectOption a) => AspectOption.all.indexOf(a).clamp(0, AspectOption.all.length - 1);

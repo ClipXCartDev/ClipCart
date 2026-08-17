@@ -82,7 +82,20 @@ class TextRenderService {
     }
     fill.paint(canvas, off);
 
-    final img = await rec.endRecording().toImage(w, h);
+    ui.Image img;
+    if (s.opacity < 0.995) {
+      // Re-composite the whole layer at reduced opacity so export matches preview.
+      final rec2 = ui.PictureRecorder();
+      final c2 = Canvas(rec2);
+      final layerImg = await rec.endRecording().toImage(w, h);
+      c2.saveLayer(Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+          Paint()..color = Color.fromRGBO(0, 0, 0, s.opacity.clamp(0.0, 1.0)));
+      c2.drawImage(layerImg, Offset.zero, Paint());
+      c2.restore();
+      img = await rec2.endRecording().toImage(w, h);
+    } else {
+      img = await rec.endRecording().toImage(w, h);
+    }
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
     final dir = await getTemporaryDirectory();
     final path = '${dir.path}/txt_$index.png';

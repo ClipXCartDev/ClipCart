@@ -301,6 +301,59 @@ class _EditorScreenState extends State<EditorScreen> {
     _startTyping(seg);
   }
 
+  /// Client-required overlay presets. All reuse SubtitleSegment (styled text that
+  /// exports through the same PNG-overlay path) so they're fully editable after.
+  void _addUsername() {
+    _snapshot();
+    final seg = SubtitleSegment(
+      text: '@yourhandle', start: 0, end: _duration <= 0 ? 3 : _duration,
+      fontSize: 34, dx: 0.5, dy: 0.93, bold: true,
+      bgEnabled: true, bgColor: 0x99000000, color: 0xFFFFFFFF, z: _topZ(),
+    );
+    setState(() { _project!.subtitles.add(seg); _selected = seg; });
+    _startTyping(seg);
+  }
+
+  void _addCta() {
+    _snapshot();
+    final dz = _duration;
+    // last ~2.5s call-to-action pill
+    final s0 = dz <= 0 ? 0.0 : (dz - 2.5).clamp(0.0, dz);
+    final seg = SubtitleSegment(
+      text: 'Follow for more', start: s0, end: dz <= 0 ? 3 : dz,
+      fontSize: 40, dx: 0.5, dy: 0.5, bold: true,
+      bgEnabled: true, bgColor: 0xFFFF4D6D, color: 0xFFFFFFFF,
+      anim: OverlayAnim.popIn, z: _topZ(),
+    );
+    setState(() { _project!.subtitles.add(seg); _selected = seg; });
+    _startTyping(seg);
+  }
+
+  void _addEndingScreen() {
+    _snapshot();
+    final dz = _duration <= 0 ? 3.0 : _duration;
+    final s0 = (dz - 2.5).clamp(0.0, dz);
+    // Full-width dark outro card with big centered text over the last ~2.5s.
+    final card = SubtitleSegment(
+      text: 'Thanks for watching', start: s0, end: dz,
+      fontSize: 52, dx: 0.5, dy: 0.5, bold: true,
+      bgEnabled: true, bgColor: 0xE60B0A0C, color: 0xFFFFFFFF,
+      anim: OverlayAnim.fade, fadeIn: 0.3, z: _topZ(),
+    );
+    setState(() { _project!.subtitles.add(card); _selected = card; });
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Outro card added to the last 2.5s — tap to edit')));
+    _startTyping(card);
+  }
+
+  void _toggleWatermark() {
+    _mutate(() => _project!.watermarkOn = !_project!.watermarkOn);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_project!.watermarkOn ? 'Watermark on' : 'Watermark removed'),
+      ));
+    }
+  }
+
   void _editSelectedSubtitle() {
     if (_selected is SubtitleSegment) _startTyping(_selected as SubtitleSegment);
   }
@@ -436,6 +489,8 @@ class _EditorScreenState extends State<EditorScreen> {
                 // Text SIZE slider (client-requested: length/size adjust). Drives the
                 // same scale as pinch; range matches the pinch clamp (0.4–4.0).
                 _fadeRowGeneric('Size', s.scale, 0.4, 4.0, (v) { snap(); setSheet(() { s.scale = v; setState(() {}); }); }, suffix: 'x'),
+                _fadeRowGeneric('Opacity', s.opacity, 0.1, 1.0, (v) { snap(); setSheet(() { s.opacity = v; setState(() {}); }); }, suffix: ''),
+                _fadeRowGeneric('Outline', s.strokeWidth, 0, 12, (v) { snap(); setSheet(() { s.strokeWidth = v; setState(() {}); }); }, suffix: 'px'),
                 _fadeRowGeneric('Letter spacing', s.letterSpacing, -3, 12, (v) { snap(); setSheet(() { s.letterSpacing = v; setState(() {}); }); }, suffix: 'px'),
                 _fadeRowGeneric('Line height', s.lineHeight, 0.8, 2.0, (v) { snap(); setSheet(() { s.lineHeight = v; setState(() {}); }); }, suffix: 'x'),
                 const SizedBox(height: 12),
@@ -724,10 +779,10 @@ class _EditorScreenState extends State<EditorScreen> {
   static const _styleTemplates = [
     {'name': 'Bold Meme', 'font': 'Anton', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 6.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
     {'name': 'Subtitle', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xB3000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Impact', 'font': 'ArchivoBlack', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
-    {'name': 'Neon Pop', 'font': 'BebasNeue', 'color': 0xFFFF4D6D, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.bounce},
+    {'name': 'Impact', 'font': 'Archivo Black', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
+    {'name': 'Neon Pop', 'font': 'Bebas Neue', 'color': 0xFFFF4D6D, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.bounce},
     {'name': 'Sunshine', 'font': 'Poppins', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideUp},
-    {'name': 'Marker', 'font': 'PermanentMarker', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.shake},
+    {'name': 'Marker', 'font': 'Permanent Marker', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.shake},
     {'name': 'Retro', 'font': 'Lobster', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideDown},
     {'name': 'Headline', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFFFF4D6D, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.typewriter},
     {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
@@ -1683,6 +1738,15 @@ class _EditorScreenState extends State<EditorScreen> {
                       ),
                     if (!v.isPlaying && _selected == null)
                       IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 54, color: Colors.white.withOpacity(0.5)))),
+                    // App watermark (Pro can turn it off via the 'Mark' tool)
+                    if (_project!.watermarkOn)
+                      Positioned(
+                        right: 8, bottom: 8,
+                        child: IgnorePointer(child: Text('ClipCart',
+                          style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: (h * 0.028).clamp(9, 20),
+                            fontWeight: FontWeight.w800, letterSpacing: 0.3,
+                            shadows: const [Shadow(color: Colors.black54, blurRadius: 3)]))),
+                      ),
                   ],
                 );
               },
@@ -1761,7 +1825,7 @@ class _EditorScreenState extends State<EditorScreen> {
           }),
           child: Builder(builder: (_) {
             final af = selected ? const AnimFrame() : s.animAt(t);
-            final op = (selected ? 1.0 : s.opacityAt(t) * af.opacity).clamp(0.15, 1.0);
+            final op = ((selected ? 1.0 : s.opacityAt(t) * af.opacity) * s.opacity).clamp(0.06, 1.0);
             return Opacity(
               opacity: op,
               child: Transform.translate(
@@ -2054,7 +2118,9 @@ class _EditorScreenState extends State<EditorScreen> {
             final stkTop = laneTop;
             return GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTapDown: (d) => _seek(sec(d.localPosition.dx)),
+              // In trim mode the parent must NOT seek — otherwise a tap/drag near a
+              // handle steals the gesture and the trim feels broken.
+              onTapDown: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx)),
               onHorizontalDragUpdate: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx.clamp(0, w))),
               child: Stack(clipBehavior: Clip.none, children: [
                 // ---- base video track (filmstrip look) ----
@@ -2127,11 +2193,11 @@ class _EditorScreenState extends State<EditorScreen> {
                       }),
                     ),
                   ),
-                // trim handles (only affect the base track region)
-                if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
                 // playhead across the whole timeline
                 Positioned(left: ph.clamp(0, w) - 1, top: -2, bottom: -2, child: IgnorePointer(child: Container(width: 2, color: Colors.white))),
                 Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)))),
+                // trim handles LAST so they sit above the playhead and stay grabbable
+                if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
               ]),
             );
           },
@@ -2173,24 +2239,85 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _dim() => DecoratedBox(decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(7)));
 
+  // Which trim handle is being dragged (null = none). Kept in State so the drag
+  // receiver — a STABLE full-width layer that never moves during the gesture — can
+  // route absolute finger position to the right edge. A moving GestureDetector (the
+  // old per-handle approach) lost the pointer on the rebuild that repositioned it,
+  // which is why the client's trim "didn't adjust in one swipe".
+  int _trimDrag = 0; // 0 none, 1 start, 2 end
+  double _trimStartX = 0; // finger x at drag start (local)
+  double _trimStartVal = 0; // trim value at drag start
+
   List<Widget> _trimHandles(double Function(double) x, double Function(double) sec, double w, EditorProject p, double dur, double trackH) {
-    Widget handle(double left, void Function(double) onDrag) => Positioned(
-          left: left - 9, top: 0, height: trackH,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: (_) => _snapshot(), // trim change is undoable
-            onHorizontalDragUpdate: (d) => setState(() => onDrag(d.delta.dx)),
+    const barW = 18.0;
+    final startX = x(p.trimStart).clamp(0.0, w);
+    final endX = x(p.outEnd).clamp(0.0, w);
+
+    Widget bar(double leftPx, bool isStart) => Positioned(
+          left: (leftPx - barW / 2).clamp(0.0, w - barW),
+          top: -6, height: trackH + 12, width: barW,
+          child: IgnorePointer(
             child: Container(
-              width: 18,
-              decoration: BoxDecoration(color: _kAccent, borderRadius: BorderRadius.circular(4)),
-              child: const Icon(Icons.drag_indicator, size: 14, color: Colors.white),
+              decoration: BoxDecoration(
+                color: (_trimDrag == (isStart ? 1 : 2)) ? Colors.white : _kAccent,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4)]),
+              child: Icon(Icons.drag_indicator, size: 15, color: (_trimDrag == (isStart ? 1 : 2)) ? _kAccent : Colors.white),
             ),
           ),
         );
+
+    // STABLE full-width drag receiver — spans the whole track, never moves, so the
+    // gesture is never lost mid-drag. On start it grabs the nearer handle; on update
+    // it maps the finger's ABSOLUTE local x → time (pins the handle to the finger).
+    final receiver = Positioned.fill(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (d) {
+          final fx = d.localPosition.dx;
+          _trimDrag = (fx - startX).abs() <= (fx - endX).abs() ? 1 : 2;
+          _trimStartX = fx;
+          _trimStartVal = _trimDrag == 1 ? p.trimStart : p.outEnd;
+          _snapshot();
+          HapticFeedback.selectionClick();
+          setState(() {});
+        },
+        onHorizontalDragUpdate: (d) => setState(() {
+          final target = (_trimStartVal + sec(d.localPosition.dx - _trimStartX));
+          if (_trimDrag == 1) {
+            p.trimStart = target.clamp(0, p.outEnd - 0.3);
+            _vc?.seekTo(Duration(milliseconds: (p.trimStart * 1000).round()));
+          } else if (_trimDrag == 2) {
+            p.trimEnd = target.clamp(p.trimStart + 0.3, dur);
+            _vc?.seekTo(Duration(milliseconds: (p.outEnd * 1000).round()));
+          }
+        }),
+        onHorizontalDragEnd: (_) { setState(() => _trimDrag = 0); HapticFeedback.selectionClick(); },
+        onHorizontalDragCancel: () => setState(() => _trimDrag = 0),
+      ),
+    );
+
+    Widget bubble(double leftPx, double secVal) => Positioned(
+          left: (leftPx - 24).clamp(0.0, w - 48), top: -28,
+          child: IgnorePointer(child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: _kAccent, borderRadius: BorderRadius.circular(8)),
+            child: Text(_fmtSec(secVal), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
+          )),
+        );
+
     return [
-      handle(x(p.trimStart), (dx) => p.trimStart = (p.trimStart + sec(dx)).clamp(0, p.outEnd - 0.3)),
-      handle(x(p.outEnd), (dx) => p.trimEnd = (p.outEnd + sec(dx)).clamp(p.trimStart + 0.3, dur)),
+      receiver, // must be first so the bars paint on top
+      bar(startX, true),
+      bar(endX, false),
+      if (_trimDrag == 1) bubble(startX, p.trimStart),
+      if (_trimDrag == 2) bubble(endX, p.outEnd),
     ];
+  }
+
+  String _fmtSec(double s) {
+    final m = (s ~/ 60), sec = (s % 60);
+    return '${m}:${sec.toStringAsFixed(1).padLeft(4, '0')}';
   }
 
   void _seek(double s) {
@@ -2238,10 +2365,15 @@ class _EditorScreenState extends State<EditorScreen> {
     } else {
       tools.addAll([
         _tool(Icons.text_fields, 'Add text', _addSubtitle),
+        _tool(Icons.alternate_email_rounded, 'Username', _addUsername),
+        _tool(Icons.campaign_rounded, 'CTA', _addCta),
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
+        _tool(Icons.movie_filter_rounded, 'Outro', _addEndingScreen),
         _tool(Icons.music_note_rounded, 'Music', _openMusicSheet, active: _project!.musicPath != null),
         _tool(Icons.image_outlined, 'Logo', _pickLogo),
+        _tool(_project!.watermarkOn ? Icons.branding_watermark : Icons.branding_watermark_outlined, 'Mark',
+            _toggleWatermark, active: _project!.watermarkOn),
         _tool(Icons.palette_rounded, 'Brand', _openBrandKit),
       ]);
     }

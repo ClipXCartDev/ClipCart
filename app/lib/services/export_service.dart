@@ -159,6 +159,16 @@ class ExportService {
       }
       cur = 'o$k';
     }
+    // App watermark (bottom-right), burned only when enabled. Uses drawtext with the
+    // bundled default font; escape the font path for the filtergraph.
+    if (p.watermarkOn && p.defaultFontPath.isNotEmpty && File(p.defaultFontPath).existsSync()) {
+      final fp = p.defaultFontPath.replaceAll('\\', '/').replaceAll(':', '\\:');
+      fc.write("[$cur]drawtext=fontfile='$fp':text='ClipCart':"
+          "fontcolor=white@0.55:fontsize=h*0.030:"
+          "x=w-tw-h*0.02:y=h-th-h*0.02:"
+          "shadowcolor=black@0.5:shadowx=2:shadowy=2[wm];");
+      cur = 'wm';
+    }
     fc.write('[$cur]null[vout]');
 
     // ---- audio: original (0:a) optionally ducked under an added music track ----
