@@ -27,21 +27,29 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def _create_token(subject: str, token_type: str, expires: timedelta) -> tuple[str, str, datetime]:
+def _create_token(
+    subject: str, token_type: str, expires: timedelta, did: str | None = None
+) -> tuple[str, str, datetime]:
     now = datetime.now(timezone.utc)
     exp = now + expires
     jti = str(uuid.uuid4())
     payload = {"sub": subject, "type": token_type, "iat": now, "exp": exp, "jti": jti}
+    if did is not None:
+        payload["did"] = did
     token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token, jti, exp
 
 
-def create_access_token(subject: str) -> tuple[str, str, datetime]:
-    return _create_token(subject, ACCESS, timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+def create_access_token(subject: str, did: str | None = None) -> tuple[str, str, datetime]:
+    return _create_token(
+        subject, ACCESS, timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES), did
+    )
 
 
-def create_refresh_token(subject: str) -> tuple[str, str, datetime]:
-    return _create_token(subject, REFRESH, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
+def create_refresh_token(subject: str, did: str | None = None) -> tuple[str, str, datetime]:
+    return _create_token(
+        subject, REFRESH, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS), did
+    )
 
 
 def decode_token(token: str) -> dict:

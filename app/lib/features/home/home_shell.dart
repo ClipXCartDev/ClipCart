@@ -78,16 +78,22 @@ class _GlassNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final glass = (dark ? Colors.black : Colors.white).withOpacity(0.62);
+    final tint = dark ? Colors.black : Colors.white;
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        // stronger blur + very low tint so the gallery reads clearly THROUGH the
+        // bar; a top→bottom fade blends the content into the footer (no hard edge).
+        filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
         child: Container(
           decoration: BoxDecoration(
-            color: glass,
-            border: Border(top: BorderSide(color: (dark ? Colors.white : Colors.black).withOpacity(0.06))),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [tint.withOpacity(0.0), tint.withOpacity(0.30), tint.withOpacity(0.52)],
+              stops: const [0.0, 0.35, 1.0],
+            ),
           ),
-          padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+          padding: EdgeInsets.only(top: 14, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -115,7 +121,9 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = selected ? AppColors.accent : Theme.of(context).colorScheme.onSurface.withOpacity(0.55);
+    final c = selected ? AppColors.accent : Theme.of(context).colorScheme.onSurface.withOpacity(0.72);
+    // soft shadow keeps icons/labels legible over bright gallery tiles behind the glass
+    final shadow = [Shadow(color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.7), blurRadius: 6)];
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
@@ -126,10 +134,10 @@ class _NavItem extends StatelessWidget {
             scale: selected ? 1.12 : 1.0,
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
-            child: Icon(icon, color: c, size: 24),
+            child: Icon(icon, color: c, size: 24, shadows: shadow),
           ),
           const SizedBox(height: 3),
-          Text(label, style: TextStyle(color: c, fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
+          Text(label, style: TextStyle(color: c, fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600, shadows: shadow)),
         ]),
       ),
     );
@@ -273,7 +281,7 @@ class _MenuRow extends StatelessWidget {
     final c = danger ? const Color(0xFFF04438) : null;
     return ListTile(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      leading: Icon(icon, color: c ?? const Color(0xFFFF4D6D), size: 22),
+      leading: Icon(icon, color: c ?? AppColors.accent, size: 22),
       title: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: c)),
       trailing: danger ? null : Icon(Icons.chevron_right_rounded, color: Colors.grey.withOpacity(0.5)),
       onTap: onTap,

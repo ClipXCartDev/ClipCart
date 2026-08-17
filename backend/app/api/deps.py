@@ -8,9 +8,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from sqlalchemy import select
+
 from app.core.security import ACCESS, decode_token
 from app.db.session import get_db
-from app.models import Role, User
+from app.models import Device, Role, User
 
 _bearer = HTTPBearer(auto_error=True)
 
@@ -38,6 +40,23 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None or not user.is_active:
         raise creds_exc
+
+    # Device-binding enforcement: if the token was issued for a specific device,
+    # that Device row must still exist for this user. Removing a device (freeing a
+    # slot) therefore invalidates its tokens on every request, not just at login.
+    # Tokens without a `did` claim (older sessions) are allowed for backward compat.
+    did = payload.get("did")
+    if did is not None:
+        try:
+            device_id = uuid.UUID(str(did))
+        except ValueError:
+            raise creds_exc
+        device = db.scalar(
+            select(Device).where(Device.id == device_id, Device.user_id == user.id)
+        )
+        if device is None:
+            raise creds_exc
+
     return user
 
 

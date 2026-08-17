@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/theme.dart';
 import '../../models/plan.dart';
@@ -32,6 +33,9 @@ class _PlansScreenState extends State<PlansScreen> {
     try {
       final order = await context.read<BillingService>().checkout(plan.id);
       if (!mounted) return;
+      final payData = (order['qr_content']?.toString().isNotEmpty ?? false)
+          ? order['qr_content'].toString()
+          : order['checkout_url'].toString();
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -41,8 +45,28 @@ class _PlansScreenState extends State<PlansScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Binance Pay (USDT · BEP20)', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              SelectableText(order['qr_content']?.toString() ?? order['checkout_url'].toString(), style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 14, offset: const Offset(0, 4))],
+                  ),
+                  child: QrImageView(
+                    data: payData,
+                    version: QrVersions.auto,
+                    size: 200,
+                    backgroundColor: Colors.white,
+                    gapless: true,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Scan with the Binance app to pay', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+              const SizedBox(height: 6),
+              SelectableText(payData, style: const TextStyle(fontSize: 11, color: Colors.grey)),
               const SizedBox(height: 10),
               const Text('Pay in the Binance app. Your plan unlocks automatically once the payment is confirmed — no need to refresh.', style: TextStyle(color: Colors.grey, fontSize: 12)),
             ],

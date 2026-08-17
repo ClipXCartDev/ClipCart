@@ -17,6 +17,30 @@ import 'features/player/clip_player_screen.dart';
 import 'models/clip.dart';
 import 'state/auth_controller.dart';
 
+/// Premium push-over transition: subtle fade + scale (0.96→1.0) + short slide-up,
+/// ~250ms easeOutCubic. Used for routes that push over existing content.
+Page<T> _fadeScalePage<T>(GoRouterState state, Widget child) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    transitionDuration: const Duration(milliseconds: 250),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.035), end: Offset.zero).animate(curved),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
+            child: child,
+          ),
+        ),
+      );
+    },
+  );
+}
+
 class ClipCartApp extends StatefulWidget {
   const ClipCartApp({super.key});
   @override
@@ -49,26 +73,26 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
         GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
         GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
-        GoRoute(path: '/clip/:slug', builder: (c, s) => ClipPlayerScreen(slug: s.pathParameters['slug']!)),
+        GoRoute(path: '/clip/:slug', pageBuilder: (c, s) => _fadeScalePage(s, ClipPlayerScreen(slug: s.pathParameters['slug']!))),
         GoRoute(
           path: '/player',
-          builder: (c, s) {
+          pageBuilder: (c, s) {
             final m = s.extra as Map<String, dynamic>?;
             final clips = (m?['clips'] as List?)?.cast<Clip>() ?? const <Clip>[];
-            return ReelsPlayerScreen(clips: clips, startIndex: (m?['index'] as int?) ?? 0);
+            return _fadeScalePage(s, ReelsPlayerScreen(clips: clips, startIndex: (m?['index'] as int?) ?? 0));
           },
         ),
         GoRoute(
           path: '/editor',
-          builder: (c, s) {
+          pageBuilder: (c, s) {
             final clip = s.extra is Clip ? s.extra as Clip : null;
-            return EditorScreen(clip: clip, title: clip?.title);
+            return _fadeScalePage(s, EditorScreen(clip: clip, title: clip?.title));
           },
         ),
-        GoRoute(path: '/plans', builder: (_, __) => const PlansScreen()),
-        GoRoute(path: '/devices', builder: (_, __) => const DevicesScreen()),
-        GoRoute(path: '/creator', builder: (_, __) => const CreatorDashboard()),
-        GoRoute(path: '/creator/upload', builder: (_, __) => const UploadClipScreen()),
+        GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansScreen())),
+        GoRoute(path: '/devices', pageBuilder: (c, s) => _fadeScalePage(s, const DevicesScreen())),
+        GoRoute(path: '/creator', pageBuilder: (c, s) => _fadeScalePage(s, const CreatorDashboard())),
+        GoRoute(path: '/creator/upload', pageBuilder: (c, s) => _fadeScalePage(s, const UploadClipScreen())),
       ],
     );
   }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
 import '../../widgets/premium_empty_state.dart';
 
-const _kAccent = Color(0xFFFF4D6D);
+const _kAccent = AppColors.accent;
 
 /// Lists the devices bound to the account (max-2 anti-piracy control) and lets
 /// the user unbind one to free a slot. Backed by AuthService.devices() /

@@ -13,9 +13,9 @@ from app.models import Device, RefreshToken, User
 from app.schemas.auth import DeviceInfo, DeviceOut, TokenOut
 
 
-def issue_tokens(db: Session, user: User) -> TokenOut:
-    access, _, _ = create_access_token(str(user.id))
-    refresh, jti, exp = create_refresh_token(str(user.id))
+def issue_tokens(db: Session, user: User, did: str | None = None) -> TokenOut:
+    access, _, _ = create_access_token(str(user.id), did)
+    refresh, jti, exp = create_refresh_token(str(user.id), did)
     db.add(RefreshToken(user_id=user.id, jti=jti, expires_at=exp))
     db.commit()
     return TokenOut(access_token=access, refresh_token=refresh)
@@ -28,10 +28,14 @@ def revoke_refresh(db: Session, jti: str) -> None:
         db.commit()
 
 
-def bind_device(db: Session, user: User, info: DeviceInfo | None, ip: str | None) -> None:
-    """Register/refresh the calling device. Enforces MAX_DEVICES (decisions §7.1)."""
+def bind_device(db: Session, user: User, info: DeviceInfo | None, ip: str | None) -> str | None:
+    """Register/refresh the calling device. Enforces MAX_DEVICES (decisions §7.1).
+
+    Returns the bound Device row id (str) so it can be embedded in the access
+    token as a `did` claim, or None when no device info was supplied.
+    """
     if info is None:
-        return
+        return None
 
     now = datetime.now(timezone.utc)
     existing = db.scalar(
@@ -43,7 +47,7 @@ def bind_device(db: Session, user: User, info: DeviceInfo | None, ip: str | None
         if ip:
             existing.ip = ip
         db.commit()
-        return
+        return str(existing.id)
 
     active = db.scalars(select(Device).where(Device.user_id == user.id)).all()
     if len(active) >= settings.MAX_DEVICES:
@@ -56,13 +60,13 @@ def bind_device(db: Session, user: User, info: DeviceInfo | None, ip: str | None
             },
         )
 
-    db.add(
-        Device(
-            user_id=user.id,
-            device_id=info.device_id,
-            os=info.os,
-            app_version=info.app_version,
-            ip=ip,
-        )
+    device = Device(
+        user_id=user.id,
+        device_id=info.device_id,
+        os=info.os,
+        app_version=info.app_version,
+        ip=ip,
     )
+    db.add(device)
     db.commit()
+    return str(device.id)

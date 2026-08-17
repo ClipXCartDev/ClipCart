@@ -5,6 +5,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
@@ -161,7 +162,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     Navigator.pop(ctx);
                     _reloadGrid();
                   },
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF4D6D), padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                   child: const Text('Show results', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
                 ),
               ),
@@ -209,7 +210,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                             padding: EdgeInsets.only(top: 8, bottom: 80 + MediaQuery.of(context).viewPadding.bottom),
                             child: Center(
                               child: _more
-                                  ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFFFF4D6D)))
+                                  ? const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.accent))
                                   : Text(_grid.isEmpty ? 'No clips match your filters' : "That's all ${_grid.length} clips", style: const TextStyle(color: Colors.grey, fontSize: 12)),
                             ),
                           ),
@@ -243,7 +244,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           // minimal filter icon — dot shows when a filter is active
           Stack(children: [
             IconButton(onPressed: _openFilters, icon: const Icon(Icons.tune_rounded)),
-            if (_filtered) const Positioned(right: 8, top: 8, child: CircleAvatar(radius: 4, backgroundColor: Color(0xFFFF4D6D))),
+            if (_filtered) const Positioned(right: 8, top: 8, child: CircleAvatar(radius: 4, backgroundColor: AppColors.accent)),
           ]),
         ],
       ),

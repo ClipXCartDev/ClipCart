@@ -3,6 +3,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
@@ -75,7 +76,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search clips, movies, moods…',
                     hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFFF4D6D)),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.accent),
                     suffixIcon: _q.text.isEmpty
                         ? null
                         : IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () { _q.clear(); setState(() => _future = null); }),
@@ -128,7 +129,7 @@ class _SearchScreenState extends State<SearchScreen> {
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: muted ? Colors.grey.withOpacity(0.25) : const Color(0x33FF4D6D)),
           ),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: muted ? null : const Color(0xFFE01A48))),
+          child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: muted ? null : AppColors.accentInk)),
         ),
       );
 
@@ -143,7 +144,7 @@ class _SearchScreenState extends State<SearchScreen> {
           return Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Text("Couldn't search right now.", style: TextStyle(color: Colors.grey.shade600)),
-              TextButton(onPressed: () => _search(), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+              TextButton(onPressed: () => _search(), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
             ]),
           );
         }

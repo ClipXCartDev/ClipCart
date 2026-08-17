@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme.dart';
+
 /// Consistent premium "nothing here yet" state — gradient icon ring, title,
 /// subtitle, optional CTA.
 class PremiumEmptyState extends StatelessWidget {
@@ -24,7 +26,7 @@ class PremiumEmptyState extends StatelessWidget {
                 gradient: LinearGradient(colors: [Color(0x22FF7A59), Color(0x22FF4D6D)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 42, color: const Color(0xFFFF4D6D)),
+              child: Icon(icon, size: 42, color: AppColors.accent),
             ),
             const SizedBox(height: 20),
             Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
@@ -34,7 +36,7 @@ class PremiumEmptyState extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: onCta,
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF4D6D), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.accent, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 child: Text(cta!, style: const TextStyle(fontWeight: FontWeight.w800)),
               ),
             ],

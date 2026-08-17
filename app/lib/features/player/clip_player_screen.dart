@@ -279,8 +279,20 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                 Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                  child: Icon(_faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: _faved.contains(clip.id) ? const Color(0xFFFF4D6D) : Colors.white, size: 22),
+                  // quick scale-pop (1.0→1.35→1.0) + color pulse whenever the faved state flips
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey(_faved.contains(clip.id)),
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 320),
+                    curve: Curves.easeOut,
+                    builder: (context, t, child) {
+                      // t: 0→1; bump peaks at t≈0.5 then settles back to 1.0
+                      final scale = 1.0 + 0.35 * (t < 0.5 ? (t * 2) : (1 - (t - 0.5) * 2));
+                      return Transform.scale(scale: scale, child: child);
+                    },
+                    child: Icon(_faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: _faved.contains(clip.id) ? const Color(0xFFFF4D6D) : Colors.white, size: 22),
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(_faved.contains(clip.id) ? 'Liked' : 'Like', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),

@@ -51,13 +51,13 @@ def register(body: RegisterIn, request: Request, db: Session = Depends(get_db)) 
     # new user back instead of leaving an orphan account that can't log in.
     db.flush()  # assign user.id without committing
     try:
-        bind_device(db, user, body.device, _client_ip(request))
+        did = bind_device(db, user, body.device, _client_ip(request))
     except HTTPException:
         db.rollback()
         raise
     db.refresh(user)
 
-    tokens = issue_tokens(db, user)
+    tokens = issue_tokens(db, user, did)
     return AuthOut(user=UserOut.model_validate(user), tokens=tokens)
 
 
@@ -69,8 +69,8 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)) -> Aut
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Account disabled")
 
-    bind_device(db, user, body.device, _client_ip(request))
-    tokens = issue_tokens(db, user)
+    did = bind_device(db, user, body.device, _client_ip(request))
+    tokens = issue_tokens(db, user, did)
     return AuthOut(user=UserOut.model_validate(user), tokens=tokens)
 
 
@@ -98,8 +98,8 @@ def google_login(body: GoogleIn, request: Request, db: Session = Depends(get_db)
         db.commit()
         db.refresh(user)
 
-    bind_device(db, user, body.device, _client_ip(request))
-    tokens = issue_tokens(db, user)
+    did = bind_device(db, user, body.device, _client_ip(request))
+    tokens = issue_tokens(db, user, did)
     return AuthOut(user=UserOut.model_validate(user), tokens=tokens)
 
 
@@ -125,9 +125,23 @@ def refresh(body: RefreshIn, db: Session = Depends(get_db)) -> TokenOut:
     if not user or not user.is_active:
         raise invalid
 
+    # Carry the device binding forward. If the device was removed (slot freed on
+    # another device), refresh is rejected so the session can't survive.
+    did = payload.get("did")
+    if did is not None:
+        try:
+            device_uuid = uuid.UUID(str(did))
+        except ValueError:
+            raise invalid
+        device = db.scalar(
+            select(Device).where(Device.id == device_uuid, Device.user_id == user.id)
+        )
+        if device is None:
+            raise invalid
+
     # Rotate: revoke old jti, issue a fresh pair.
     revoke_refresh(db, row.jti)
-    return issue_tokens(db, user)
+    return issue_tokens(db, user, did)
 
 
 @router.get("/me", response_model=UserOut)

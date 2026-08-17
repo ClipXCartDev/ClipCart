@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../models/clip.dart';
 import '../../services/creator_service.dart';
 import '../../widgets/premium_empty_state.dart';
@@ -81,7 +82,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
           await context.push('/creator/upload');
           setState(_reload);
         },
-        backgroundColor: const Color(0xFFFF4D6D),
+        backgroundColor: AppColors.accent,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Upload', style: TextStyle(color: Colors.white)),
       ),
@@ -96,7 +97,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return Container(
                     height: 176,
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(16)),
                     child: const Center(child: CircularProgressIndicator(color: Colors.white)),
                   );
                 }
@@ -106,7 +107,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                     decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.15))),
                     child: Row(children: [
                       const Expanded(child: Text("Couldn't load your balance.", style: TextStyle(fontWeight: FontWeight.w600))),
-                      TextButton(onPressed: () => setState(_reload), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+                      TextButton(onPressed: () => setState(_reload), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
                     ]),
                   );
                 }
@@ -114,7 +115,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 final available = (e?['available'] as num?)?.toDouble() ?? 0;
                 return Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(16)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -131,7 +132,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFE01A48), padding: const EdgeInsets.symmetric(vertical: 12)),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.accentInk, padding: const EdgeInsets.symmetric(vertical: 12)),
                           onPressed: available > 0 ? () => _requestPayout(available) : null,
                           icon: const Icon(Icons.payments_rounded, size: 18),
                           label: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -170,7 +171,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                               width: 44, height: 56,
                               child: c.thumb != null
                                   ? Image.network(c.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF241E28)))
-                                  : const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]))),
+                                  : const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: AppColors.gradient))),
                             ),
                           ),
                           const SizedBox(width: 12),

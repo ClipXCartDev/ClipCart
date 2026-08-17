@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/theme.dart';
 import '../../widgets/premium_empty_state.dart';
 
 /// On-device export history — lists MP4 files written by ExportService.
@@ -53,14 +54,14 @@ class _ExportsScreenState extends State<ExportsScreen> {
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
+              return const Center(child: CircularProgressIndicator(color: AppColors.accent));
             }
             if (snap.hasError) {
               return ListView(children: [
                 const SizedBox(height: 80),
                 Center(child: Column(children: [
                   Text("Couldn't load your exports.", style: TextStyle(color: Colors.grey.shade600)),
-                  TextButton(onPressed: () => setState(() => _future = _load()), child: const Text('Retry', style: TextStyle(color: Color(0xFFE01A48), fontWeight: FontWeight.w800))),
+                  TextButton(onPressed: () => setState(() => _future = _load()), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
                 ])),
               ]);
             }
@@ -94,7 +95,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
                     onTap: () => _shareExport(f.path),
                     leading: Container(
                       width: 50, height: 50,
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(12)),
                       child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                     ),
                     title: Text(name.replaceAll('clip_', 'Export ').replaceAll('.mp4', ''), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
