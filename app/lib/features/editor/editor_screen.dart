@@ -194,6 +194,42 @@ class _EditorScreenState extends State<EditorScreen> {
   double get _duration => (_vc?.value.duration.inMilliseconds ?? 0) / 1000.0;
   double get _t => (_vc?.value.position.inMilliseconds ?? 0) / 1000.0;
 
+  /// Has the user made ANY edit worth warning about before discarding (back)?
+  bool get _hasEdits {
+    final p = _project;
+    if (p == null) return false;
+    return p.subtitles.isNotEmpty ||
+        p.stickers.isNotEmpty ||
+        p.logoPath != null ||
+        p.musicPath != null ||
+        p.trimStart > 0.01 ||
+        (p.trimEnd != null && p.trimEnd! < p.duration - 0.01) ||
+        !p.aspect.isOriginal ||
+        _undo.isNotEmpty;
+  }
+
+  /// Confirm before leaving with unsaved edits. Returns true if it's safe to pop.
+  Future<bool> _confirmDiscard() async {
+    if (!_hasEdits || _busy) return true;
+    final leave = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (_) => AlertDialog(
+        backgroundColor: _kPanel,
+        title: const Text('Discard changes?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+        content: const Text(
+          "You haven't exported this clip. If you leave now your edits will be lost.\nExport to save them to your gallery.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep editing', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Discard', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
+        ],
+      ),
+    );
+    return leave ?? false;
+  }
+
   /// Play/pause. Restarts from trimStart when parked at/outside the trim window.
   void _togglePlay() {
     final vc = _vc;
@@ -397,6 +433,9 @@ class _EditorScreenState extends State<EditorScreen> {
                   _adjIconToggle(Icons.format_color_fill, 'Shadow', s.shadow, () { snap(); setSheet(() { s.shadow = !s.shadow; setState(() {}); }); }),
                 ]),
                 const SizedBox(height: 16),
+                // Text SIZE slider (client-requested: length/size adjust). Drives the
+                // same scale as pinch; range matches the pinch clamp (0.4–4.0).
+                _fadeRowGeneric('Size', s.scale, 0.4, 4.0, (v) { snap(); setSheet(() { s.scale = v; setState(() {}); }); }, suffix: 'x'),
                 _fadeRowGeneric('Letter spacing', s.letterSpacing, -3, 12, (v) { snap(); setSheet(() { s.letterSpacing = v; setState(() {}); }); }, suffix: 'px'),
                 _fadeRowGeneric('Line height', s.lineHeight, 0.8, 2.0, (v) { snap(); setSheet(() { s.lineHeight = v; setState(() {}); }); }, suffix: 'x'),
                 const SizedBox(height: 12),
@@ -600,6 +639,16 @@ class _EditorScreenState extends State<EditorScreen> {
                 const SizedBox(width: 3),
                 const Icon(Icons.expand_more_rounded, size: 13, color: Colors.white38),
               ]),
+            ),
+            _chipDivider(),
+            // size steppers (client asked for text size adjust while typing)
+            _ghostChip(
+              onTap: () { if (s != null) setState(() => s.scale = (s.scale - 0.15).clamp(0.4, 4.0)); },
+              child: const Text('A−', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+            ),
+            _ghostChip(
+              onTap: () { if (s != null) setState(() => s.scale = (s.scale + 0.15).clamp(0.4, 4.0)); },
+              child: const Text('A+', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
             ),
             _chipDivider(),
             for (final p in _textPresets) _presetChip(s, p),
@@ -1493,13 +1542,23 @@ class _EditorScreenState extends State<EditorScreen> {
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmDiscard() && mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
       backgroundColor: _kBg,
       appBar: AppBar(
         backgroundColor: _kBg,
         foregroundColor: Colors.white,
         elevation: 0,
         titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () async { if (await _confirmDiscard() && mounted) Navigator.of(context).pop(); },
+        ),
         title: Text(widget.title ?? 'Editor', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
         actions: [
           _iconBtn(Icons.undo_rounded, _undo.isEmpty ? null : _undoAction),
@@ -1535,6 +1594,7 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -1545,14 +1605,25 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ---------- canvas ----------
   Widget _canvas() {
+    final nativeAr = _vc!.value.aspectRatio == 0 ? 9 / 16 : _vc!.value.aspectRatio;
+    // When an aspect crop is chosen, the CANVAS itself becomes that ratio and the
+    // video is cover-cropped to fill it — so the editor shows the REAL cropped
+    // result live (client: "actual crop hoke editor mai dikhna chahiye"), and
+    // overlays are positioned on the cropped frame = perfectly WYSIWYG with export.
+    final canvasAr = _project!.aspect.ratio ?? nativeAr;
     return Center(
       child: AspectRatio(
-        aspectRatio: _vc!.value.aspectRatio == 0 ? 9 / 16 : _vc!.value.aspectRatio,
+        aspectRatio: canvasAr,
         child: LayoutBuilder(
           builder: (context, box) {
             final w = box.maxWidth, h = box.maxHeight;
-            final videoH = _vc!.value.size.height == 0 ? 1280.0 : _vc!.value.size.height;
-            final scale = h / videoH; // WYSIWYG video→canvas px
+            // video→canvas px scale: the cropped frame height maps to the source
+            // crop height. With a crop, the visible source height = min(ih, iw/ar).
+            final srcW = _vc!.value.size.width == 0 ? 720.0 : _vc!.value.size.width;
+            final srcH = _vc!.value.size.height == 0 ? 1280.0 : _vc!.value.size.height;
+            final ar = _project!.aspect.ratio;
+            final cropSrcH = ar == null ? srcH : (srcH < srcW / ar ? srcH : srcW / ar);
+            final scale = h / cropSrcH; // WYSIWYG video→canvas px on the cropped frame
             return ValueListenableBuilder<VideoPlayerValue>(
               valueListenable: _vc!,
               builder: (context, v, _) {
@@ -1578,9 +1649,20 @@ class _EditorScreenState extends State<EditorScreen> {
                           _togglePlay();
                         }
                       },
-                      child: VideoPlayer(_vc!),
+                      // Cover-crop the video into the (possibly cropped) canvas so the
+                      // editor shows exactly what exports. ClipRect keeps overflow out.
+                      child: ClipRect(
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          clipBehavior: Clip.hardEdge,
+                          child: SizedBox(
+                            width: _vc!.value.size.width == 0 ? 720 : _vc!.value.size.width,
+                            height: _vc!.value.size.height == 0 ? 1280 : _vc!.value.size.height,
+                            child: VideoPlayer(_vc!),
+                          ),
+                        ),
+                      ),
                     ),
-                    if (_project!.aspect.ratio != null) _cropGuide(w, h),
                     ...overlays.map((e) => e.value),
                     if (_snapX) Positioned(left: w / 2 - 0.5, top: 0, bottom: 0, child: const IgnorePointer(child: SizedBox(width: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
                     if (_snapY) Positioned(top: h / 2 - 0.5, left: 0, right: 0, child: const IgnorePointer(child: SizedBox(height: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
@@ -1606,28 +1688,6 @@ class _EditorScreenState extends State<EditorScreen> {
               },
             );
           },
-        ),
-      ),
-    );
-  }
-
-  Widget _cropGuide(double w, double h) {
-    final ar = _project!.aspect.ratio!;
-    final frameAr = w / h;
-    double cw, ch;
-    if (ar < frameAr) {
-      ch = h;
-      cw = h * ar;
-    } else {
-      cw = w;
-      ch = w / ar;
-    }
-    return IgnorePointer(
-      child: Center(
-        child: Container(
-          width: cw,
-          height: ch,
-          decoration: BoxDecoration(border: Border.all(color: Colors.white.withOpacity(0.75), width: 1.5)),
         ),
       ),
     );

@@ -54,28 +54,18 @@ class ExportService {
     final hasLogo = p.logoPath != null && !p.logoHidden && File(p.logoPath!).existsSync();
     final stickers = p.stickers.where((s) => !s.hidden && inWindow(s.start, s.end) && File(s.path).existsSync()).toList();
 
-    // Aspect crop (center). Also compute the crop GEOMETRY in source pixels so we
-    // can convert overlay full-frame fractions → cropped-frame fractions, keeping
-    // export positions WYSIWYG with the preview (which positions on the full frame).
+    // Aspect crop (center). The editor now crops the preview LIVE (canvas = crop
+    // ratio, video cover-cropped), so overlay dx/dy are already stored relative to
+    // the CROPPED frame — identical to FFmpeg's main_w/main_h here. No remap needed:
+    // preview and export share the same cropped coordinate space (true WYSIWYG).
     String cropFilter = 'null';
     final ar = p.aspect.ratio;
-    // full-frame center fraction → cropped-frame fraction (identity when no crop)
-    double Function(double) cropDx = (dx) => dx;
-    double Function(double) cropDy = (dy) => dy;
-    double cropScaleW = 1.0; // multiply overlay width fractions by this under a crop
     if (ar != null) {
       cropFilter = "crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})',setsar=1";
-      final iw = (probe.width ?? 0).toDouble();
-      final ih = (probe.height ?? 0).toDouble();
-      if (iw > 0 && ih > 0) {
-        final cw = (iw < ih * ar) ? iw : ih * ar; // min(iw, ih*ar)
-        final ch = (ih < iw / ar) ? ih : iw / ar; // min(ih, iw/ar)
-        final x0 = (iw - cw) / 2, y0 = (ih - ch) / 2;
-        cropDx = (dx) => ((iw * dx - x0) / cw).clamp(0.0, 1.0);
-        cropDy = (dy) => ((ih * dy - y0) / ch).clamp(0.0, 1.0);
-        cropScaleW = iw / cw; // 0.18*iw source px → (0.18*iw/cw) of cropped main_w
-      }
     }
+    double cropDx(double dx) => dx;
+    double cropDy(double dy) => dy;
+    const cropScaleW = 1.0;
 
     final outDir = Directory('${(await getApplicationDocumentsDirectory()).path}/exports')
       ..createSync(recursive: true);

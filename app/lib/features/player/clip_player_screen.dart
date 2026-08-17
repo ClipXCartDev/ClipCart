@@ -88,9 +88,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   void _toggleMute() {
     setState(() => _muted = !_muted);
-    for (final c in _ctrls.values) {
-      c.setVolume(_muted ? 0 : 1);
-    }
+    // Only the current clip carries audio; neighbours stay muted regardless.
+    _ctrls.forEach((i, c) => c.setVolume((i == _current && !_muted) ? 1 : 0));
   }
 
   @override
@@ -118,14 +117,26 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   }
 
   Future<void> _sync() async {
+    // Mute + pause + rewind every non-current controller IMMEDIATELY so a
+    // pre-buffered neighbour never bleeds audio for a frame after a swipe
+    // (client-reported: "pehli video ka audio 1-2 sec play hota rehta hai").
+    _ctrls.forEach((i, c) {
+      if (i != _current) {
+        c.setVolume(0);
+        c.pause();
+        c.seekTo(Duration.zero);
+      }
+    });
     // ensure current ±1 exist, play current, dispose far ones
     for (final i in [_current, _current - 1, _current + 1]) {
       if (i >= 0 && i < widget.clips.length) await _ensure(i);
     }
     _ctrls.forEach((i, c) {
       if (i == _current) {
+        c.setVolume(_muted ? 0 : 1); // only the current clip is audible
         c.play();
       } else {
+        c.setVolume(0);
         c.pause();
       }
     });
@@ -174,13 +185,19 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       final c = VideoPlayerController.networkUrl(Uri.parse(url));
       await c.initialize();
       await c.setLooping(true);
-      await c.setVolume(_muted ? 0 : 1);
+      // Only the current clip is audible; pre-buffered neighbours stay muted so
+      // they can't bleed sound before the user swipes to them.
+      await c.setVolume((i == _current && !_muted) ? 1 : 0);
       if (!mounted || gen != _gen) {
         c.dispose(); // screen gone OR a teardown (editor/dispose) happened while we loaded
         return;
       }
       _ctrls[i] = c;
-      if (i == _current) c.play();
+      if (i == _current) {
+        c.play();
+      } else {
+        c.pause();
+      }
       setState(() {});
     } catch (_) {
       // leave gradient/thumb fallback
