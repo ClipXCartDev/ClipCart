@@ -63,7 +63,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My exports', style: TextStyle(fontWeight: FontWeight.w700)), centerTitle: false),
+      appBar: AppBar(title: const Text('My exports', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20)), centerTitle: false),
       body: RefreshIndicator(
         onRefresh: () async => setState(() => _future = _load()),
         child: FutureBuilder<List<_Export>>(

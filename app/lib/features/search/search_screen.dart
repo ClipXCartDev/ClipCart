@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -119,41 +118,43 @@ class _SearchScreenState extends State<SearchScreen> {
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-          // Instagram-style search bar (client point 9)
+          const ScreenHeader(title: 'Explore'),
+          // search bar — design spec: 46px, radius 12, --ln border, --mut icon
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
-              ),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: SizedBox(
+              height: 46,
               child: TextField(
                 controller: _q,
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => _submitSearch(),
                 onChanged: (v) { if (v.isEmpty && _query.isNotEmpty) { setState(() => _query = ''); _reload(); } },
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
                 decoration: InputDecoration(
                   hintText: 'Search clips, movies, moods…',
-                  hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.accent),
+                  hintStyle: const TextStyle(color: AppColors.mut, fontSize: 16, fontWeight: FontWeight.w400),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.mut, size: 22),
                   suffixIcon: _q.text.isEmpty
                       ? null
-                      : IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () { _q.clear(); setState(() => _query = ''); _reload(); }),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      : IconButton(icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.mut), onPressed: () { _q.clear(); setState(() => _query = ''); _reload(); }),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.brand, width: 1.5)),
                 ),
               ),
             ),
           ),
-          // category chips row
+          // category chips row (34px pills, radius 999)
           if (_cats.isNotEmpty)
             SizedBox(
-              height: 38,
+              height: 40,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
                   _chip('All', _cat == null, () => _pickCategory(null)),
                   for (final c in _cats)
@@ -167,29 +168,30 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  // design chip: h34, radius 999; selected = ink fill / white text, unselected = --ln border
   Widget _chip(String label, bool on, VoidCallback onTap) => GestureDetector(
         onTap: onTap,
         child: Container(
-          margin: const EdgeInsets.only(right: 9),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          height: 34,
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: on ? const LinearGradient(colors: AppColors.gradient) : null,
-            color: on ? null : Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: on ? Colors.transparent : Colors.grey.withOpacity(0.25)),
+            color: on ? AppColors.brand : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: on ? AppColors.brand : AppColors.line),
           ),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: on ? Colors.white : null)),
+          child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: on ? Colors.white : AppColors.ink)),
         ),
       );
 
   Widget _body() {
-    if (_loading) return const SkeletonGrid(count: 12);
+    if (_loading) return const SkeletonGrid(count: 6);
     if (_error != null) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text("Couldn't load clips.", style: TextStyle(color: Colors.grey.shade600)),
-          TextButton(onPressed: _boot, child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
+          Text("Couldn't load clips.", style: TextStyle(color: AppColors.mut)),
+          TextButton(onPressed: _boot, child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w700))),
         ]),
       );
     }
@@ -202,14 +204,13 @@ class _SearchScreenState extends State<SearchScreen> {
     }
     return RefreshIndicator(
       onRefresh: _reload,
-      child: MasonryGridView.count(
+      child: GridView.builder(
         controller: _scroll,
-        padding: EdgeInsets.fromLTRB(8, 8, 8, 90 + MediaQuery.of(context).viewPadding.bottom),
-        crossAxisCount: 3,
-        mainAxisSpacing: 5,
-        crossAxisSpacing: 5,
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, mainAxisSpacing: 11, crossAxisSpacing: 11, childAspectRatio: 9 / 14),
         itemCount: _grid.length,
-        itemBuilder: (context, i) => ClipTile(clip: _grid[i], onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
+        itemBuilder: (context, i) => ClipTile(clip: _grid[i], aspect: 9 / 14, showText: true, onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
       ),
     );
   }

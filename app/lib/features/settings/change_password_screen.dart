@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
 import '../../widgets/primary_button.dart';
 

@@ -144,3 +144,57 @@ TextTheme _textTheme(Color ink) {
 /// A mono uppercase "eyebrow" label — the design's signature section marker.
 TextStyle eyebrow(Color color) => TextStyle(
       fontFamily: kMono, fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 1.4, color: color);
+
+/// The canonical big screen title (Search / Templates / Editor / Exports),
+/// matching the design: 28px / 600 / -0.025em, ink, with optional trailing action.
+class ScreenHeader extends StatelessWidget {
+  const ScreenHeader({super.key, required this.title, this.subtitle, this.trailing});
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = Theme.of(context).brightness == Brightness.dark ? AppColors.inkDark : AppColors.ink;
+    final mut = Theme.of(context).brightness == Brightness.dark ? AppColors.mutDark : AppColors.mut;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 12, 10),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(title, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: -0.7, color: ink, height: 1.05)),
+            if (subtitle != null) Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(subtitle!, style: TextStyle(fontSize: 13, color: mut)),
+            ),
+          ]),
+        ),
+        if (trailing != null) trailing!,
+      ]),
+    );
+  }
+}
+
+/// Standard content card — 1px hairline, radius 14, surface bg (design spec).
+class DesignCard extends StatelessWidget {
+  const DesignCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap});
+  final Widget child;
+  final EdgeInsets padding;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final card = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: dark ? AppColors.surfaceDark : AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: dark ? AppColors.lineDark : AppColors.line),
+      ),
+      child: child,
+    );
+    if (onTap == null) return card;
+    return GestureDetector(onTap: onTap, child: card);
+  }
+}

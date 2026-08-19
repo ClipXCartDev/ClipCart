@@ -62,13 +62,14 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editor', style: TextStyle(fontWeight: FontWeight.w700)),
-        centerTitle: false,
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => _reload(),
-        child: FutureBuilder<List<SavedProject>>(
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
+          const ScreenHeader(title: 'Editor', subtitle: 'Your saved projects — continue or delete'),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _reload(),
+              child: FutureBuilder<List<SavedProject>>(
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
@@ -147,7 +148,10 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
               },
             );
           },
-        ),
+              ),
+            ),
+          ),
+        ]),
       ),
     );
   }
