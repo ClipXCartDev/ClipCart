@@ -1,4 +1,3 @@
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -7,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
-import '../exports/exports_screen.dart';
 import '../projects/projects_screen.dart';
 import '../saved/saved_screen.dart';
 import '../search/search_screen.dart';
@@ -59,15 +57,14 @@ class _HomeShellState extends State<HomeShell> {
       _AccountTab(),         // 4 Me — account + exports + help
     ];
     return Scaffold(
-      extendBody: true, // gallery scrolls BEHIND the floating dock
-      body: Stack(children: [
-        IndexedStack(index: _index, children: tabs),
-        // floating Liquid Dock overlaid at the bottom
-        Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(top: false, child: _LiquidDock(
+      body: IndexedStack(index: _index, children: tabs),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: _LiquidDock(
           index: _index,
           onSelect: (i) { navMinimized.value = false; homeTab.value = i; setState(() => _index = i); },
-        ))),
-      ]),
+        ),
+      ),
     );
   }
 }
@@ -94,104 +91,70 @@ const _dockItems = [
   (Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
 ];
 
-/// iOS-26 "Liquid Glass" / M3-Expressive style floating dock: a detached frosted
-/// capsule with a coral pill that springs between icons, and which minimizes to a
-/// compact pill on scroll-down (gallery owns the screen) and springs back on scroll-up.
+/// Compact bottom nav bar — matches the design system: a clean solid bar with a
+/// small pill indicator (brandSurface) behind the ACTIVE icon, icon over a tiny
+/// label. Not a big floating capsule.
 class _LiquidDock extends StatelessWidget {
   const _LiquidDock({required this.index, required this.onSelect});
   final int index;
   final ValueChanged<int> onSelect;
 
-  static const _h = 60.0; // expanded height
-  static const _slot = 56.0; // per-icon slot width
-
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final surface = (dark ? const Color(0xFF14111C) : Colors.white).withOpacity(dark ? 0.72 : 0.82);
-    final restIcon = (dark ? Colors.white : const Color(0xFF171221)).withOpacity(0.58);
+    final barColor = dark ? AppColors.surfaceDark : Colors.white;
+    final inactive = dark ? AppColors.mutDark : AppColors.mut;
     final n = _dockItems.length;
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: navMinimized,
-      builder: (context, mini, _) {
-        final expandedW = _slot * n + 20;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-          child: AnimatedAlign(
-            alignment: mini ? Alignment.centerRight : Alignment.center,
-            duration: const Duration(milliseconds: 420),
-            curve: Curves.easeOutCubic,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 460),
-              curve: Curves.easeOutBack,
-              width: mini ? _slot + 22 : expandedW,
-              height: mini ? 52 : _h,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: surface,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white.withOpacity(dark ? 0.12 : 0.5), width: 1),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(dark ? 0.42 : 0.16), blurRadius: 30, offset: const Offset(0, 12))],
-                    ),
-                    child: mini
-                        // minimized: only the active icon, tap to expand
-                        ? GestureDetector(
-                            onTap: () => navMinimized.value = false,
-                            behavior: HitTestBehavior.opaque,
-                            child: Center(child: Icon(_dockItems[index].$2, color: AppColors.accent, size: 24)),
-                          )
-                        // expanded: sliding pill + all icons
-                        : Stack(alignment: Alignment.centerLeft, children: [
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 420),
-                              curve: Curves.easeOutBack,
-                              left: 10 + index * _slot + (_slot - 44) / 2,
-                              top: (_h - 44) / 2,
-                              child: Container(
-                                width: 44, height: 44,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: AppColors.gradient),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(0.5), blurRadius: 14, offset: const Offset(0, 5))],
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                for (var i = 0; i < n; i++)
-                                  GestureDetector(
-                                    onTap: () { HapticFeedback.selectionClick(); onSelect(i); },
-                                    behavior: HitTestBehavior.opaque,
-                                    child: SizedBox(
-                                      width: _slot, height: _h,
-                                      child: AnimatedScale(
-                                        scale: index == i ? 1.1 : 1.0,
-                                        duration: const Duration(milliseconds: 220),
-                                        curve: Curves.easeOutBack,
-                                        child: Icon(
-                                          index == i ? _dockItems[i].$2 : _dockItems[i].$1,
-                                          color: index == i ? Colors.white : restIcon,
-                                          size: 23,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ]),
-                            ),
-                          ]),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: barColor,
+        border: Border(top: BorderSide(color: dark ? AppColors.lineDark : AppColors.line)),
+      ),
+      child: SizedBox(
+        height: 60,
+        child: Row(
+          children: [
+            for (var i = 0; i < n; i++)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () { HapticFeedback.selectionClick(); onSelect(i); },
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // M3 active-indicator pill (56×30, brandSurface) behind the icon
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        width: 56, height: 30,
+                        decoration: BoxDecoration(
+                          color: index == i ? AppColors.brandSurface : Colors.transparent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          index == i ? _dockItems[i].$2 : _dockItems[i].$1,
+                          color: index == i ? AppColors.brand : inactive,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _dockItems[i].$3,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: index == i ? FontWeight.w600 : FontWeight.w500,
+                          color: index == i ? AppColors.brand : inactive,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }
@@ -296,9 +259,10 @@ class _AccountTab extends StatelessWidget {
               _MenuCard(children: [
                 _MenuRow(Icons.logout_rounded, 'Log out', () => context.read<AuthController>().logout(), danger: true),
               ]),
-              const SizedBox(height: 20),
-              const Text('ClipCart · v1.0', style: TextStyle(color: Colors.grey, fontSize: 11)),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
+              const Text('ClipCart · v1.0', style: TextStyle(color: AppColors.mut, fontSize: 11)),
+              // clear the floating dock so Log out / footer never overlaps it
+              SizedBox(height: 96 + MediaQuery.of(context).viewPadding.bottom),
             ]),
           ),
         ],

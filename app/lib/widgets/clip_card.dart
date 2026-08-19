@@ -164,40 +164,41 @@ class ClipTile extends StatelessWidget {
       child: Hero(
         tag: 'clip_${clip.id}',
         child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: AspectRatio(
           aspectRatio: aspect ?? masonryAspect(clip.id),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g, begin: Alignment.topLeft, end: Alignment.bottomRight))),
+              // media placeholder = warm dark (design uses no bright gradient behind thumbs)
+              const DecoratedBox(decoration: BoxDecoration(color: AppColors.dark)),
               if (clip.thumb != null)
                 CachedNetworkImage(
                   imageUrl: clip.thumb!,
                   fit: BoxFit.cover,
                   memCacheWidth: 320, // downscale — tiles are ~130px wide
                   fadeInDuration: const Duration(milliseconds: 200),
-                  placeholder: (ctx, _) => DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g))),
+                  placeholder: (ctx, _) => const DecoratedBox(decoration: BoxDecoration(color: AppColors.dark)),
                   errorWidget: (ctx, _, __) => const SizedBox.shrink(),
                 ),
               // subtle bottom scrim (only needed when the caption shows)
               if (showText)
                 const DecoratedBox(
-                  decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.transparent, Color(0xB3000000)], stops: [0.0, 0.55, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                  decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.transparent, Color(0xC7000000)], stops: [0.0, 0.55, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
                 ),
-              // PRO dot (top-left) — tiny
+              // PREMIUM badge (top-left) — gold, mono
               if (clip.isPro)
-                Positioned(top: 6, left: 6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(5)), child: const Text('PRO', style: TextStyle(color: Color(0xFF3A2600), fontSize: 8, fontWeight: FontWeight.w900)))),
-              // duration (top-right)
-              Positioned(top: 6, right: 6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(5)), child: Text(clip.durationLabel, style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w800)))),
+                Positioned(top: 8, left: 8, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5), decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(5)), child: const Text('◆ PRO', style: TextStyle(color: AppColors.goldText, fontSize: 8, fontFamily: kMono, fontWeight: FontWeight.w600, letterSpacing: 0.4)))),
+              // duration chip (top-right) — mono on translucent black
+              Positioned(top: 8, right: 8, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5), decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(5)), child: Text(clip.durationLabel, style: const TextStyle(color: Colors.white, fontSize: 9, fontFamily: kMono, fontWeight: FontWeight.w500)))),
               // small play glyph center
-              Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white.withOpacity(0.85), size: 30, shadows: const [Shadow(color: Colors.black45, blurRadius: 6)])),
+              Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white.withOpacity(0.9), size: 30, shadows: const [Shadow(color: Colors.black45, blurRadius: 6)])),
               // tiny title at bottom (hidden on Home/Explore grid)
               if (showText)
                 Positioned(
-                  left: 7, right: 7, bottom: 6,
+                  left: 9, right: 9, bottom: 9,
                   child: Text(clip.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10.5, shadows: [Shadow(color: Colors.black87, blurRadius: 4)])),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12, shadows: [Shadow(color: Colors.black87, blurRadius: 4)])),
                 ),
             ],
           ),

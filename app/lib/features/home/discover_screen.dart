@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:go_router/go_router.dart';
@@ -152,7 +151,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           const SizedBox(width: 11),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Discover', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 26, height: 1.0, letterSpacing: -0.5, color: AppColors.ink)),
+              Text('Discover', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 28, height: 1.0, letterSpacing: -0.7, color: AppColors.ink)),
               const Text('Viral clips, ready for your brand', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.mut, fontSize: 13)),
             ]),
           ),
@@ -207,35 +206,29 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _banner({required IconData icon, required List<Color> gradient, required String title, required String subtitle, required String cta, required VoidCallback onTap}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [BoxShadow(color: gradient.last.withOpacity(0.35), blurRadius: 16, offset: const Offset(0, 6))],
+            gradient: LinearGradient(colors: gradient, begin: Alignment.centerLeft, end: Alignment.centerRight),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Row(children: [
-            Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 14),
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.5)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5, height: 1.1)),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.2)),
               ]),
             ),
             const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-              child: Text(cta, style: TextStyle(color: gradient.last, fontWeight: FontWeight.w700, fontSize: 12.5)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
+              child: Text(cta, style: TextStyle(color: gradient.last, fontWeight: FontWeight.w700, fontSize: 12)),
             ),
           ]),
         ),
@@ -260,8 +253,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           itemCount: _featured.length,
           separatorBuilder: (_, __) => const SizedBox(width: 12),
           itemBuilder: (context, i) => SizedBox(
-            width: 148,
-            child: ClipTile(clip: _featured[i], aspect: 148 / 220, onTap: () => _openRow(_featured, i)),
+            width: 156,
+            child: ClipTile(clip: _featured[i], aspect: 156 / 220, showText: true, onTap: () => _openRow(_featured, i)),
           ),
         ),
       ),
