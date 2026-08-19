@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
 import '../exports/exports_screen.dart';
+import '../projects/projects_screen.dart';
 import '../saved/saved_screen.dart';
 import '../search/search_screen.dart';
 import 'discover_screen.dart';
@@ -18,8 +19,11 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-/// Lets child tabs request a tab switch (e.g. Discover's search icon → Search).
+/// Lets child tabs request a tab switch (e.g. Home's search icon → Explore).
 final ValueNotifier<int> homeTab = ValueNotifier<int>(0);
+
+/// Set by Home's "See all" to pre-filter the Explore tab to a category.
+final ValueNotifier<String?> exploreCategory = ValueNotifier<String?>(null);
 
 /// Scroll-heavy screens (the gallery) set this true on scroll-down so the dock
 /// minimizes to a pill, and false on scroll-up so it springs back.
@@ -46,12 +50,13 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    // New 5-tab structure (client): Home · Explore · Editor · Templates · Me.
     const tabs = [
-      DiscoverScreen(),
-      SearchScreen(),
-      SavedScreen(),
-      ExportsScreen(),
-      _AccountTab(),
+      DiscoverScreen(),      // 0 Home — category rows + subscription banner
+      _ExploreTab(),         // 1 Explore — search grid (reacts to exploreCategory)
+      ProjectsScreen(),      // 2 Editor — saved in-progress projects
+      SavedScreen(tabIndex: 3), // 3 Templates — saved (hearted) clips
+      _AccountTab(),         // 4 Me — account + exports + help
     ];
     return Scaffold(
       extendBody: true, // gallery scrolls BEHIND the floating dock
@@ -67,12 +72,25 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
+/// Explore tab wrapper — rebuilds the SearchScreen with a fresh initialCategory
+/// whenever Home's "See all" sets [exploreCategory].
+class _ExploreTab extends StatelessWidget {
+  const _ExploreTab();
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<String?>(
+      valueListenable: exploreCategory,
+      builder: (_, cat, __) => SearchScreen(key: ValueKey(cat), initialCategory: cat),
+    );
+  }
+}
+
 // Icon set per destination: (unselected, selected, label).
 const _dockItems = [
   (Icons.home_outlined, Icons.home_rounded, 'Home'),
-  (Icons.search_rounded, Icons.search_rounded, 'Search'),
-  (Icons.favorite_border_rounded, Icons.favorite_rounded, 'Liked'),
-  (Icons.download_outlined, Icons.download_rounded, 'Exports'),
+  (Icons.explore_outlined, Icons.explore_rounded, 'Explore'),
+  (Icons.video_settings_outlined, Icons.video_settings_rounded, 'Editor'),
+  (Icons.bookmark_border_rounded, Icons.bookmark_rounded, 'Templates'),
   (Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
 ];
 
@@ -265,12 +283,13 @@ class _AccountTab extends StatelessWidget {
               _MenuCard(children: [
                 _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
                 if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
-                _MenuRow(Icons.download_rounded, 'My exports', () => homeTab.value = 3),
+                _MenuRow(Icons.download_rounded, 'My exports', () => context.push('/exports')),
                 _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/devices')),
               ]),
               const SizedBox(height: 14),
               _MenuCard(children: [
-                _MenuRow(Icons.help_outline_rounded, 'Help & support', () => _infoDialog(context, 'Help & support', 'Need a hand? Email us at clipxcart@gmail.com and we\'ll get back within 48 hours.')),
+                _MenuRow(Icons.lock_outline_rounded, 'Change password', () => context.push('/change-password')),
+                _MenuRow(Icons.support_agent_rounded, 'Help & support', () => context.push('/support')),
                 _MenuRow(Icons.privacy_tip_outlined, 'Privacy & terms', () => _infoDialog(context, 'Privacy & terms', 'Your account data is used only to run ClipCart and is never sold. Exports render on your device. Full details at clipscart.app. Questions: clipxcart@gmail.com')),
               ]),
               const SizedBox(height: 14),

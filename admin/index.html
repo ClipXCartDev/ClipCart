@@ -71,7 +71,7 @@ tr:last-child td{border-bottom:0}
 </div>
 
 <script>
-const NAV = [['dashboard','Dashboard'],['approvals','Approvals'],['clips','Clips'],['plans','Plans'],['payouts','Payouts'],['users','Users']];
+const NAV = [['dashboard','Dashboard'],['approvals','Approvals'],['clips','Clips'],['plans','Plans'],['payouts','Payouts'],['support','Support'],['users','Users']];
 let API='', TOKEN='';
 // API base auto-detected: same origin when served over http(s), else localhost. ?api= overrides.
 const DEFAULT_API = (new URLSearchParams(location.search).get('api'))
@@ -107,7 +107,7 @@ function enter(){
 function go(k){
   document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));
   document.getElementById('nav-'+k).classList.add('on');
-  ({dashboard:vDash,approvals:vApprovals,clips:vClips,plans:vPlans,payouts:vPayouts,users:vUsers}[k])();
+  ({dashboard:vDash,approvals:vApprovals,clips:vClips,plans:vPlans,payouts:vPayouts,support:vSupport,users:vUsers}[k])();
 }
 const main=html=>document.getElementById('main').innerHTML=html;
 
@@ -184,6 +184,45 @@ async function vPayouts(){
 }
 async function payout(id,a){try{await api(`/admin/payouts/${id}/${a}`,'POST',{});vPayouts();}catch(e){alert(e.message);}}
 async function payoutNote(id){const note=prompt('Reason:');if(note===null)return;try{await api(`/admin/payouts/${id}/reject`,'POST',{note});vPayouts();}catch(e){alert(e.message);}}
+
+// ---- Support chat ----
+let SUP_THREAD=null;
+async function vSupport(){
+  main('<h2>Support</h2><div class="row" style="gap:16px;align-items:flex-start"><div id="threads" style="flex:0 0 300px">Loading…</div><div id="chat" style="flex:1;min-width:0"><div style="color:#888;padding:24px">Select a conversation.</div></div></div>');
+  try{const rows=await api('/support/admin/threads');
+    if(!rows.length){document.getElementById('threads').innerHTML='<div style="color:#888">No open conversations.</div>';return;}
+    document.getElementById('threads').innerHTML=rows.map(t=>
+      `<div class="sup-th" onclick="openThread('${t.id}')" style="padding:12px;border:1px solid #eee;border-radius:12px;margin-bottom:8px;cursor:pointer">
+        <div style="font-weight:700">${h(t.user_name)} ${t.unread_for_agent?`<span class="pill p-wait">${t.unread_for_agent}</span>`:''}</div>
+        <div style="color:#888;font-size:12px">${h(t.user_email)}</div>
+        <div style="color:#555;font-size:12px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(t.last_message||'')}</div>
+      </div>`).join('');
+  }catch(e){document.getElementById('threads').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+async function openThread(id){
+  SUP_THREAD=id;
+  document.getElementById('chat').innerHTML='Loading…';
+  try{const t=await api('/support/admin/threads/'+id);
+    const msgs=t.messages.map(m=>{
+      const mine=m.sender==='support';
+      return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin:6px 0">
+        <div style="max-width:70%;padding:9px 13px;border-radius:14px;background:${mine?'#FF4D6D':'#f2f2f4'};color:${mine?'#fff':'#111'}">${h(m.body)}</div>
+      </div>`;}).join('');
+    document.getElementById('chat').innerHTML=
+      `<div style="border:1px solid #eee;border-radius:14px;padding:14px;max-height:420px;overflow:auto" id="msgs">${msgs||'<div style=color:#888>No messages yet.</div>'}</div>
+       <div class="row" style="margin-top:10px">
+         <input id="sup-reply" placeholder="Type a reply…" style="flex:1" onkeydown="if(event.key==='Enter')sendReply()">
+         <button class="btn ok" onclick="sendReply()">Send</button>
+         <button class="btn dan sm" onclick="closeThread()">Close</button>
+       </div>`;
+    const box=document.getElementById('msgs');if(box)box.scrollTop=box.scrollHeight;
+  }catch(e){document.getElementById('chat').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+async function sendReply(){
+  const el=document.getElementById('sup-reply');const body=(el.value||'').trim();if(!body||!SUP_THREAD)return;
+  try{await api('/support/admin/threads/'+SUP_THREAD+'/reply','POST',{body});openThread(SUP_THREAD);}catch(e){alert(e.message);}
+}
+async function closeThread(){if(!SUP_THREAD)return;try{await api('/support/admin/threads/'+SUP_THREAD+'/close','POST',{});vSupport();}catch(e){alert(e.message);}}
 
 async function vUsers(){
   main('<h2>Users</h2><div id="t">Loading…</div>');

@@ -14,6 +14,7 @@ import '../../services/brand_kit_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
+import '../../services/project_store.dart';
 import '../../services/sticker_service.dart';
 import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
@@ -26,9 +27,10 @@ const _kAccent = Color(0xFFFF4D6D);
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key, this.clip, this.title});
+  const EditorScreen({super.key, this.clip, this.title, this.resume});
   final models.Clip? clip;
   final String? title;
+  final SavedProject? resume; // reopen a saved in-progress project
 
   @override
   State<EditorScreen> createState() => _EditorScreenState();
@@ -43,6 +45,11 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Object? _selected; // SubtitleSegment | 'logo' | null
   bool _trimMode = false;
+
+  // Stable id for this project's on-disk save (reused when resuming so re-saving
+  // updates the same file rather than piling up duplicates).
+  String? _projectId;
+  bool _savedThisSession = false;
 
   // inline text editing (CapCut-style — video stays visible, live updates)
   bool _typing = false;
@@ -101,6 +108,32 @@ class _EditorScreenState extends State<EditorScreen> {
     } catch (_) {
       _defaultFont = '';
     }
+    // RESUME a saved in-progress project: reopen its base clip + restore all edits.
+    if (widget.resume != null) {
+      _projectId = widget.resume!.id;
+      final saved = widget.resume!;
+      try {
+        final restored = saved.toProject();
+        // Re-fetch the base clip file if the cached path is gone (app reinstall / cache clear).
+        var basePath = restored.baseClipPath;
+        if (!File(basePath).existsSync() && saved.clipId != null) {
+          basePath = await context.read<CatalogService>().editClipFile(saved.clipId!);
+        }
+        await _load(basePath);
+        // Overlay the restored edits on top of the freshly-loaded project.
+        if (_project != null) {
+          restored.baseClipPath = _project!.baseClipPath;
+          restored.defaultFontPath = _project!.defaultFontPath;
+          restored.duration = _project!.duration;
+          setState(() => _project = restored);
+        }
+        _error = null;
+      } catch (_) {
+        _error = 'Could not reopen this project.';
+      }
+      if (mounted) setState(() {});
+      return;
+    }
     if (widget.clip != null) {
       final cs = context.read<CatalogService>();
       // attempt 0 uses any cache; attempt 1 forces a fresh re-download (recovers
@@ -117,6 +150,29 @@ class _EditorScreenState extends State<EditorScreen> {
       }
     }
     if (mounted) setState(() {});
+  }
+
+  /// Persist the current project to the on-device store so it appears in the
+  /// Editor tab and can be resumed. Returns true on success.
+  Future<bool> _saveProject() async {
+    final p = _project;
+    if (p == null) return false;
+    try {
+      _projectId ??= 'proj_${DateTime.now().microsecondsSinceEpoch}';
+      final name = (widget.title ?? widget.clip?.title ?? widget.resume?.name ?? 'My project').trim();
+      await context.read<ProjectStore>().save(SavedProject(
+            id: _projectId!,
+            name: name.isEmpty ? 'My project' : name,
+            clipId: widget.clip?.id ?? widget.resume?.clipId,
+            thumb: widget.clip?.thumb ?? widget.resume?.thumb,
+            updatedAt: DateTime.now(),
+            data: p.toProjectJson(),
+          ));
+      _savedThisSession = true;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _retry() async {
@@ -201,33 +257,54 @@ class _EditorScreenState extends State<EditorScreen> {
     return p.subtitles.isNotEmpty ||
         p.stickers.isNotEmpty ||
         p.logoPath != null ||
-        p.musicPath != null ||
         p.trimStart > 0.01 ||
         (p.trimEnd != null && p.trimEnd! < p.duration - 0.01) ||
         !p.aspect.isOriginal ||
         _undo.isNotEmpty;
   }
 
-  /// Confirm before leaving with unsaved edits. Returns true if it's safe to pop.
+  /// On back with unsaved edits: offer Save & leave / Discard / Keep editing.
+  /// "Save" persists to the Editor tab so nothing is lost (client: "galti se
+  /// back hone par saare changes hat jaate hain"). Returns true if safe to pop.
   Future<bool> _confirmDiscard() async {
-    if (!_hasEdits || _busy) return true;
-    final leave = await showDialog<bool>(
+    // Nothing to lose, or already saved this session → leave freely.
+    if (!_hasEdits || _busy || _savedThisSession) return true;
+    final action = await showModalBottomSheet<String>(
       context: context,
       barrierColor: Colors.black87,
-      builder: (_) => AlertDialog(
-        backgroundColor: _kPanel,
-        title: const Text('Discard changes?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-        content: const Text(
-          "You haven't exported this clip. If you leave now your edits will be lost.\nExport to save them to your gallery.",
-          style: TextStyle(color: Colors.white70),
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Save your progress?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+            const SizedBox(height: 6),
+            Text('Keep these edits in the Editor tab so you can finish later.', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, child: PrimaryButton(label: 'Save & leave', icon: Icons.save_rounded, onPressed: () => Navigator.pop(context, 'save'))),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context, 'keep'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 13)),
+                child: const Text('Keep editing', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+            const SizedBox(height: 4),
+            TextButton(onPressed: () => Navigator.pop(context, 'discard'), child: const Text('Discard changes', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
+          ]),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep editing', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Discard', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
-        ],
       ),
     );
-    return leave ?? false;
+    if (action == 'save') {
+      final ok = await _saveProject();
+      if (mounted && ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Editor tab ✓')));
+      return true;
+    }
+    if (action == 'discard') return true;
+    return false; // keep editing (or dismissed)
   }
 
   /// Play/pause. Restarts from trimStart when parked at/outside the trim window.
@@ -729,21 +806,23 @@ class _EditorScreenState extends State<EditorScreen> {
           ]),
         ),
         const SizedBox(height: 8),
-        Row(children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(
+            // Multi-line: the keyboard shows a return key that inserts a newline
+            // (client: "text ko next line mein le jaane ka option nahi hai").
             child: TextField(
               controller: _textCtl,
               focusNode: _textFocus,
               autofocus: true,
               minLines: 1,
-              maxLines: 2,
+              maxLines: 4,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
               cursorColor: _kAccent,
-              textInputAction: TextInputAction.done,
               onChanged: (v) => setState(() => s?.text = v),
-              onSubmitted: (_) => _doneTyping(),
               decoration: InputDecoration(
-                hintText: 'Type your text…',
+                hintText: 'Type your text…  (Enter = new line)',
                 hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
                 filled: true, fillColor: Colors.white.withOpacity(0.06), isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -755,7 +834,7 @@ class _EditorScreenState extends State<EditorScreen> {
           GestureDetector(
             onTap: _doneTyping,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(color: _kAccent, borderRadius: BorderRadius.circular(10)),
               child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
             ),
@@ -788,71 +867,6 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
     {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFFFF7A00, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
   ];
-
-  // ---------- Music ----------
-  Future<void> _openMusicSheet() async {
-    final p = _project!;
-    var volSnapped = false; // one snapshot for a whole volume-adjust session
-    void snapVol() { if (!volSnapped) { _snapshot(); volSnapped = true; } }
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => StatefulBuilder(
-        builder: (context, setSheet) => SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-            padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Icon(Icons.music_note_rounded, color: _kAccent, size: 20),
-                const SizedBox(width: 8),
-                const Text('Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
-                const Spacer(),
-                if (p.musicPath != null)
-                  TextButton(onPressed: () { _mutate(() => p.musicPath = null); setSheet(() {}); }, child: const Text('Remove', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
-              ]),
-              const SizedBox(height: 6),
-              Text(p.musicPath == null ? 'Add a music track — mixed under the clip audio on export.' : 'Music: ${p.musicPath!.split('/').last}', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12.5), maxLines: 1, overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    FilePickerResult? res;
-                    try {
-                      res = await FilePicker.platform.pickFiles(type: FileType.audio);
-                    } catch (_) {
-                      res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg']);
-                    }
-                    if (res != null && res.files.single.path != null) {
-                      _mutate(() => p.musicPath = res!.files.single.path);
-                      setSheet(() {});
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 12)),
-                  icon: const Icon(Icons.library_music_rounded, size: 18),
-                  label: Text(p.musicPath == null ? 'Choose from device' : 'Change track'),
-                ),
-              ),
-              if (p.musicPath != null) ...[
-                const SizedBox(height: 16),
-                _fadeRowGeneric('Music vol', p.musicVolume, 0, 1, (v) { snapVol(); setSheet(() { p.musicVolume = v; setState(() {}); }); }, suffix: ''),
-                _fadeRowGeneric('Clip vol', p.originalVolume, 0, 1, (v) { snapVol(); setSheet(() { p.originalVolume = v; setState(() {}); }); }, suffix: ''),
-                // Start offset into the track (seek in). Range 0..30s is plenty for
-                // picking the "drop"; export already seeks via -ss musicStart.
-                _fadeRowGeneric('Start at', p.musicStart, 0, 30, (v) { snapVol(); setSheet(() { p.musicStart = v; setState(() {}); }); }, suffix: 's'),
-              ],
-              const SizedBox(height: 12),
-              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
-            ]),
-          ),
-          ),
-        ),
-      ),
-    );
-  }
 
   // ---------- Brand Kit ----------
   Future<void> _openBrandKit() async {
@@ -1487,28 +1501,103 @@ class _EditorScreenState extends State<EditorScreen> {
     setState(fn);
   }
 
+  /// Export settings sheet — resolution + fps (client-requested "export at
+  /// 720p/1080p, 30/60fps"). Returns true if the user hit Export.
+  Future<bool> _openExportSettings() async {
+    final p = _project!;
+    return await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: _kPanel,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(builder: (context, setSheet) {
+        Widget optRow<T>(String title, List<(String, T)> options, T current, ValueChanged<T> onPick) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5, letterSpacing: 0.5)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  for (final o in options)
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setSheet(() => onPick(o.$2)),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: current == o.$2 ? _kAccent : Colors.white.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: current == o.$2 ? _kAccent : Colors.white12),
+                          ),
+                          child: Text(o.$1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                        ),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 18),
+              ],
+            );
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 16, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Export settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+              const SizedBox(height: 4),
+              Text('Renders on this phone · saves to your Gallery', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              const SizedBox(height: 18),
+              optRow<int>('QUALITY', const [('720p', 720), ('1080p', 1080)], p.resolution.shortEdge,
+                  (v) => p.resolution = v == 720 ? ExportResolution.p720 : ExportResolution.p1080),
+              optRow<int>('FRAME RATE', const [('30 fps', 30), ('60 fps', 60)], p.fps, (v) => p.fps = v),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Export video', icon: Icons.ios_share, onPressed: () => Navigator.pop(context, true))),
+              const SizedBox(height: 8),
+            ]),
+          ),
+        );
+      }),
+    ) ?? false;
+  }
+
   Future<void> _export() async {
     // Quota/Pro gating only applies to catalog clips (there's a creator to pay
     // and a server-side monthly quota). A picked local file (widget.clip == null)
     // is the user's own content with no creator to pay, so it stays ungated.
+    if (!await _openExportSettings()) return;
     setState(() => _busy = true);
-    // Progress dialog. Capture the ROOT navigator so we always pop the dialog
-    // itself (never the editor screen), and block the Android back button from
-    // dismissing it mid-render (which previously left a stuck spinner + double-pop).
+    // Progress dialog with a REAL bar driven by FFmpeg frame statistics (honest
+    // progress — no fake loop). Capture the ROOT navigator so we always pop the
+    // dialog itself (never the editor screen), and block the Android back button.
     final rootNav = Navigator.of(context, rootNavigator: true);
+    final progress = ValueNotifier<double>(0.0);
     var dialogOpen = true;
     showDialog(
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => const PopScope(
+      builder: (_) => PopScope(
         canPop: false,
         child: AlertDialog(
           backgroundColor: _kPanel,
-          content: Row(children: [
-            SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5)),
-            SizedBox(width: 18),
-            Text('Rendering…', style: TextStyle(color: Colors.white)),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Rendering your video…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            ValueListenableBuilder<double>(
+              valueListenable: progress,
+              builder: (_, v, __) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: v <= 0 ? null : v, // indeterminate until the first frame
+                    minHeight: 6,
+                    backgroundColor: Colors.white12,
+                    valueColor: const AlwaysStoppedAnimation(_kAccent),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(v <= 0 ? 'Preparing…' : '${(v * 100).round()}%  ·  keep the app open',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+              ]),
+            ),
           ]),
         ),
       ),
@@ -1520,7 +1609,7 @@ class _EditorScreenState extends State<EditorScreen> {
       }
     }
     try {
-      final res = await ExportService().export(_project!);
+      final res = await ExportService().export(_project!, onProgress: (v) => progress.value = v);
       // Only charge the monthly quota / creator download AFTER a successful
       // render, so a failed FFmpeg render never costs the user a quota slot.
       // For a picked local file (clip == null) there is nothing to record.
@@ -1564,6 +1653,7 @@ class _EditorScreenState extends State<EditorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {
+      progress.dispose();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -1704,16 +1794,46 @@ class _EditorScreenState extends State<EditorScreen> {
                           _togglePlay();
                         }
                       },
+                      // Pan/zoom the VIDEO inside the frame (client: "video ko scale +
+                      // position karne ka option"). Active only when no overlay is
+                      // selected so it never fights an overlay drag. Two-finger pinch
+                      // zooms; one/two-finger drag pans. Baked into export identically.
+                      onScaleStart: _selected == null ? (d) {
+                        _gestureSnapped = false;
+                        _gScale = _project!.videoScale;
+                        _gDx = _project!.videoDx;
+                        _gDy = _project!.videoDy;
+                      } : null,
+                      onScaleUpdate: _selected == null ? (d) => setState(() {
+                        if (d.scale == 1.0 && d.focalPointDelta == Offset.zero) return;
+                        if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; }
+                        final ns = (_gScale * d.scale).clamp(1.0, 4.0);
+                        _project!.videoScale = ns;
+                        // pan is meaningful only when zoomed in; clamp so the frame
+                        // never shows empty edges. Range shrinks as (1 - 1/scale)/2.
+                        final lim = ((1 - 1 / ns) / 2).clamp(0.0, 0.5);
+                        _project!.videoDx = (_gDx + d.focalPointDelta.dx / w).clamp(-lim, lim);
+                        _project!.videoDy = (_gDy + d.focalPointDelta.dy / h).clamp(-lim, lim);
+                        _hint = 'Video ${(ns * 100).round()}%';
+                      }) : null,
+                      onScaleEnd: _selected == null ? (_) => setState(() { _gestureSnapped = false; _hint = null; }) : null,
                       // Cover-crop the video into the (possibly cropped) canvas so the
                       // editor shows exactly what exports. ClipRect keeps overflow out.
+                      // videoScale/videoDx/videoDy apply the user's pan+zoom on top.
                       child: ClipRect(
-                        child: FittedBox(
-                          fit: BoxFit.cover,
-                          clipBehavior: Clip.hardEdge,
-                          child: SizedBox(
-                            width: _vc!.value.size.width == 0 ? 720 : _vc!.value.size.width,
-                            height: _vc!.value.size.height == 0 ? 1280 : _vc!.value.size.height,
-                            child: VideoPlayer(_vc!),
+                        child: Transform.translate(
+                          offset: Offset(_project!.videoDx * w, _project!.videoDy * h),
+                          child: Transform.scale(
+                            scale: _project!.videoScale,
+                            child: FittedBox(
+                              fit: BoxFit.cover,
+                              clipBehavior: Clip.hardEdge,
+                              child: SizedBox(
+                                width: _vc!.value.size.width == 0 ? 720 : _vc!.value.size.width,
+                                height: _vc!.value.size.height == 0 ? 1280 : _vc!.value.size.height,
+                                child: VideoPlayer(_vc!),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -2363,6 +2483,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
       ]);
     } else {
+      final layerCount = _project!.subtitles.length + _project!.stickers.length + (_project!.logoPath != null ? 1 : 0);
       tools.addAll([
         _tool(Icons.text_fields, 'Add text', _addSubtitle),
         _tool(Icons.alternate_email_rounded, 'Username', _addUsername),
@@ -2370,8 +2491,10 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
         _tool(Icons.movie_filter_rounded, 'Outro', _addEndingScreen),
-        _tool(Icons.music_note_rounded, 'Music', _openMusicSheet, active: _project!.musicPath != null),
         _tool(Icons.image_outlined, 'Logo', _pickLogo),
+        // Prominent Layers entry so multiple text/logo/sticker layers are easy to
+        // manage/select (client: "multiple text/layers ka option chahiye").
+        _tool(Icons.layers_rounded, layerCount > 0 ? 'Layers ($layerCount)' : 'Layers', _openLayers, active: layerCount > 0),
         _tool(_project!.watermarkOn ? Icons.branding_watermark : Icons.branding_watermark_outlined, 'Mark',
             _toggleWatermark, active: _project!.watermarkOn),
         _tool(Icons.palette_rounded, 'Brand', _openBrandKit),
@@ -2432,49 +2555,105 @@ class _EditorScreenState extends State<EditorScreen> {
       };
 
   void _quickColor(SubtitleSegment s) {
-    const colors = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5];
+    const swatches = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5, 0xFF7B2FF7, 0xFFFF2D6B, 0xFF00D1B2, 0xFF17131F];
     showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Text color', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-            const SizedBox(height: 14),
-            Wrap(spacing: 14, runSpacing: 14, children: [
-              for (final c in colors)
-                GestureDetector(
-                  onTap: () {
-                    _mutate(() => s.color = c);
-                    Navigator.pop(context);
-                  },
-                  child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == s.color ? _kAccent : Colors.white24, width: c == s.color ? 3 : 1))),
-                ),
+      builder: (_) => StatefulBuilder(builder: (context, setSheet) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 16, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Text color', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+              const SizedBox(height: 14),
+              Wrap(spacing: 12, runSpacing: 12, children: [
+                for (final c in swatches)
+                  GestureDetector(
+                    onTap: () { _mutate(() => s.color = c); setSheet(() {}); },
+                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == s.color ? _kAccent : Colors.white24, width: c == s.color ? 3 : 1))),
+                  ),
+              ]),
+              const SizedBox(height: 18),
+              // Hex code entry (client: "color code daalne ka option ho to sahi rahega")
+              _HexColorField(
+                value: s.color,
+                onChanged: (c) { _mutate(() => s.color = c); setSheet(() {}); },
+              ),
             ]),
-          ]),
-        ),
-      ),
+          ),
+        );
+      }),
     );
   }
 
   Future<void> _pickAspect() async {
-    final a = await showModalBottomSheet<AspectOption>(
+    final p = _project!;
+    await showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
-      builder: (_) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          for (final opt in AspectOption.all)
-            ListTile(
-              leading: Icon(Icons.crop, color: opt == _project!.aspect ? _kAccent : Colors.white54),
-              title: Text(opt.label, style: TextStyle(color: opt == _project!.aspect ? _kAccent : Colors.white, fontWeight: FontWeight.w700)),
-              onTap: () => Navigator.pop(context, opt),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(builder: (context, setSheet) {
+        var vidSnapped = false;
+        void snapVid() { if (!vidSnapped) { _snapshot(); vidSnapped = true; } }
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(18, 16, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Ratio & fit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text('Pick a ratio, then pinch/drag the video to scale & position it.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+                const SizedBox(height: 14),
+                // Ratio pills
+                Wrap(spacing: 9, runSpacing: 9, children: [
+                  for (final opt in AspectOption.all)
+                    GestureDetector(
+                      onTap: () { _mutate(() => p.aspect = opt); setSheet(() {}); },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: opt == p.aspect ? _kAccent : Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(color: opt == p.aspect ? _kAccent : Colors.white12),
+                        ),
+                        child: Text(opt.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
+                      ),
+                    ),
+                ]),
+                const SizedBox(height: 18),
+                // Video scale + reposition (pan is easiest by dragging on the canvas)
+                _fadeRowGeneric('Video zoom', p.videoScale, 1.0, 4.0, (v) {
+                  snapVid();
+                  setSheet(() {
+                    p.videoScale = v;
+                    final lim = ((1 - 1 / v) / 2).clamp(0.0, 0.5);
+                    p.videoDx = p.videoDx.clamp(-lim, lim);
+                    p.videoDy = p.videoDy.clamp(-lim, lim);
+                    setState(() {});
+                  });
+                }, suffix: 'x'),
+                if (p.videoScale > 1.001 || p.videoDx.abs() > 0.001 || p.videoDy.abs() > 0.001) ...[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () { _mutate(() { p.videoScale = 1.0; p.videoDx = 0; p.videoDy = 0; }); setSheet(() {}); },
+                      icon: const Icon(Icons.restart_alt_rounded, size: 18, color: _kAccent),
+                      label: const Text('Reset video position', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+              ]),
             ),
-        ]),
-      ),
+          ),
+        );
+      }),
     );
-    if (a != null) _mutate(() => _project!.aspect = a);
   }
 
   Widget _tool(IconData icon, String label, VoidCallback onTap, {bool danger = false, bool active = false}) {
@@ -2500,5 +2679,78 @@ class _EditorScreenState extends State<EditorScreen> {
         ]),
       ),
     );
+  }
+}
+
+/// A hex color code input (e.g. `#FF4D6D`) with a live swatch. Lets the user
+/// type any exact color — client asked for a "color code daalne ka option".
+class _HexColorField extends StatefulWidget {
+  const _HexColorField({required this.value, required this.onChanged});
+  final int value; // ARGB
+  final ValueChanged<int> onChanged;
+
+  @override
+  State<_HexColorField> createState() => _HexColorFieldState();
+}
+
+class _HexColorFieldState extends State<_HexColorField> {
+  late final TextEditingController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController(text: _toHex(widget.value));
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  static String _toHex(int argb) => '#${(argb & 0xFFFFFF).toRadixString(16).toUpperCase().padLeft(6, '0')}';
+
+  int? _parse(String raw) {
+    var h = raw.trim().replaceAll('#', '').replaceAll('0x', '');
+    if (h.length == 3) h = h.split('').map((c) => '$c$c').join(); // #abc → #aabbcc
+    if (h.length == 6) {
+      final v = int.tryParse(h, radix: 16);
+      if (v != null) return 0xFF000000 | v;
+    }
+    if (h.length == 8) return int.tryParse(h, radix: 16);
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = _parse(_ctl.text) ?? widget.value;
+    return Row(children: [
+      Container(
+        width: 40, height: 40,
+        decoration: BoxDecoration(color: Color(preview), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white24)),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: TextField(
+          controller: _ctl,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontFamily: 'monospace', letterSpacing: 1),
+          cursorColor: _kAccent,
+          textCapitalization: TextCapitalization.characters,
+          onChanged: (v) {
+            final c = _parse(v);
+            setState(() {});
+            if (c != null) widget.onChanged(c);
+          },
+          decoration: InputDecoration(
+            prefixText: '',
+            hintText: '#FF4D6D',
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true, fillColor: Colors.white.withOpacity(0.06), isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          ),
+        ),
+      ),
+    ]);
   }
 }

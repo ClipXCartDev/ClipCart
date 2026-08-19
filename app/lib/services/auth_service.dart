@@ -78,5 +78,14 @@ class AuthService {
     await api.dio.delete('/auth/devices/$id');
   }
 
+  /// Change the account password. Throws DioException on a wrong current password
+  /// (400) or a Google-only account (400).
+  Future<void> changePassword(String current, String newPassword) async {
+    await api.dio.post('/auth/change-password', data: {
+      'current_password': current,
+      'new_password': newPassword,
+    });
+  }
+
   Future<void> logout() => api.tokens.clear();
 }

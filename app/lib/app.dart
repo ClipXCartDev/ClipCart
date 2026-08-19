@@ -12,9 +12,13 @@ import 'features/billing/plans_screen.dart';
 import 'features/creator/creator_dashboard.dart';
 import 'features/creator/upload_clip_screen.dart';
 import 'features/editor/editor_screen.dart';
+import 'features/exports/exports_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/player/clip_player_screen.dart';
+import 'features/settings/change_password_screen.dart';
+import 'features/support/support_screen.dart';
 import 'models/clip.dart';
+import 'services/project_store.dart';
 import 'state/auth_controller.dart';
 
 /// Premium push-over transition: subtle fade + scale (0.96→1.0) + short slide-up,
@@ -85,12 +89,20 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(
           path: '/editor',
           pageBuilder: (c, s) {
-            final clip = s.extra is Clip ? s.extra as Clip : null;
+            // extra may be a Clip (new edit) or a SavedProject (resume).
+            final extra = s.extra;
+            if (extra is SavedProject) {
+              return _fadeScalePage(s, EditorScreen(resume: extra, title: extra.name));
+            }
+            final clip = extra is Clip ? extra : null;
             return _fadeScalePage(s, EditorScreen(clip: clip, title: clip?.title));
           },
         ),
         GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansScreen())),
         GoRoute(path: '/devices', pageBuilder: (c, s) => _fadeScalePage(s, const DevicesScreen())),
+        GoRoute(path: '/exports', pageBuilder: (c, s) => _fadeScalePage(s, const ExportsScreen())),
+        GoRoute(path: '/support', pageBuilder: (c, s) => _fadeScalePage(s, const SupportScreen())),
+        GoRoute(path: '/change-password', pageBuilder: (c, s) => _fadeScalePage(s, const ChangePasswordScreen())),
         GoRoute(path: '/creator', pageBuilder: (c, s) => _fadeScalePage(s, const CreatorDashboard())),
         GoRoute(path: '/creator/upload', pageBuilder: (c, s) => _fadeScalePage(s, const UploadClipScreen())),
       ],

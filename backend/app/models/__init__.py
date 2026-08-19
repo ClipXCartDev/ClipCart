@@ -1,6 +1,7 @@
 from app.models.billing import Payment, PaymentStatus, Plan, Subscription, SubStatus
 from app.models.catalog import Access, Category, Clip, ClipStatus, Download, Favorite
 from app.models.payout import Payout, PayoutStatus
+from app.models.support import Sender, SupportMessage, SupportThread
 from app.models.user import Device, RefreshToken, Role, User
 
 __all__ = [
@@ -21,4 +22,7 @@ __all__ = [
     "PaymentStatus",
     "Payout",
     "PayoutStatus",
+    "SupportThread",
+    "SupportMessage",
+    "Sender",
 ]

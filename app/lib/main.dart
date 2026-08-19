@@ -11,7 +11,9 @@ import 'services/catalog_service.dart';
 import 'services/creator_service.dart';
 import 'services/brand_kit_service.dart';
 import 'services/font_service.dart';
+import 'services/project_store.dart';
 import 'services/sticker_service.dart';
+import 'services/support_service.dart';
 import 'state/auth_controller.dart';
 
 void main() async {
@@ -31,6 +33,8 @@ void main() async {
       Provider<CatalogService>.value(value: catalog),
       Provider<BillingService>.value(value: billing),
       Provider<CreatorService>.value(value: creator),
+      Provider<ProjectStore>(create: (_) => ProjectStore()),
+      Provider<SupportService>(create: (_) => SupportService(api)),
       ChangeNotifierProvider<FontService>(create: (_) => FontService()),
       ChangeNotifierProvider<StickerService>(create: (_) => StickerService(api)),
       ChangeNotifierProvider<BrandKitService>(create: (_) => BrandKitService()..ensureLoaded()),

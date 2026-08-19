@@ -146,11 +146,15 @@ double masonryAspect(String id) {
 }
 
 /// Compact masonry tile for a DENSE RenderForest-style gallery — small thumbnail,
-/// minimal overlay (only a PRO/FREE dot + duration + tiny title), tight radius.
+/// minimal overlay. [showText] controls the caption: the Home/Explore grid hides
+/// it (client: "home page videos mein text na show ho, click karne par dikhe"),
+/// while the full-screen player is where the caption/text appears.
 class ClipTile extends StatelessWidget {
-  const ClipTile({super.key, required this.clip, this.onTap});
+  const ClipTile({super.key, required this.clip, this.onTap, this.showText = false, this.aspect});
   final Clip clip;
   final VoidCallback? onTap;
+  final bool showText; // show the title caption on the tile
+  final double? aspect; // override the deterministic masonry ratio (rows use fixed)
 
   @override
   Widget build(BuildContext context) {
@@ -162,7 +166,7 @@ class ClipTile extends StatelessWidget {
         child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: AspectRatio(
-          aspectRatio: masonryAspect(clip.id),
+          aspectRatio: aspect ?? masonryAspect(clip.id),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -176,10 +180,11 @@ class ClipTile extends StatelessWidget {
                   placeholder: (ctx, _) => DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: g))),
                   errorWidget: (ctx, _, __) => const SizedBox.shrink(),
                 ),
-              // subtle bottom scrim
-              const DecoratedBox(
-                decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.transparent, Color(0xB3000000)], stops: [0.0, 0.55, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-              ),
+              // subtle bottom scrim (only needed when the caption shows)
+              if (showText)
+                const DecoratedBox(
+                  decoration: BoxDecoration(gradient: LinearGradient(colors: [Colors.transparent, Colors.transparent, Color(0xB3000000)], stops: [0.0, 0.55, 1.0], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+                ),
               // PRO dot (top-left) — tiny
               if (clip.isPro)
                 Positioned(top: 6, left: 6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(5)), child: const Text('PRO', style: TextStyle(color: Color(0xFF3A2600), fontSize: 8, fontWeight: FontWeight.w900)))),
@@ -187,12 +192,13 @@ class ClipTile extends StatelessWidget {
               Positioned(top: 6, right: 6, child: Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5), decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(5)), child: Text(clip.durationLabel, style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w800)))),
               // small play glyph center
               Center(child: Icon(Icons.play_circle_fill_rounded, color: Colors.white.withOpacity(0.85), size: 30, shadows: const [Shadow(color: Colors.black45, blurRadius: 6)])),
-              // tiny title at bottom
-              Positioned(
-                left: 7, right: 7, bottom: 6,
-                child: Text(clip.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10.5, shadows: [Shadow(color: Colors.black87, blurRadius: 4)])),
-              ),
+              // tiny title at bottom (hidden on Home/Explore grid)
+              if (showText)
+                Positioned(
+                  left: 7, right: 7, bottom: 6,
+                  child: Text(clip.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10.5, shadows: [Shadow(color: Colors.black87, blurRadius: 4)])),
+                ),
             ],
           ),
         ),

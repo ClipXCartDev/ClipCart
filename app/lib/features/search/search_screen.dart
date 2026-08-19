@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -9,162 +10,207 @@ import '../../services/catalog_service.dart';
 import '../../widgets/clip_card.dart';
 import '../../widgets/premium_empty_state.dart';
 import '../../widgets/skeleton_grid.dart';
+import '../home/home_shell.dart';
 
+/// Explore — an Instagram-style browse grid with a search bar pinned on top.
+/// Shows all clips by default; typing filters. Category chips scroll under the
+/// search bar. Grid tiles hide their caption (text shows only in the player).
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialCategory});
+  final String? initialCategory;
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  static const _page = 30;
   final _q = TextEditingController();
+  final _scroll = ScrollController();
+  final List<Clip> _grid = [];
   List<Map<String, dynamic>> _cats = [];
-  Future<List<Clip>>? _future; // null = idle (show suggestions)
-
-  static const _ideas = ['Monday', 'weekend', 'reaction', 'crush', 'gym', 'exam', 'boss', 'friends'];
+  String? _cat;
+  String _query = '';
+  bool _loading = true, _loadingMore = false, _more = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    context.read<CatalogService>().categories().then((c) {
-      if (mounted) setState(() => _cats = c);
-    }).catchError((_) {});
+    _cat = widget.initialCategory;
+    _scroll.addListener(_onScroll);
+    _boot();
   }
 
   @override
   void dispose() {
     _q.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
-  void _search([String? term]) {
-    if (term != null) _q.text = term;
-    final query = _q.text.trim();
-    if (query.isEmpty) {
-      setState(() => _future = null);
-      return;
+  CatalogService get _cs => context.read<CatalogService>();
+
+  Future<void> _boot() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      try { _cats = await _cs.categories(); } catch (_) {}
+      await _reload();
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _reload() async {
+    setState(() { _grid.clear(); _more = true; });
+    await _loadMore();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_more) return;
+    setState(() => _loadingMore = true);
+    try {
+      final next = await _cs.listClips(
+        q: _query.isEmpty ? null : _query,
+        category: _cat,
+        limit: _page,
+        offset: _grid.length,
+        sort: 'trending',
+      );
+      if (!mounted) return;
+      setState(() {
+        _grid.addAll(next);
+        if (next.length < _page) _more = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _more = false);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  void _onScroll() {
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 700) _loadMore();
+    final dir = _scroll.position.userScrollDirection;
+    if (_scroll.position.pixels < 120) {
+      navMinimized.value = false;
+    } else if (dir == ScrollDirection.reverse) {
+      navMinimized.value = true;
+    } else if (dir == ScrollDirection.forward) {
+      navMinimized.value = false;
+    }
+  }
+
+  void _submitSearch() {
     FocusScope.of(context).unfocus();
-    setState(() => _future = context.read<CatalogService>().listClips(q: query, limit: 60));
+    setState(() => _query = _q.text.trim());
+    _reload();
+  }
+
+  void _pickCategory(String? slug) {
+    setState(() => _cat = slug);
+    _reload();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            // premium search bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
-                ),
-                child: TextField(
-                  controller: _q,
-                  autofocus: false,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _search(),
-                  onChanged: (v) {
-                    if (v.isEmpty) setState(() => _future = null);
-                  },
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    hintText: 'Search clips, movies, moods…',
-                    hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.accent),
-                    suffixIcon: _q.text.isEmpty
-                        ? null
-                        : IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () { _q.clear(); setState(() => _future = null); }),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
+        bottom: false,
+        child: Column(children: [
+          // Instagram-style search bar (client point 9)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.grey.withOpacity(0.2)),
+              ),
+              child: TextField(
+                controller: _q,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _submitSearch(),
+                onChanged: (v) { if (v.isEmpty && _query.isNotEmpty) { setState(() => _query = ''); _reload(); } },
+                style: const TextStyle(fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  hintText: 'Search clips, movies, moods…',
+                  hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.accent),
+                  suffixIcon: _q.text.isEmpty
+                      ? null
+                      : IconButton(icon: const Icon(Icons.close_rounded, size: 20), onPressed: () { _q.clear(); setState(() => _query = ''); _reload(); }),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
               ),
             ),
-            Expanded(child: _future == null ? _suggestions() : _results()),
-          ],
-        ),
+          ),
+          // category chips row
+          if (_cats.isNotEmpty)
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  _chip('All', _cat == null, () => _pickCategory(null)),
+                  for (final c in _cats)
+                    _chip(c['name'] as String, _cat == ((c['slug'] as String?) ?? c['name']), () => _pickCategory((c['slug'] as String?) ?? c['name'] as String)),
+                ],
+              ),
+            ),
+          Expanded(child: _body()),
+        ]),
       ),
     );
   }
 
-  Widget _suggestions() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-      children: [
-        const SizedBox(height: 6),
-        const Text('Browse by category', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-        const SizedBox(height: 12),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          for (final c in _cats) _chip(c['name'] as String, () => _searchCategory(c)),
-        ]),
-        const SizedBox(height: 26),
-        const Text('Popular searches', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-        const SizedBox(height: 12),
-        Wrap(spacing: 10, runSpacing: 10, children: [
-          for (final t in _ideas) _chip('#$t', () => _search(t), muted: true),
-        ]),
-      ],
-    );
-  }
-
-  void _searchCategory(Map<String, dynamic> c) {
-    FocusScope.of(context).unfocus();
-    _q.text = c['name'] as String;
-    setState(() => _future = context.read<CatalogService>().listClips(category: (c['slug'] as String?) ?? c['name'] as String, limit: 60));
-  }
-
-  Widget _chip(String label, VoidCallback onTap, {bool muted = false}) => GestureDetector(
+  Widget _chip(String label, bool on, VoidCallback onTap) => GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          margin: const EdgeInsets.only(right: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: muted ? null : const LinearGradient(colors: [Color(0x1AFF7A59), Color(0x1AFF4D6D)]),
-            color: muted ? Theme.of(context).cardColor : null,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: muted ? Colors.grey.withOpacity(0.25) : const Color(0x33FF4D6D)),
+            gradient: on ? const LinearGradient(colors: AppColors.gradient) : null,
+            color: on ? null : Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: on ? Colors.transparent : Colors.grey.withOpacity(0.25)),
           ),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: muted ? null : AppColors.accentInk)),
+          child: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: on ? Colors.white : null)),
         ),
       );
 
-  Widget _results() {
-    return FutureBuilder<List<Clip>>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const SkeletonGrid(count: 9);
-        }
-        if (snap.hasError) {
-          return Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Text("Couldn't search right now.", style: TextStyle(color: Colors.grey.shade600)),
-              TextButton(onPressed: () => _search(), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
-            ]),
-          );
-        }
-        final clips = snap.data ?? [];
-        if (clips.isEmpty) {
-          return const PremiumEmptyState(
-            icon: Icons.search_off_rounded,
-            title: 'No clips found',
-            subtitle: 'Try a different word, mood, or category.',
-          );
-        }
-        return MasonryGridView.count(
-          padding: EdgeInsets.fromLTRB(8, 8, 8, 80 + MediaQuery.of(context).viewPadding.bottom),
-          crossAxisCount: 3,
-          mainAxisSpacing: 5,
-          crossAxisSpacing: 5,
-          itemCount: clips.length,
-          itemBuilder: (context, i) => ClipTile(clip: clips[i], onTap: () => context.push('/player', extra: {'clips': clips, 'index': i})),
-        );
-      },
+  Widget _body() {
+    if (_loading) return const SkeletonGrid(count: 12);
+    if (_error != null) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text("Couldn't load clips.", style: TextStyle(color: Colors.grey.shade600)),
+          TextButton(onPressed: _boot, child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
+        ]),
+      );
+    }
+    if (_grid.isEmpty) {
+      return const PremiumEmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'No clips found',
+        subtitle: 'Try a different word, mood, or category.',
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _reload,
+      child: MasonryGridView.count(
+        controller: _scroll,
+        padding: EdgeInsets.fromLTRB(8, 8, 8, 90 + MediaQuery.of(context).viewPadding.bottom),
+        crossAxisCount: 3,
+        mainAxisSpacing: 5,
+        crossAxisSpacing: 5,
+        itemCount: _grid.length,
+        itemBuilder: (context, i) => ClipTile(clip: _grid[i], onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
+      ),
     );
   }
 }

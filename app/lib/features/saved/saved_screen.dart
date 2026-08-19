@@ -11,8 +11,12 @@ import '../../widgets/premium_empty_state.dart';
 import '../../widgets/skeleton_grid.dart';
 import '../home/home_shell.dart';
 
+/// The "Templates" tab — clips the user saved (hearted) for later. In the new
+/// nav this is the 4th destination (index 3). Kept alive by the IndexedStack,
+/// so it reloads whenever its tab is (re)selected.
 class SavedScreen extends StatefulWidget {
-  const SavedScreen({super.key});
+  const SavedScreen({super.key, this.tabIndex = 3});
+  final int tabIndex;
   @override
   State<SavedScreen> createState() => _SavedScreenState();
 }
@@ -24,13 +28,11 @@ class _SavedScreenState extends State<SavedScreen> {
   void initState() {
     super.initState();
     _future = context.read<CatalogService>().favorites();
-    // reload whenever the Saved tab (index 2) is (re)selected — the tab is kept
-    // alive by the IndexedStack, so a fresh favorite won't show without this.
     homeTab.addListener(_onTab);
   }
 
   void _onTab() {
-    if (homeTab.value == 2 && mounted) {
+    if (homeTab.value == widget.tabIndex && mounted) {
       setState(() => _future = context.read<CatalogService>().favorites());
     }
   }
@@ -44,7 +46,7 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Liked', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Templates', style: TextStyle(fontWeight: FontWeight.w900)), centerTitle: false),
       body: RefreshIndicator(
         onRefresh: () async => setState(() => _future = context.read<CatalogService>().favorites()),
         child: FutureBuilder<List<Clip>>(
@@ -58,7 +60,7 @@ class _SavedScreenState extends State<SavedScreen> {
                 const SizedBox(height: 80),
                 Center(
                   child: Column(children: [
-                    Text("Couldn't load your saved clips.", style: TextStyle(color: Colors.grey.shade600)),
+                    Text("Couldn't load your templates.", style: TextStyle(color: Colors.grey.shade600)),
                     TextButton(onPressed: () => setState(() => _future = context.read<CatalogService>().favorites()), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
                   ]),
                 ),
@@ -69,14 +71,14 @@ class _SavedScreenState extends State<SavedScreen> {
               return ListView(children: const [
                 SizedBox(height: 80),
                 PremiumEmptyState(
-                  icon: Icons.favorite_border_rounded,
-                  title: 'No liked clips yet',
-                  subtitle: 'Tap the heart on any clip to like it\nfor quick access later.',
+                  icon: Icons.bookmark_border_rounded,
+                  title: 'No saved templates yet',
+                  subtitle: 'Tap the heart on any clip to save it\nas a template for quick access later.',
                 ),
               ]);
             }
             return MasonryGridView.count(
-              padding: EdgeInsets.fromLTRB(8, 8, 8, 80 + MediaQuery.of(context).viewPadding.bottom),
+              padding: EdgeInsets.fromLTRB(8, 8, 8, 90 + MediaQuery.of(context).viewPadding.bottom),
               crossAxisCount: 3,
               mainAxisSpacing: 5,
               crossAxisSpacing: 5,

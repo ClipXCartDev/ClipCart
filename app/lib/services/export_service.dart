@@ -1,20 +1,14 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'package:ffmpeg_kit_flutter_new/statistics.dart';
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/editor_state.dart';
 import 'text_render.dart';
-
-/// Probed facts about the base clip we need before building the filtergraph.
-class _ClipProbe {
-  _ClipProbe(this.hasAudio, this.width, this.height);
-  final bool hasAudio;
-  final int? width, height;
-}
 
 class ExportResult {
   ExportResult(this.path, this.savedToGallery);
@@ -26,13 +20,14 @@ class ExportResult {
 /// transparent PNG that is scaled, rotated and time-gated — perfectly WYSIWYG
 /// with the editor canvas. Optional trim + aspect-ratio crop.
 class ExportService {
-  Future<ExportResult> export(EditorProject p) async {
+  /// [onProgress] receives 0.0..1.0 during the render (from real FFmpeg frame
+  /// statistics — honest progress, no fake bar). It may not reach exactly 1.0.
+  Future<ExportResult> export(EditorProject p, {void Function(double)? onProgress}) async {
     final off = p.trimStart;
 
-    // Probe the base clip ONCE: does it have an audio stream (so we never wire a
-    // non-existent [0:a] pad into the mix), and its native w/h (to remap overlay
-    // positions when an aspect crop shrinks the frame).
-    final probe = await _probe(p.baseClipPath);
+    // Audio is mapped as an OPTIONAL original stream (`0:a?`) so a silent clip
+    // simply produces a video with no audio track — no probe needed. Music was
+    // removed per client (edit/add music no longer supported).
 
     bool inWindow(double start, double end) {
       // Overlay must intersect the exported window [trimStart, outEnd] (original
@@ -54,15 +49,37 @@ class ExportService {
     final hasLogo = p.logoPath != null && !p.logoHidden && File(p.logoPath!).existsSync();
     final stickers = p.stickers.where((s) => !s.hidden && inWindow(s.start, s.end) && File(s.path).existsSync()).toList();
 
-    // Aspect crop (center). The editor now crops the preview LIVE (canvas = crop
-    // ratio, video cover-cropped), so overlay dx/dy are already stored relative to
-    // the CROPPED frame — identical to FFmpeg's main_w/main_h here. No remap needed:
-    // preview and export share the same cropped coordinate space (true WYSIWYG).
-    String cropFilter = 'null';
+    // Aspect crop (center) + optional video PAN/ZOOM inside the frame. The editor
+    // crops the preview LIVE (canvas = crop ratio, video cover-cropped) AND lets the
+    // user zoom/pan the video inside that frame, so overlay dx/dy are stored relative
+    // to the CROPPED frame — identical to FFmpeg's main_w/main_h. True WYSIWYG.
+    //
+    // Pipeline for a crop with pan/zoom: crop to aspect → scale up by videoScale →
+    // crop back to the aspect box at the panned offset. Center pan (0,0) = cover.
+    final cropChain = StringBuffer();
     final ar = p.aspect.ratio;
+    final vz = p.videoScale.clamp(1.0, 4.0);
+    final panX = p.videoDx.clamp(-0.5, 0.5);
+    final panY = p.videoDy.clamp(-0.5, 0.5);
     if (ar != null) {
-      cropFilter = "crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})',setsar=1";
+      // 1) cover-crop to the target aspect
+      cropChain.write("crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})'");
+      if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
+        // 2) zoom (scale the cropped box up), 3) re-crop to the box at the pan offset
+        cropChain.write(",scale=iw*${_f(vz)}:ih*${_f(vz)}");
+        cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
+            ":'(iw-ow)*(0.5+${_f(panX)})':'(ih-oh)*(0.5+${_f(panY)})'");
+      }
+      cropChain.write(',setsar=1');
+    } else if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
+      // no aspect change but user zoomed/panned the native frame
+      cropChain.write("scale=iw*${_f(vz)}:ih*${_f(vz)}");
+      cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
+          ":'(iw-ow)*(0.5+${_f(panX)})':'(ih-oh)*(0.5+${_f(panY)})',setsar=1");
+    } else {
+      cropChain.write('null');
     }
+    final cropFilter = cropChain.toString();
     double cropDx(double dx) => dx;
     double cropDy(double dy) => dy;
     const cropScaleW = 1.0;
@@ -92,14 +109,6 @@ class ExportService {
     for (final st in stickers) {
       parts.addAll(['-i', st.path]);
       stickerIdx.add(idx++);
-    }
-    // optional music input (seek into the track with -ss before -i)
-    final hasMusic = p.musicPath != null && File(p.musicPath!).existsSync();
-    int? musicIdx;
-    if (hasMusic) {
-      if (p.musicStart > 0.01) parts.addAll(['-ss', _f(p.musicStart, 3)]);
-      parts.addAll(['-i', p.musicPath!]);
-      musicIdx = idx++;
     }
 
     // Overlay list sorted by z (ascending → highest z composited last = on top).
@@ -169,48 +178,60 @@ class ExportService {
           "shadowcolor=black@0.5:shadowx=2:shadowy=2[wm];");
       cur = 'wm';
     }
-    fc.write('[$cur]null[vout]');
+    // Scale the finished frame to the target output resolution. [resolution.shortEdge]
+    // is the SHORT edge; keep even dimensions (h264 needs mod-2). The aspect ratio is
+    // already correct (crop above), so we scale the short edge and let the long edge
+    // follow. Guard: never UPSCALE past the source (min with iw/ih).
+    final shortEdge = p.resolution.shortEdge;
+    fc.write("[$cur]scale=w='if(gt(iw\\,ih)\\,-2\\,min($shortEdge\\,iw))':"
+        "h='if(gt(iw\\,ih)\\,min($shortEdge\\,ih)\\,-2)':flags=bicubic[vout]");
 
-    // ---- audio: original (0:a) optionally ducked under an added music track ----
-    final dur = p.outDuration;
-    String audioMap = '0:a?'; // default: passthrough original (optional → silent if none)
-    if (hasMusic) {
-      final fadeSt = (dur - 0.8).clamp(0.0, dur);
-      // Music is always trimmed to the clip length and faded out at the end.
-      final musicChain =
-          "[$musicIdx:a]atrim=0:${_f(dur, 3)},asetpts=PTS-STARTPTS,volume=${_f(p.musicVolume, 2)},aresample=44100,afade=t=out:st=${_f(fadeSt, 3)}:d=0.8";
-      if (probe.hasAudio) {
-        // Duck the original under the music. duration=longest (music is already
-        // trimmed to dur) so a SHORT original audio can't truncate the mix.
-        fc.write(";[0:a]volume=${_f(p.originalVolume, 2)},aresample=44100[oa];");
-        fc.write("$musicChain[ma];");
-        fc.write("[oa][ma]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]");
-      } else {
-        // No original audio stream → NEVER reference [0:a] (that would abort the
-        // graph). Map music alone.
-        fc.write(";$musicChain[aout]");
-      }
-      audioMap = '[aout]';
-    }
+    // ---- audio: original clip audio ONLY (music feature removed per client) ----
+    final audioMap = '0:a?'; // passthrough original (optional → silent if none)
 
     parts.addAll(['-filter_complex', fc.toString(), '-map', '[vout]', '-map', audioMap]);
-    // Always cap to the intended clip length: with duration=longest the mix can
-    // now run longer than the video, so -t guarantees both land at outDuration.
+    // Cap to the intended clip length.
     parts.addAll(['-t', _f(p.outDuration, 3)]);
     parts.addAll([
       // High-quality HD export: crf 18 ≈ visually lossless, medium preset for good
-      // quality-per-bit (veryfast+crf23 was destroying quality → tiny files).
+      // quality-per-bit. Output frame rate per the user's fps choice (30/60).
       '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
+      '-r', '${p.fps}',
       '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
       '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', output,
     ]);
 
-    final session = await FFmpegKit.executeWithArguments(parts);
+    // Total output frames (for honest progress from FFmpeg statistics).
+    final totalFrames = (p.outDuration * p.fps).round().clamp(1, 1 << 30);
+    // Run async so the Statistics callback fires; await completion via a Completer.
+    final done = Completer<void>();
+    final session = await FFmpegKit.executeWithArgumentsAsync(
+      parts,
+      (_) => done.complete(),
+      (_) {},
+      (Statistics stats) {
+        if (onProgress != null) {
+          final frame = stats.getVideoFrameNumber();
+          if (frame > 0) onProgress((frame / totalFrames).clamp(0.0, 0.999));
+        }
+      },
+    );
+    await done.future;
     final rc = await session.getReturnCode();
     if (!ReturnCode.isSuccess(rc)) {
       final logs = await session.getAllLogsAsString();
       throw Exception('Export failed (rc=$rc)\n${logs ?? ''}');
     }
+
+    // Write a poster-frame thumbnail sidecar (same name, .jpg) so the Exports tab
+    // can show what each video is — no extra plugin, just one FFmpeg still grab.
+    try {
+      final thumb = output.replaceAll('.mp4', '.jpg');
+      final tParts = ['-y', '-ss', '0.5', '-i', output, '-frames:v', '1', '-q:v', '3', thumb];
+      final tDone = Completer<void>();
+      await FFmpegKit.executeWithArgumentsAsync(tParts, (_) => tDone.complete());
+      await tDone.future;
+    } catch (_) {/* thumbnail is best-effort */}
 
     bool saved = false;
     try {
@@ -278,28 +299,4 @@ class ExportService {
   }
 
   String _f(num v, [int d = 4]) => v.toStringAsFixed(d);
-
-  /// Probes the base clip for an audio stream + native dimensions. Failures are
-  /// non-fatal: we default to hasAudio=true (matches the previous always-`0:a`
-  /// behavior for clips that DO have audio) and null dims (crop remap becomes a
-  /// no-op, i.e. the previous full-frame behavior).
-  Future<_ClipProbe> _probe(String path) async {
-    try {
-      final session = await FFprobeKit.getMediaInformation(path);
-      final info = session.getMediaInformation();
-      final streams = info?.getStreams() ?? [];
-      final hasAudio = streams.any((s) => s.getType() == 'audio');
-      int? w, h;
-      for (final s in streams) {
-        if (s.getType() == 'video') {
-          w = s.getWidth();
-          h = s.getHeight();
-          break;
-        }
-      }
-      return _ClipProbe(hasAudio, w, h);
-    } catch (_) {
-      return _ClipProbe(true, null, null);
-    }
-  }
 }

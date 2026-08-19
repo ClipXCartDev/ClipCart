@@ -302,6 +302,17 @@ class AspectOption {
   static const all = [original, portrait, square, vertical45, landscape];
 }
 
+/// Output resolution target — the SHORT edge in pixels (portrait height for 9:16
+/// is derived from this). 0 = keep source resolution.
+class ExportResolution {
+  const ExportResolution(this.label, this.shortEdge);
+  final String label;
+  final int shortEdge; // px on the shorter dimension
+  static const p720 = ExportResolution('720p', 720);
+  static const p1080 = ExportResolution('1080p', 1080);
+  static const all = [p720, p1080];
+}
+
 /// The editable project: base clip (optionally trimmed) + positioned overlay layers.
 class EditorProject {
   EditorProject({
@@ -320,11 +331,13 @@ class EditorProject {
     this.trimEnd,
     this.duration = 0.0,
     this.aspect = AspectOption.original,
-    this.musicPath,
-    this.musicVolume = 0.7,
-    this.musicStart = 0.0,
     this.originalVolume = 1.0,
     this.watermarkOn = true,
+    this.videoScale = 1.0,
+    this.videoDx = 0.0,
+    this.videoDy = 0.0,
+    this.resolution = ExportResolution.p1080,
+    this.fps = 30,
   })  : subtitles = subtitles ?? [],
         stickers = stickers ?? [];
 
@@ -339,15 +352,19 @@ class EditorProject {
   double logoRotation; // radians
   double logoZ; // stacking order
   bool logoHidden; // layer visibility
-  String? musicPath; // added music track (null = none)
-  double musicVolume; // 0..1
-  double musicStart; // seconds into the music to start from
   double originalVolume; // 0..1 volume of the clip's own audio
   double trimStart; // seconds
   double? trimEnd; // seconds (null = clip end)
   double duration; // full clip duration seconds
   AspectOption aspect;
   bool watermarkOn; // burn the app watermark (Pro can turn it off)
+  // Video pan/zoom INSIDE the aspect frame (like CapCut). videoScale multiplies
+  // the cover-fit; videoDx/videoDy shift the source in fractions of the frame.
+  double videoScale; // >= 1.0 zoom into the frame
+  double videoDx; // -0.5..0.5 horizontal pan (fraction of frame)
+  double videoDy; // -0.5..0.5 vertical pan (fraction of frame)
+  ExportResolution resolution; // output resolution target
+  int fps; // 30 or 60
 
   double get outStart => trimStart;
   double get outEnd => trimEnd ?? duration;
@@ -363,15 +380,19 @@ class EditorProject {
         'logoPath': logoPath, 'logoDx': logoDx, 'logoDy': logoDy,
         'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
-        'musicPath': musicPath, 'musicVolume': musicVolume, 'musicStart': musicStart, 'originalVolume': originalVolume,
+        'originalVolume': originalVolume,
         'watermarkOn': watermarkOn,
+        'videoScale': videoScale, 'videoDx': videoDx, 'videoDy': videoDy,
+        'resolution': resolution.shortEdge, 'fps': fps,
       };
 
   void restore(Map<String, dynamic> s) {
-    musicPath = s['musicPath'] as String?;
-    musicVolume = (s['musicVolume'] as num?)?.toDouble() ?? 0.7;
-    musicStart = (s['musicStart'] as num?)?.toDouble() ?? 0.0;
     originalVolume = (s['originalVolume'] as num?)?.toDouble() ?? 1.0;
+    videoScale = (s['videoScale'] as num?)?.toDouble() ?? 1.0;
+    videoDx = (s['videoDx'] as num?)?.toDouble() ?? 0.0;
+    videoDy = (s['videoDy'] as num?)?.toDouble() ?? 0.0;
+    resolution = (s['resolution'] as int? ?? 1080) == 720 ? ExportResolution.p720 : ExportResolution.p1080;
+    fps = (s['fps'] as int?) ?? 30;
     subtitles = (s['subs'] as List).map((e) => SubtitleSegment.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     stickers = ((s['stk'] as List?) ?? []).map((e) => StickerOverlay.fromJson(Map<String, dynamic>.from(e as Map))).toList();
     logoPath = s['logoPath'] as String?;
@@ -388,4 +409,28 @@ class EditorProject {
   }
 
   static int _aspectIndex(AspectOption a) => AspectOption.all.indexOf(a).clamp(0, AspectOption.all.length - 1);
+
+  /// Full serialization for on-device SAVED PROJECTS (unlike [snapshot], this
+  /// includes the immutable base paths + duration so a project can be reopened).
+  Map<String, dynamic> toProjectJson() => {
+        ...snapshot(),
+        'baseClipPath': baseClipPath,
+        'defaultFontPath': defaultFontPath,
+        'duration': duration,
+      };
+
+  factory EditorProject.fromProjectJson(Map<String, dynamic> j) {
+    final p = EditorProject(
+      baseClipPath: j['baseClipPath'] as String,
+      defaultFontPath: (j['defaultFontPath'] as String?) ?? '',
+      duration: (j['duration'] as num?)?.toDouble() ?? 0.0,
+    );
+    // trimStart/logo* fields in restore() are non-null-asserted; provide safe
+    // defaults for any missing key so an older/partial payload still loads.
+    p.restore({
+      'trimStart': 0.0, 'logoDx': 0.85, 'logoDy': 0.10, 'logoScale': 1.0,
+      'logoRotation': 0.0, 'aspect': 0, ...j,
+    });
+    return p;
+  }
 }
