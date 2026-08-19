@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
 import '../../widgets/primary_button.dart';
 
@@ -37,29 +38,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (err != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
   }
 
+  Widget _label(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 7, left: 2),
+        child: Align(alignment: Alignment.centerLeft, child: Text(t, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.ink))),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(leading: BackButton(onPressed: () => context.go('/onboarding'))),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 8),
-              const Text('Create account', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              const Text('Free clips to start — upgrade anytime', style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 24),
-              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name', prefixIcon: Icon(Icons.person_outline))),
-              const SizedBox(height: 12),
-              TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline))),
-              const SizedBox(height: 12),
-              TextField(controller: _password, obscureText: true, decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline))),
-              const SizedBox(height: 20),
-              PrimaryButton(label: 'Create account', loading: _loading, onPressed: _submit),
+              const Text('Create account', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink)),
+              const SizedBox(height: 6),
+              const Text('Free clips to start — upgrade anytime', style: TextStyle(color: AppColors.mut, fontSize: 15)),
+              const SizedBox(height: 26),
+              _label('Name'),
+              TextField(controller: _name, decoration: const InputDecoration(hintText: 'Your name')),
               const SizedBox(height: 16),
-              TextButton(onPressed: () => context.go('/login'), child: const Text('Have an account? Log in')),
+              _label('Email'),
+              TextField(controller: _email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(hintText: 'you@example.com')),
+              const SizedBox(height: 16),
+              _label('Password'),
+              TextField(controller: _password, obscureText: true, decoration: const InputDecoration(hintText: 'At least 8 characters')),
+              const SizedBox(height: 24),
+              PrimaryButton(label: 'Create account', loading: _loading, onPressed: _submit),
+              const SizedBox(height: 18),
+              Center(child: TextButton(onPressed: () => context.go('/login'), child: const Text('Have an account? Log in', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w600)))),
             ],
           ),
         ),

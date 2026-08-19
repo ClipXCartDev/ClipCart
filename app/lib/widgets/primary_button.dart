@@ -51,17 +51,28 @@ class GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
+    // Secondary/outlined style per the design: white, 1px --ln, ink text w500,
+    // with a small conic-gradient dot standing in for the Google mark.
+    return OutlinedButton(
       onPressed: onPressed,
-      icon: const Icon(Icons.g_mobiledata, size: 26, color: Colors.redAccent),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(50),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1F1F1F),
-        side: const BorderSide(color: Color(0xFFEAE8EE)),
+        minimumSize: const Size.fromHeight(52),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.ink,
+        side: const BorderSide(color: AppColors.line),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Container(
+          width: 18, height: 18,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: SweepGradient(colors: [AppColors.err, AppColors.gold, AppColors.ok, AppColors.brand, AppColors.err]),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16, color: AppColors.ink)),
+      ]),
     );
   }
 }

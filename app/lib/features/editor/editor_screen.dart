@@ -556,12 +556,12 @@ class _EditorScreenState extends State<EditorScreen> {
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Adjust', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
                 const SizedBox(height: 14),
-                Row(children: [
+                Wrap(spacing: 10, runSpacing: 10, children: [
                   _adjToggle('B', s.bold, () { snap(); setSheet(() { s.bold = !s.bold; setState(() {}); }); }, bold: true),
-                  const SizedBox(width: 10),
                   _adjToggle('I', s.italic, () { snap(); setSheet(() { s.italic = !s.italic; setState(() {}); }); }, italic: true),
-                  const SizedBox(width: 10),
                   _adjIconToggle(Icons.format_color_fill, 'Shadow', s.shadow, () { snap(); setSheet(() { s.shadow = !s.shadow; setState(() {}); }); }),
+                  _adjIconToggle(Icons.title, 'BG', s.bgEnabled, () { snap(); setSheet(() { s.bgEnabled = !s.bgEnabled; setState(() {}); }); }),
+                  _adjIconToggle(_alignIcon(s.align), 'Align', false, () { snap(); setSheet(() { s.align = TextAlignH.values[(s.align.index + 1) % 3]; setState(() {}); }); }),
                 ]),
                 const SizedBox(height: 16),
                 // Text SIZE slider (client-requested: length/size adjust). Drives the
@@ -2448,20 +2448,68 @@ class _EditorScreenState extends State<EditorScreen> {
     _vc!.seekTo(Duration(milliseconds: ms));
   }
 
+  /// "More" tools sheet — the less-frequent add options in a compact grid so the
+  /// main toolbar stays short and easy to use (client: editor compact + easy).
+  Future<void> _openMoreTools() async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 14, 16, 12 + MediaQuery.of(context).viewPadding.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(9)))),
+            const SizedBox(height: 14),
+            const Text('Add more', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 14),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 4,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 0.92,
+              children: [
+                _moreTile(Icons.alternate_email_rounded, 'Username', () { Navigator.pop(context); _addUsername(); }),
+                _moreTile(Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }),
+                _moreTile(Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }),
+                _moreTile(Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }),
+                _moreTile(_project!.watermarkOn ? Icons.branding_watermark : Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, on: _project!.watermarkOn),
+              ],
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _moreTile(IconData icon, String label, VoidCallback onTap, {bool on = false}) => GestureDetector(
+        onTap: onTap,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 52, height: 52,
+            decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(height: 6),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+        ]),
+      );
+
   // ---------- toolbar (contextual) ----------
   Widget _toolbar() {
     final tools = <Widget>[];
     if (_selected is SubtitleSegment) {
       final s = _selected as SubtitleSegment;
+      // Compact: the 6 core text actions. BG/Outline/Align live inside Adjust; the
+      // inline bar (while typing) also carries color/size/toggles.
       tools.addAll([
         _tool(Icons.edit, 'Edit', _editSelectedSubtitle),
-        _tool(Icons.auto_awesome_rounded, 'Styles', _openStyleGallery),
         _tool(Icons.font_download_rounded, 'Font', _openFontPicker),
-        _tool(Icons.tune_rounded, 'Adjust', _openStyleSheet),
         _tool(Icons.format_color_text, 'Color', () => _quickColor(s)),
-        _tool(s.bgEnabled ? Icons.check_box : Icons.check_box_outline_blank, 'BG', () => _mutate(() => s.bgEnabled = !s.bgEnabled)),
-        _tool(Icons.border_color, 'Outline', () => _mutate(() => s.strokeWidth = s.strokeWidth > 0 ? 0 : 3)),
-        _tool(_alignIcon(s.align), 'Align', () => _mutate(() => s.align = TextAlignH.values[(s.align.index + 1) % 3])),
+        _tool(Icons.tune_rounded, 'Adjust', _openStyleSheet),
+        _tool(Icons.auto_awesome_rounded, 'Style', _openStyleGallery),
         _tool(Icons.animation, 'Animate', _openFadeSheet, active: s.anim != OverlayAnim.none || s.fadeIn > 0 || s.fadeOut > 0),
         _tool(Icons.copy, 'Copy', _duplicateSelected),
         _tool(Icons.delete_outline, 'Delete', _deleteSelected, danger: true),
@@ -2485,20 +2533,16 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     } else {
       final layerCount = _project!.subtitles.length + _project!.stickers.length + (_project!.logoPath != null ? 1 : 0);
+      // COMPACT: only the 5 most-used tools stay in the always-visible row (no
+      // horizontal scrolling). Everything else (Username/CTA/Outro/Watermark/
+      // Brand) lives one tap deeper under "More".
       tools.addAll([
-        _tool(Icons.text_fields, 'Add text', _addSubtitle),
-        _tool(Icons.alternate_email_rounded, 'Username', _addUsername),
-        _tool(Icons.campaign_rounded, 'CTA', _addCta),
+        _tool(Icons.text_fields, 'Text', _addSubtitle),
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
-        _tool(Icons.movie_filter_rounded, 'Outro', _addEndingScreen),
         _tool(Icons.image_outlined, 'Logo', _pickLogo),
-        // Prominent Layers entry so multiple text/logo/sticker layers are easy to
-        // manage/select (client: "multiple text/layers ka option chahiye").
         _tool(Icons.layers_rounded, layerCount > 0 ? 'Layers ($layerCount)' : 'Layers', _openLayers, active: layerCount > 0),
-        _tool(_project!.watermarkOn ? Icons.branding_watermark : Icons.branding_watermark_outlined, 'Mark',
-            _toggleWatermark, active: _project!.watermarkOn),
-        _tool(Icons.palette_rounded, 'Brand', _openBrandKit),
+        _tool(Icons.more_horiz_rounded, 'More', _openMoreTools),
       ]);
     }
     final hasSel = _selected != null;
