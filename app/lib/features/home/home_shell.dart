@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../state/auth_controller.dart';
+import '../library/library_screen.dart';
 import '../projects/projects_screen.dart';
-import '../saved/saved_screen.dart';
 import '../search/search_screen.dart';
 import 'discover_screen.dart';
 
@@ -48,13 +48,13 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    // New 5-tab structure (client): Home · Explore · Editor · Templates · Me.
+    // Revision A §3.0 five-tab structure: Home · Explore · Editor · Library · Me.
     const tabs = [
-      DiscoverScreen(),      // 0 Home — category rows + subscription banner
-      _ExploreTab(),         // 1 Explore — search grid (reacts to exploreCategory)
-      ProjectsScreen(),      // 2 Editor — saved in-progress projects
-      SavedScreen(tabIndex: 3), // 3 Templates — saved (hearted) clips
-      _AccountTab(),         // 4 Me — account + exports + help
+      DiscoverScreen(),        // 0 Home — category shelves + plan banner
+      _ExploreTab(),           // 1 Explore — search grid (reacts to exploreCategory)
+      ProjectsScreen(),        // 2 Editor — saved drafts (continue / delete)
+      LibraryScreen(tabIndex: 3), // 3 Library — Saved templates + My exports
+      _AccountTab(),           // 4 Me — account, help, live chat
     ];
     return Scaffold(
       body: IndexedStack(index: _index, children: tabs),
@@ -82,12 +82,12 @@ class _ExploreTab extends StatelessWidget {
   }
 }
 
-// Icon set per destination: (unselected, selected, label).
+// Revision A §3.0 tab bar: Home ⌂ · Explore ⌕ · Editor ✎ · Library ▤ · Me ◍.
 const _dockItems = [
   (Icons.home_outlined, Icons.home_rounded, 'Home'),
-  (Icons.explore_outlined, Icons.explore_rounded, 'Explore'),
-  (Icons.video_settings_outlined, Icons.video_settings_rounded, 'Editor'),
-  (Icons.bookmark_border_rounded, Icons.bookmark_rounded, 'Templates'),
+  (Icons.search_outlined, Icons.search_rounded, 'Explore'),
+  (Icons.edit_outlined, Icons.edit_rounded, 'Editor'),
+  (Icons.video_library_outlined, Icons.video_library_rounded, 'Library'),
   (Icons.person_outline_rounded, Icons.person_rounded, 'Me'),
 ];
 
@@ -246,12 +246,10 @@ class _AccountTab extends StatelessWidget {
               _MenuCard(children: [
                 _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
                 if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
-                _MenuRow(Icons.download_rounded, 'My exports', () => context.push('/exports')),
                 _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/devices')),
               ]),
               const SizedBox(height: 14),
               _MenuCard(children: [
-                _MenuRow(Icons.lock_outline_rounded, 'Change password', () => context.push('/change-password')),
                 _MenuRow(Icons.support_agent_rounded, 'Help & support', () => context.push('/support')),
                 _MenuRow(Icons.privacy_tip_outlined, 'Privacy & terms', () => _infoDialog(context, 'Privacy & terms', 'Your account data is used only to run ClipCart and is never sold. Exports render on your device. Full details at clipscart.app. Questions: clipxcart@gmail.com')),
               ]),

@@ -206,11 +206,12 @@ class _SearchScreenState extends State<SearchScreen> {
       onRefresh: _reload,
       child: GridView.builder(
         controller: _scroll,
-        padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
+        padding: EdgeInsets.fromLTRB(20, 4, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2, mainAxisSpacing: 11, crossAxisSpacing: 11, childAspectRatio: 9 / 14),
+          crossAxisCount: 3, mainAxisSpacing: 7, crossAxisSpacing: 7, childAspectRatio: 9 / 14),
         itemCount: _grid.length,
-        itemBuilder: (context, i) => ClipTile(clip: _grid[i], aspect: 9 / 14, showText: true, onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
+        // Explore tiles are caption-less (feedback 2) — text shows only when opened.
+        itemBuilder: (context, i) => ClipTile(clip: _grid[i], aspect: 9 / 14, onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
       ),
     );
   }

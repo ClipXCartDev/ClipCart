@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:ffmpeg_kit_flutter_new/statistics.dart';
 import 'package:gal/gal.dart';
@@ -61,8 +62,17 @@ class ExportService {
     final vz = p.videoScale.clamp(1.0, 4.0);
     final panX = p.videoDx.clamp(-0.5, 0.5);
     final panY = p.videoDy.clamp(-0.5, 0.5);
-    if (ar != null) {
-      // 1) cover-crop to the target aspect
+    if (ar != null && p.videoFitContain) {
+      // FIT mode: letterbox the whole video onto a bg fill of the target aspect.
+      // Build a box sized to the aspect (based on the input's larger dimension),
+      // scale the video to fit inside it (× videoScale), pad to the box centre.
+      final bg = _ffColor(p.videoBgColor);
+      // target box: width = max(iw, ih*ar), height = width/ar → contains the source
+      cropChain.write("scale=w='iw*${_f(vz)}':h='ih*${_f(vz)}',");
+      cropChain.write("pad=w='max(iw\\,ih*${_f(ar)})':h='max(iw\\,ih*${_f(ar)})/${_f(ar)}'"
+          ":x='(ow-iw)/2+(ow-iw)*${_f(panX)}':y='(oh-ih)/2+(oh-ih)*${_f(panY)}':color=$bg,setsar=1");
+    } else if (ar != null) {
+      // FILL mode: cover-crop to the target aspect
       cropChain.write("crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})'");
       if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
         // 2) zoom (scale the cropped box up), 3) re-crop to the box at the pan offset
@@ -109,6 +119,14 @@ class ExportService {
     for (final st in stickers) {
       parts.addAll(['-i', st.path]);
       stickerIdx.add(idx++);
+    }
+    // optional music input (seek into the track with -ss before -i)
+    final hasMusic = p.musicPath != null && File(p.musicPath!).existsSync();
+    int? musicIdx;
+    if (hasMusic) {
+      if (p.musicStart > 0.01) parts.addAll(['-ss', _f(p.musicStart, 3)]);
+      parts.addAll(['-i', p.musicPath!]);
+      musicIdx = idx++;
     }
 
     // Overlay list sorted by z (ascending → highest z composited last = on top).
@@ -186,8 +204,28 @@ class ExportService {
     fc.write("[$cur]scale=w='if(gt(iw\\,ih)\\,-2\\,min($shortEdge\\,iw))':"
         "h='if(gt(iw\\,ih)\\,min($shortEdge\\,ih)\\,-2)':flags=bicubic[vout]");
 
-    // ---- audio: original clip audio ONLY (music feature removed per client) ----
-    final audioMap = '0:a?'; // passthrough original (optional → silent if none)
+    // ---- audio: original clip audio, optionally mixed under an imported track ----
+    final dur = p.outDuration;
+    String audioMap = '0:a?'; // default: passthrough original (silent if none)
+    if (hasMusic) {
+      final clipHasAudio = await _hasAudio(p.baseClipPath);
+      final fadeSt = (dur - 0.8).clamp(0.0, dur);
+      final fade = p.musicFadeOut ? ",afade=t=out:st=${_f(fadeSt, 3)}:d=0.8" : '';
+      // Music trimmed to clip length, level set, optional end fade-out.
+      final musicChain = "[$musicIdx:a]atrim=0:${_f(dur, 3)},asetpts=PTS-STARTPTS,"
+          "volume=${_f(p.musicVolume, 2)},aresample=44100$fade";
+      if (clipHasAudio) {
+        // Duck the original clip audio under the music. duration=longest so a short
+        // original can't truncate the mix; -t below caps both to the clip length.
+        fc.write(";[0:a]volume=${_f(p.originalVolume, 2)},aresample=44100[oa];");
+        fc.write("$musicChain[ma];");
+        fc.write("[oa][ma]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]");
+      } else {
+        // Silent clip → never reference [0:a] (would abort the graph). Music alone.
+        fc.write(";$musicChain[aout]");
+      }
+      audioMap = '[aout]';
+    }
 
     parts.addAll(['-filter_complex', fc.toString(), '-map', '[vout]', '-map', audioMap]);
     // Cap to the intended clip length.
@@ -299,4 +337,19 @@ class ExportService {
   }
 
   String _f(num v, [int d = 4]) => v.toStringAsFixed(d);
+
+  /// ARGB int → FFmpeg colour literal `0xRRGGBB` (alpha dropped for pad fill).
+  String _ffColor(int argb) => '0x${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+
+  /// True if the clip has an audio stream — so a silent clip never wires a
+  /// non-existent [0:a] into the music mix. Non-fatal (defaults true).
+  Future<bool> _hasAudio(String path) async {
+    try {
+      final session = await FFprobeKit.getMediaInformation(path);
+      final streams = session.getMediaInformation()?.getStreams() ?? [];
+      return streams.any((s) => s.getType() == 'audio');
+    } catch (_) {
+      return true;
+    }
+  }
 }

@@ -1,14 +1,13 @@
-import 'dart:async';
-
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
-import '../../services/support_service.dart';
+import '../../state/auth_controller.dart';
+import 'support_chat_screen.dart';
 
-/// In-app live support chat. Messages go to our backend; a CS agent replies from
-/// the admin console. The screen polls every few seconds for new replies
-/// (client: "normal in-app chat window jo backend se connect ho, CS reply de sake").
+/// Help & support (Revision A §3.0, feedback 12) — online status + a greeting,
+/// "Start live chat", contact details, and change password, all in one screen.
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
   @override
@@ -16,207 +15,125 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
-  final _input = TextEditingController();
-  final _scroll = ScrollController();
-  List<SupportMessage> _messages = [];
-  bool _loading = true, _sending = false;
-  String? _error;
-  Timer? _poll;
-
-  SupportService get _svc => context.read<SupportService>();
-
-  @override
-  void initState() {
-    super.initState();
-    _load(initial: true);
-    _svc.markRead();
-    // gentle polling for agent replies while the screen is open
-    _poll = Timer.periodic(const Duration(seconds: 6), (_) => _load());
-  }
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  bool _busy = false;
+  String? _pwError, _pwOk;
 
   @override
   void dispose() {
-    _poll?.cancel();
-    _input.dispose();
-    _scroll.dispose();
+    _current.dispose();
+    _next.dispose();
     super.dispose();
   }
 
-  Future<void> _load({bool initial = false}) async {
-    try {
-      final msgs = await _svc.thread();
-      if (!mounted) return;
-      final grew = msgs.length != _messages.length;
-      setState(() { _messages = msgs; _loading = false; _error = null; });
-      if (initial || grew) _jumpToEnd();
-      _svc.markRead();
-    } catch (e) {
-      if (mounted && initial) setState(() { _loading = false; _error = '$e'; });
+  Future<void> _updatePassword() async {
+    setState(() { _pwError = null; _pwOk = null; });
+    if (_next.text.length < 8) {
+      setState(() => _pwError = 'New password must be at least 8 characters.');
+      return;
     }
-  }
-
-  void _jumpToEnd() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent + 80, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-    });
-  }
-
-  Future<void> _send() async {
-    final text = _input.text.trim();
-    if (text.isEmpty || _sending) return;
-    setState(() => _sending = true);
-    _input.clear();
-    // optimistic append
-    setState(() => _messages = [..._messages, SupportMessage('tmp_${DateTime.now().microsecondsSinceEpoch}', true, text, DateTime.now())]);
-    _jumpToEnd();
+    setState(() => _busy = true);
     try {
-      await _svc.send(text);
-      await _load();
+      await context.read<AuthController>().auth.changePassword(_current.text, _next.text);
+      if (!mounted) return;
+      setState(() { _pwOk = 'Password updated.'; _current.clear(); _next.clear(); });
+    } on DioException catch (e) {
+      final detail = e.response?.data is Map ? (e.response!.data['detail']?.toString()) : null;
+      setState(() => _pwError = detail ?? 'Could not update password.');
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not send — check your connection')));
+      setState(() => _pwError = 'Could not update password.');
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: Row(children: [
-          Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), shape: BoxShape.circle),
-            child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 10),
-          const Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text('ClipCart Support', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-            Text('Usually replies within a few hours', style: TextStyle(color: Colors.grey, fontSize: 11)),
-          ]),
-        ]),
-      ),
-      body: Column(children: [
-        Expanded(child: _body()),
-        _composer(),
-      ]),
-    );
-  }
-
-  Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-    if (_error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text("Couldn't load the chat.", style: TextStyle(color: Colors.grey.shade600)),
-        TextButton(onPressed: () => _load(initial: true), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
-      ]));
-    }
-    return ListView(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-      children: [
-        _dayHint(),
-        if (_messages.isEmpty) _welcome(),
-        for (final m in _messages) _bubble(m),
-      ],
-    );
-  }
-
-  Widget _dayHint() => Center(
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-          child: Text('Chat with our team', style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5, fontWeight: FontWeight.w600)),
-        ),
-      );
-
-  Widget _welcome() => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.withOpacity(0.15))),
-        child: const Text(
-          '👋 Hi! Tell us what you need help with — export issues, payments, subscriptions, or anything else. Our team will reply right here.',
-          style: TextStyle(fontSize: 13.5, height: 1.4),
-        ),
-      );
-
-  Widget _bubble(SupportMessage m) {
-    final mine = m.fromUser;
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: mine ? const LinearGradient(colors: AppColors.gradient) : null,
-          color: mine ? null : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(mine ? 16 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 16),
-          ),
-          border: mine ? null : Border.all(color: Colors.grey.withOpacity(0.15)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(m.body, style: TextStyle(color: mine ? Colors.white : null, fontSize: 14, height: 1.35)),
-          const SizedBox(height: 3),
-          Text(_time(m.at), style: TextStyle(color: mine ? Colors.white70 : Colors.grey, fontSize: 10)),
-        ]),
-      ),
-    );
-  }
-
-  String _time(DateTime d) {
-    final hh = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final ap = d.hour < 12 ? 'AM' : 'PM';
-    return '$hh:${d.minute.toString().padLeft(2, '0')} $ap';
-  }
-
-  Widget _composer() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.15))),
-        ),
-        child: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _input,
-              minLines: 1,
-              maxLines: 4,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(
-                hintText: 'Type a message…',
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+      appBar: AppBar(title: const Text('Help & support', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20))),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        children: [
+          // --- live chat card ---
+          _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 9, height: 9, decoration: const BoxDecoration(color: AppColors.ok, shape: BoxShape.circle)),
+              const SizedBox(width: 9),
+              const Text('Support is online', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.ink)),
+              const Spacer(),
+              const Text('replies in ~2 min', style: TextStyle(fontSize: 12, color: AppColors.mut)),
+            ]),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+              decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+              child: const Text('Hi — how can we help? Your account and last payment reference attach automatically.', style: TextStyle(fontSize: 13, color: AppColors.mut, height: 1.5)),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SupportChatScreen())),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.brand, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                child: const Text('Start live chat', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
               ),
             ),
+          ])),
+          const SizedBox(height: 12),
+          // --- contacts card ---
+          Container(
+            decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(children: [
+              _contactRow('Email', 'clipxcart@gmail.com', divider: true),
+              _contactRow('WhatsApp', '+91 98··· ···10', divider: true),
+              _contactRow('Hours', '9:00–21:00 IST, daily', divider: false),
+            ]),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _send,
-            child: Container(
-              width: 46, height: 46,
-              decoration: const BoxDecoration(gradient: LinearGradient(colors: AppColors.gradient), shape: BoxShape.circle),
-              child: _sending
-                  ? const Padding(padding: EdgeInsets.all(13), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.arrow_upward_rounded, color: Colors.white),
+          const SizedBox(height: 12),
+          // --- change password card ---
+          _card(Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Change password', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.ink)),
+            const SizedBox(height: 11),
+            TextField(controller: _current, obscureText: true, decoration: const InputDecoration(hintText: 'Current password')),
+            const SizedBox(height: 10),
+            TextField(controller: _next, obscureText: true, decoration: const InputDecoration(hintText: 'New password')),
+            const SizedBox(height: 8),
+            const Text('At least 8 characters. You stay signed in on this device.', style: TextStyle(fontSize: 12, color: AppColors.mut)),
+            if (_pwError != null) ...[const SizedBox(height: 8), Text(_pwError!, style: const TextStyle(color: AppColors.err, fontSize: 12.5, fontWeight: FontWeight.w600))],
+            if (_pwOk != null) ...[const SizedBox(height: 8), Text(_pwOk!, style: const TextStyle(color: AppColors.ok, fontSize: 12.5, fontWeight: FontWeight.w600))],
+            const SizedBox(height: 11),
+            SizedBox(
+              height: 48,
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: _busy ? null : _updatePassword,
+                style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+                child: _busy
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand))
+                    : const Text('Update password', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
             ),
-          ),
-        ]),
+          ])),
+        ],
       ),
     );
   }
+
+  Widget _card(Widget child) => Container(
+        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.line)),
+        padding: const EdgeInsets.all(16),
+        child: child,
+      );
+
+  Widget _contactRow(String label, String value, {required bool divider}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(border: divider ? const Border(bottom: BorderSide(color: AppColors.line)) : null),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(label, style: const TextStyle(fontSize: 14, color: AppColors.mut)),
+          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink)),
+        ]),
+      );
 }

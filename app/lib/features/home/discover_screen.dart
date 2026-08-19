@@ -137,31 +137,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  // §3.0 Home header — "ClipCart" wordmark + a notification bell with a dot.
   Widget _header() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 16, 12, 6),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
       child: Row(
         children: [
-          Container(
-            width: 36, height: 36,
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(11)),
-            alignment: Alignment.center,
-            child: const Text('C', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 20)),
+          const Expanded(
+            child: Text('ClipCart', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 26, height: 1.0, letterSpacing: -0.65, color: AppColors.ink)),
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Discover', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 28, height: 1.0, letterSpacing: -0.7, color: AppColors.ink)),
-              const Text('Viral clips, ready for your brand', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.mut, fontSize: 13)),
-            ]),
+          GestureDetector(
+            onTap: () => homeTab.value = 1,
+            child: SizedBox(
+              width: 38, height: 38,
+              child: Stack(children: [
+                Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle, border: Border.all(color: AppColors.line)),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.notifications_none_rounded, size: 20, color: AppColors.ink),
+                ),
+                Positioned(right: 7, top: 8, child: Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.err, shape: BoxShape.circle, border: Border.all(color: AppColors.surface, width: 1.5)))),
+              ]),
+            ),
           ),
-          IconButton(onPressed: () => homeTab.value = 1, icon: const Icon(Icons.search_rounded, color: AppColors.ink)),
         ],
       ),
     );
   }
 
-  // ---- subscription status banner ----
+  // §3.0 plan banner — one slot under the header, three states (no-plan · ending
+  // soon · active). Subtle light cards, exact copy from the design.
   Widget _subBanner() {
     final sub = _sub;
     final status = (sub?['status'] as String?)?.toLowerCase();
@@ -169,67 +175,78 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final expiresRaw = sub?['expires_at'] ?? sub?['current_period_end'] ?? sub?['end_at'];
     DateTime? expires;
     if (expiresRaw is String) expires = DateTime.tryParse(expiresRaw);
-    // renewing-soon = active but ending within 5 days
-    final soon = active && expires != null && expires.difference(DateTime.now()).inDays <= 5;
+    final daysLeft = expires?.difference(DateTime.now()).inDays;
+    final soon = active && daysLeft != null && daysLeft <= 5;
 
-    if (active && !soon) {
-      final planName = (sub?['plan_name'] ?? sub?['plan'] ?? 'Pro').toString();
-      return _banner(
-        icon: Icons.verified_rounded,
-        gradient: const [Color(0xFF12B76A), Color(0xFF0E9F6E)],
-        title: '$planName subscription active',
-        subtitle: expires != null ? 'Renews ${_fmtDate(expires)} · unlimited exports' : 'Unlimited exports · no watermark',
-        cta: 'Manage',
-        onTap: () => context.push('/plans'),
-      );
-    }
     if (soon) {
+      // ending soon — amber
       return _banner(
-        icon: Icons.autorenew_rounded,
-        gradient: const [Color(0xFF7E57DE), Color(0xFFFFC400)],
-        title: 'Your subscription ends soon',
-        subtitle: expires != null ? 'Renew before ${_fmtDate(expires)} to keep exporting' : 'Renew to keep unlimited exports',
-        cta: 'Renew',
-        onTap: () => context.push('/plans'),
+        border: const Color(0xFFE7CBA1), bg: const Color(0xFFFDF7F0),
+        icon: '◆', iconColor: AppColors.warn,
+        title: 'Creator plan ends in ${daysLeft <= 0 ? 'under a day' : '$daysLeft day${daysLeft == 1 ? '' : 's'}'}',
+        subtitle: 'Renew to keep clean 1080p exports',
+        cta: 'Renew', onTap: () => context.push('/plans'),
       );
     }
-    // no subscription
+    if (active) {
+      // active — green; quota if the server sends it
+      final used = sub?['exports_used'] ?? sub?['used'];
+      final quota = sub?['export_quota'] ?? sub?['quota'];
+      final left = (quota is num && used is num) ? '${(quota - used).toInt()} of ${quota.toInt()} exports left' : 'Exports available';
+      final renews = expires != null ? ' · renews ${_fmtDate(expires)}' : '';
+      return _banner(
+        border: const Color(0xFFCFE6D6), bg: const Color(0xFFF5FBF7),
+        dot: AppColors.ok,
+        title: 'Creator plan active',
+        subtitle: '$left$renews',
+        cta: 'Manage', ctaAsText: true, onTap: () => context.push('/plans'),
+      );
+    }
+    // no plan — neutral card
     return _banner(
-      icon: Icons.workspace_premium_rounded,
-      gradient: const [Color(0xFF7B2FF7), Color(0xFF6D45C9)],
-      title: 'Unlock every clip',
-      subtitle: 'Subscribe for unlimited exports · no watermark',
-      cta: 'Subscribe',
-      onTap: () => context.push('/plans'),
+      border: AppColors.line, bg: AppColors.surface,
+      icon: '◆', iconColor: AppColors.mut,
+      title: 'Unlock exports from 6.00 USDT',
+      subtitle: 'Browse free · export with a plan',
+      cta: 'See plans', onTap: () => context.push('/plans'),
     );
   }
 
-  Widget _banner({required IconData icon, required List<Color> gradient, required String title, required String subtitle, required String cta, required VoidCallback onTap}) {
+  Widget _banner({
+    required Color border, required Color bg, required String title, required String subtitle,
+    required String cta, required VoidCallback onTap,
+    String? icon, Color? iconColor, Color? dot, bool ctaAsText = false,
+  }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: gradient, begin: Alignment.centerLeft, end: Alignment.centerRight),
-            borderRadius: BorderRadius.circular(14),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
           child: Row(children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
+            if (dot != null)
+              Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle))
+            else if (icon != null)
+              Text(icon, style: TextStyle(fontSize: 14, color: iconColor)),
+            const SizedBox(width: 11),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5, height: 1.1)),
-                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.2)),
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13, height: 1.35)),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mut, fontSize: 13, height: 1.35)),
               ]),
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
-              child: Text(cta, style: TextStyle(color: gradient.last, fontWeight: FontWeight.w700, fontSize: 12)),
-            ),
+            const SizedBox(width: 10),
+            if (ctaAsText)
+              Text(cta, style: const TextStyle(color: AppColors.brand, fontWeight: FontWeight.w600, fontSize: 13))
+            else
+              Container(
+                height: 34,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 13),
+                decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(9)),
+                child: Text(cta, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
           ]),
         ),
       ),
@@ -241,62 +258,43 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return '${d.day} ${m[d.month - 1]}';
   }
 
-  // ---- featured hero row (big cards) ----
-  Widget _featuredRow() {
+  // ---- featured shelf (first shelf, "Newly released" feel) ----
+  Widget _featuredRow() => _shelf('Newly released', _featured, null);
+
+  // ---- one category shelf ----
+  Widget _categoryRow(_CatRow row) =>
+      _shelf(row.name, row.clips, () { exploreCategory.value = row.slug; homeTab.value = 1; });
+
+  // §3.0 shelf: 16px/600 header + "See all", horizontal 108×168 tiles with the
+  // caption BELOW the thumbnail (feedback 2 — no text overlaid on the media).
+  Widget _shelf(String title, List<Clip> clips, VoidCallback? onSeeAll) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _rowHeader('Featured', 'Hand-picked this week'),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 9),
+        child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppColors.ink)),
+          if (onSeeAll != null)
+            GestureDetector(onTap: onSeeAll, child: const Text('See all', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w600, fontSize: 12))),
+        ]),
+      ),
       SizedBox(
-        height: 220,
+        height: 198,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: _featured.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          itemCount: clips.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 9),
           itemBuilder: (context, i) => SizedBox(
-            width: 156,
-            child: ClipTile(clip: _featured[i], aspect: 156 / 220, showText: true, onTap: () => _openRow(_featured, i)),
+            width: 108,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SizedBox(width: 108, height: 168, child: ClipTile(clip: clips[i], aspect: 108 / 168, onTap: () => _openRow(clips, i))),
+              const SizedBox(height: 6),
+              Text(clips[i].title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.ink)),
+            ]),
           ),
         ),
       ),
-      const SizedBox(height: 4),
     ]);
-  }
-
-  // ---- one category row ----
-  Widget _categoryRow(_CatRow row) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _rowHeader(row.name, null, onSeeAll: () { exploreCategory.value = row.slug; homeTab.value = 1; }),
-      SizedBox(
-        height: 176,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: row.clips.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 10),
-          itemBuilder: (context, i) => SizedBox(
-            width: 118,
-            child: ClipTile(clip: row.clips[i], aspect: 118 / 176, onTap: () => _openRow(row.clips, i)),
-          ),
-        ),
-      ),
-      const SizedBox(height: 6),
-    ]);
-  }
-
-  Widget _rowHeader(String title, String? sub, {VoidCallback? onSeeAll}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 12, 10),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, letterSpacing: -0.3, color: AppColors.ink)),
-            if (sub != null) Text(sub, style: const TextStyle(color: AppColors.mut, fontSize: 12.5)),
-          ]),
-        ),
-        if (onSeeAll != null)
-          TextButton(onPressed: onSeeAll, child: const Text('See all', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w700, fontSize: 13))),
-      ]),
-    );
   }
 }
 

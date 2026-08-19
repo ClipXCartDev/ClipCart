@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -50,7 +51,11 @@ class _EditorScreenState extends State<EditorScreen> {
   // Stable id for this project's on-disk save (reused when resuming so re-saving
   // updates the same file rather than piling up duplicates).
   String? _projectId;
-  bool _savedThisSession = false;
+  // Autosave (§4.0 feedback 8): every edit is written automatically — there is no
+  // save button and no discard prompt; leaving never loses work.
+  Timer? _autosaveTimer;
+  DateTime? _lastSaved;
+  bool _saving = false;
 
   // inline text editing (CapCut-style — video stays visible, live updates)
   bool _typing = false;
@@ -169,7 +174,6 @@ class _EditorScreenState extends State<EditorScreen> {
             updatedAt: DateTime.now(),
             data: p.toProjectJson(),
           ));
-      _savedThisSession = true;
       return true;
     } catch (_) {
       return false;
@@ -241,6 +245,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
     _vc?.removeListener(_playbackTick);
     _vc?.dispose();
     _textCtl.dispose();
@@ -258,54 +263,42 @@ class _EditorScreenState extends State<EditorScreen> {
     return p.subtitles.isNotEmpty ||
         p.stickers.isNotEmpty ||
         p.logoPath != null ||
+        p.musicPath != null ||
         p.trimStart > 0.01 ||
         (p.trimEnd != null && p.trimEnd! < p.duration - 0.01) ||
         !p.aspect.isOriginal ||
         _undo.isNotEmpty;
   }
 
-  /// On back with unsaved edits: offer Save & leave / Discard / Keep editing.
-  /// "Save" persists to the Editor tab so nothing is lost (client: "galti se
-  /// back hone par saare changes hat jaate hain"). Returns true if safe to pop.
+  /// Autosave means back never loses work (§4.0 feedback 8) — no dialog. Flush a
+  /// final save on the way out and pop. Always safe to leave.
   Future<bool> _confirmDiscard() async {
-    // Nothing to lose, or already saved this session → leave freely.
-    if (!_hasEdits || _busy || _savedThisSession) return true;
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      barrierColor: Colors.black87,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Save your progress?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
-            const SizedBox(height: 6),
-            Text('Keep these edits in the Editor tab so you can finish later.', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13)),
-            const SizedBox(height: 18),
-            SizedBox(width: double.infinity, child: PrimaryButton(label: 'Save & leave', icon: Icons.save_rounded, onPressed: () => Navigator.pop(context, 'save'))),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context, 'keep'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 13)),
-                child: const Text('Keep editing', style: TextStyle(fontWeight: FontWeight.w800)),
-              ),
-            ),
-            const SizedBox(height: 4),
-            TextButton(onPressed: () => Navigator.pop(context, 'discard'), child: const Text('Discard changes', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
-          ]),
-        ),
-      ),
-    );
-    if (action == 'save') {
+    _autosaveTimer?.cancel();
+    if (_hasEdits && !_busy) await _saveProject();
+    return true;
+  }
+
+  /// Debounced autosave — every meaningful edit reschedules a quiet write to the
+  /// draft store ~1.2s later. No spinner, no button.
+  void _scheduleAutosave() {
+    _autosaveTimer?.cancel();
+    _autosaveTimer = Timer(const Duration(milliseconds: 1200), () async {
+      if (!mounted || _project == null || _busy) return;
       final ok = await _saveProject();
-      if (mounted && ok) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Editor tab ✓')));
-      return true;
-    }
-    if (action == 'discard') return true;
-    return false; // keep editing (or dismissed)
+      if (ok && mounted) setState(() => _lastSaved = DateTime.now());
+    });
+  }
+
+  /// Human "Saved just now / Xm ago" label for the top bar.
+  String get _savedLabel {
+    final t = _lastSaved;
+    if (_saving) return 'Saving…';
+    if (t == null) return _hasEdits ? 'Saving…' : '';
+    final d = DateTime.now().difference(t);
+    if (d.inSeconds < 5) return 'Saved just now';
+    if (d.inMinutes < 1) return 'Saved ${d.inSeconds}s ago';
+    if (d.inMinutes < 60) return 'Saved ${d.inMinutes}m ago';
+    return 'Saved';
   }
 
   /// Play/pause. Restarts from trimStart when parked at/outside the trim window.
@@ -330,6 +323,7 @@ class _EditorScreenState extends State<EditorScreen> {
     _undo.add(_project!.snapshot());
     if (_undo.length > 40) _undo.removeAt(0);
     _redo.clear();
+    _scheduleAutosave(); // every meaningful edit triggers a quiet autosave
   }
 
   void _undoAction() {
@@ -571,6 +565,17 @@ class _EditorScreenState extends State<EditorScreen> {
                 _fadeRowGeneric('Outline', s.strokeWidth, 0, 12, (v) { snap(); setSheet(() { s.strokeWidth = v; setState(() {}); }); }, suffix: 'px'),
                 _fadeRowGeneric('Letter spacing', s.letterSpacing, -3, 12, (v) { snap(); setSheet(() { s.letterSpacing = v; setState(() {}); }); }, suffix: 'px'),
                 _fadeRowGeneric('Line height', s.lineHeight, 0.8, 2.0, (v) { snap(); setSheet(() { s.lineHeight = v; setState(() {}); }); }, suffix: 'x'),
+                const SizedBox(height: 14),
+                // Exact numeric entry (feedback 5): size + X/Y position (%) + scale.
+                Row(children: [
+                  Expanded(child: _NumField(label: 'Size', value: s.fontSize, min: 8, max: 400, onChanged: (v) { snap(); setSheet(() { s.fontSize = v; setState(() {}); }); })),
+                  const SizedBox(width: 10),
+                  Expanded(child: _NumField(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) { snap(); setSheet(() { s.dx = (v / 100).clamp(0.0, 1.0); setState(() {}); }); })),
+                  const SizedBox(width: 10),
+                  Expanded(child: _NumField(label: 'Y %', value: s.dy * 100, min: 0, max: 100, onChanged: (v) { snap(); setSheet(() { s.dy = (v / 100).clamp(0.0, 1.0); setState(() {}); }); })),
+                  const SizedBox(width: 10),
+                  Expanded(child: _NumField(label: 'Scale', value: s.scale, min: 0.4, max: 4.0, decimals: 2, onChanged: (v) { snap(); setSheet(() { s.scale = v; setState(() {}); }); })),
+                ]),
                 const SizedBox(height: 12),
                 SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
               ]),
@@ -614,6 +619,10 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ---------- layers panel (CapCut-style: reorder z, select, hide, delete) ----------
   void _openLayers() {
+    // Multi-select (§4.0 feedback 5): a select mode with per-row checks + batch
+    // delete/hide. State lives here so it persists across StatefulBuilder rebuilds.
+    final sel = <Object>{};
+    var selectMode = false;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -657,19 +666,26 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
             child: ListTile(
               dense: true,
-              leading: Container(
-                width: 34, height: 34,
-                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: Colors.white70, size: 18),
-              ),
+              leading: selectMode
+                  ? Icon(sel.contains(it) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                      color: sel.contains(it) ? _kAccent : Colors.white38, size: 26)
+                  : Container(
+                      width: 34, height: 34,
+                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+                      child: Icon(icon, color: Colors.white70, size: 18),
+                    ),
               title: Text(label,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: hidden ? Colors.white38 : Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
               onTap: () {
+                if (selectMode) {
+                  setSheet(() => sel.contains(it) ? sel.remove(it) : sel.add(it));
+                  return;
+                }
                 setState(() => _selected = isLogo ? 'logo' : it);
                 Navigator.pop(context);
               },
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              trailing: selectMode ? null : Row(mainAxisSize: MainAxisSize.min, children: [
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   icon: Icon(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.white54, size: 20),
@@ -718,10 +734,14 @@ class _EditorScreenState extends State<EditorScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(9)))),
             const SizedBox(height: 14),
-            Row(children: const [
-              Text('Layers', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-              Spacer(),
-              Text('Drag to reorder', style: TextStyle(color: Colors.white38, fontSize: 12)),
+            Row(children: [
+              const Text('Layers', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (ordered.isNotEmpty)
+                GestureDetector(
+                  onTap: () => setSheet(() { selectMode = !selectMode; sel.clear(); }),
+                  child: Text(selectMode ? 'Done' : 'Select', style: const TextStyle(color: _kAccent, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                ),
             ]),
             const SizedBox(height: 8),
             if (ordered.isEmpty)
@@ -744,6 +764,46 @@ class _EditorScreenState extends State<EditorScreen> {
                   children: [for (final e in ordered) rowFor(e.value)],
                 ),
               ),
+            // batch action bar (multi-select)
+            if (selectMode && sel.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () {
+                    _snapshot();
+                    setState(() {
+                      for (final it in sel) {
+                        if (it is SubtitleSegment) it.hidden = !it.hidden;
+                        else if (it is StickerOverlay) it.hidden = !it.hidden;
+                        else _project!.logoHidden = !_project!.logoHidden;
+                      }
+                    });
+                    setSheet(() {});
+                  },
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  icon: const Icon(Icons.visibility_off_rounded, size: 18),
+                  label: const Text('Hide/Show'),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () {
+                    _snapshot();
+                    setState(() {
+                      for (final it in sel) {
+                        if (it is SubtitleSegment) _project!.subtitles.remove(it);
+                        else if (it is StickerOverlay) _project!.stickers.remove(it);
+                        else _project!.logoPath = null;
+                        if (identical(_selected, it)) _selected = null;
+                      }
+                    });
+                    setSheet(() { sel.clear(); selectMode = false; });
+                  },
+                  style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFF04438), side: const BorderSide(color: Color(0x55F04438)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                  label: Text('Delete (${sel.length})'),
+                )),
+              ]),
+            ],
           ]),
         );
       }),
@@ -868,6 +928,103 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
     {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFF7E57DE, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
   ];
+
+  // ---------- Music (§4.0 feedback 6 — import from device, mix + start offset) ----------
+  Future<void> _openMusicSheet() async {
+    final p = _project!;
+    var volSnapped = false;
+    void snapVol() { if (!volSnapped) { _snapshot(); volSnapped = true; } }
+    String fmtStart(double s) {
+      final m = s ~/ 60, sec = (s % 60);
+      return '$m:${sec.toStringAsFixed(1).padLeft(4, '0')}';
+    }
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const SizedBox(height: 14),
+                if (p.musicPath == null)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        FilePickerResult? res;
+                        try {
+                          res = await FilePicker.platform.pickFiles(type: FileType.audio);
+                        } catch (_) {
+                          res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg']);
+                        }
+                        if (res != null && res.files.single.path != null) {
+                          _mutate(() => p.musicPath = res!.files.single.path);
+                          setSheet(() {});
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 13)),
+                      icon: const Icon(Icons.library_music_rounded, size: 18),
+                      label: const Text('Import from device'),
+                    ),
+                  )
+                else ...[
+                  // track card
+                  Container(
+                    padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(11), border: Border.all(color: Colors.white12)),
+                    child: Row(children: [
+                      Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF3A2E12), borderRadius: BorderRadius.circular(9)), child: const Icon(Icons.music_note_rounded, color: Color(0xFFD89A3C), size: 20)),
+                      const SizedBox(width: 11),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(p.musicPath!.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        const Text('from your device', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexMono')),
+                      ])),
+                      GestureDetector(
+                        onTap: () async {
+                          final res = await FilePicker.platform.pickFiles(type: FileType.audio);
+                          if (res != null && res.files.single.path != null) { _mutate(() => p.musicPath = res.files.single.path); setSheet(() {}); }
+                        },
+                        child: const Text('Replace', style: TextStyle(color: Color(0xFF846EEA), fontWeight: FontWeight.w600, fontSize: 13)),
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: 12),
+                  _fadeRowGeneric('Music', p.musicVolume, 0, 1, (v) { snapVol(); setSheet(() { p.musicVolume = v; setState(() {}); }); }, suffix: ''),
+                  _fadeRowGeneric('Clip audio', p.originalVolume, 0, 1, (v) { snapVol(); setSheet(() { p.originalVolume = v; setState(() {}); }); }, suffix: ''),
+                  _fadeRowGeneric('Start at', p.musicStart, 0, 60, (v) { snapVol(); setSheet(() { p.musicStart = v; setState(() {}); }); }, suffix: 's'),
+                  const SizedBox(height: 2),
+                  Align(alignment: Alignment.centerLeft, child: Text('Starts at ${fmtStart(p.musicStart)}', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'IBMPlexMono'))),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    const Text('Fade out at the end', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    const Spacer(),
+                    Switch(value: p.musicFadeOut, activeColor: _kAccent, onChanged: (v) { _mutate(() => p.musicFadeOut = v); setSheet(() {}); }),
+                  ]),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () { _mutate(() => p.musicPath = null); setSheet(() {}); },
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFF04438)),
+                      label: const Text('Remove music', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // ---------- Brand Kit ----------
   Future<void> _openBrandKit() async {
@@ -1705,7 +1862,15 @@ class _EditorScreenState extends State<EditorScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () async { if (await _confirmDiscard() && mounted) Navigator.of(context).pop(); },
         ),
-        title: Text(widget.title ?? 'Editor', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(widget.title ?? 'Editor', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          if (_savedLabel.isNotEmpty)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.check_circle_rounded, size: 11, color: Color(0xFF4FB477)),
+              const SizedBox(width: 4),
+              Text(_savedLabel, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 10.5, color: Colors.white54, fontWeight: FontWeight.w500)),
+            ]),
+        ]),
         actions: [
           _iconBtn(Icons.undo_rounded, _undo.isEmpty ? null : _undoAction),
           _iconBtn(Icons.redo_rounded, _redo.isEmpty ? null : _redoAction),
@@ -1821,18 +1986,23 @@ class _EditorScreenState extends State<EditorScreen> {
                       // Cover-crop the video into the (possibly cropped) canvas so the
                       // editor shows exactly what exports. ClipRect keeps overflow out.
                       // videoScale/videoDx/videoDy apply the user's pan+zoom on top.
+                      // 'fit' letterboxes the whole video onto a bg fill; 'fill'
+                      // cover-crops. Scale/reposition apply to both.
                       child: ClipRect(
-                        child: Transform.translate(
-                          offset: Offset(_project!.videoDx * w, _project!.videoDy * h),
-                          child: Transform.scale(
-                            scale: _project!.videoScale,
-                            child: FittedBox(
-                              fit: BoxFit.cover,
-                              clipBehavior: Clip.hardEdge,
-                              child: SizedBox(
-                                width: _vc!.value.size.width == 0 ? 720 : _vc!.value.size.width,
-                                height: _vc!.value.size.height == 0 ? 1280 : _vc!.value.size.height,
-                                child: VideoPlayer(_vc!),
+                        child: ColoredBox(
+                          color: _project!.videoFitContain ? Color(_project!.videoBgColor) : Colors.black,
+                          child: Transform.translate(
+                            offset: Offset(_project!.videoDx * w, _project!.videoDy * h),
+                            child: Transform.scale(
+                              scale: _project!.videoScale,
+                              child: FittedBox(
+                                fit: _project!.videoFitContain ? BoxFit.contain : BoxFit.cover,
+                                clipBehavior: Clip.hardEdge,
+                                child: SizedBox(
+                                  width: _vc!.value.size.width == 0 ? 720 : _vc!.value.size.width,
+                                  height: _vc!.value.size.height == 0 ? 1280 : _vc!.value.size.height,
+                                  child: VideoPlayer(_vc!),
+                                ),
                               ),
                             ),
                           ),
@@ -2471,6 +2641,7 @@ class _EditorScreenState extends State<EditorScreen> {
               crossAxisSpacing: 8,
               childAspectRatio: 0.92,
               children: [
+                _moreTile(Icons.music_note_rounded, 'Music', () { Navigator.pop(context); _openMusicSheet(); }, on: _project!.musicPath != null),
                 _moreTile(Icons.alternate_email_rounded, 'Username', () { Navigator.pop(context); _addUsername(); }),
                 _moreTile(Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }),
                 _moreTile(Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }),
@@ -2633,6 +2804,27 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  Widget _fitChip(String label, bool on, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+          decoration: BoxDecoration(
+            color: on ? _kAccent : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: on ? _kAccent : Colors.white12),
+          ),
+          child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+        ),
+      );
+
+  Widget _bgSwatch(int color, bool on, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 28, height: 28,
+          decoration: BoxDecoration(color: Color(color), shape: BoxShape.circle, border: Border.all(color: on ? _kAccent : Colors.white24, width: on ? 2.5 : 1)),
+        ),
+      );
+
   Future<void> _pickAspect() async {
     final p = _project!;
     await showModalBottomSheet(
@@ -2667,6 +2859,21 @@ class _EditorScreenState extends State<EditorScreen> {
                         child: Text(opt.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
                       ),
                     ),
+                ]),
+                const SizedBox(height: 16),
+                // Fill / Fit — Fit letterboxes onto a black or white background.
+                Row(children: [
+                  _fitChip('Fill', !p.videoFitContain, () { _mutate(() => p.videoFitContain = false); setSheet(() {}); }),
+                  const SizedBox(width: 10),
+                  _fitChip('Fit', p.videoFitContain, () { _mutate(() => p.videoFitContain = true); setSheet(() {}); }),
+                  const Spacer(),
+                  if (p.videoFitContain) ...[
+                    const Text('BG', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 8),
+                    _bgSwatch(0xFF000000, p.videoBgColor == 0xFF000000, () { _mutate(() => p.videoBgColor = 0xFF000000); setSheet(() {}); }),
+                    const SizedBox(width: 8),
+                    _bgSwatch(0xFFFFFFFF, p.videoBgColor == 0xFFFFFFFF, () { _mutate(() => p.videoBgColor = 0xFFFFFFFF); setSheet(() {}); }),
+                  ],
                 ]),
                 const SizedBox(height: 18),
                 // Video scale + reposition (pan is easiest by dragging on the canvas)
@@ -2794,6 +3001,82 @@ class _HexColorFieldState extends State<_HexColorField> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
           ),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// A compact numeric entry field for the editor (exact size / X / Y / scale).
+/// Holds its own controller so typing is stable; commits on submit or focus loss.
+class _NumField extends StatefulWidget {
+  const _NumField({required this.label, required this.value, required this.min, required this.max, required this.onChanged, this.decimals = 0});
+  final String label;
+  final double value, min, max;
+  final int decimals;
+  final ValueChanged<double> onChanged;
+
+  @override
+  State<_NumField> createState() => _NumFieldState();
+}
+
+class _NumFieldState extends State<_NumField> {
+  late final TextEditingController _c;
+  late final FocusNode _f;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = TextEditingController(text: _fmt(widget.value));
+    _f = FocusNode()..addListener(() { if (!_f.hasFocus) _commit(); });
+  }
+
+  @override
+  void didUpdateWidget(covariant _NumField old) {
+    super.didUpdateWidget(old);
+    // reflect external changes (slider/drag) only while not being edited
+    if (!_f.hasFocus && (widget.value - old.value).abs() > 0.001) _c.text = _fmt(widget.value);
+  }
+
+  String _fmt(double v) => widget.decimals == 0 ? v.round().toString() : v.toStringAsFixed(widget.decimals);
+
+  void _commit() {
+    final v = double.tryParse(_c.text.trim());
+    if (v != null) {
+      final clamped = v.clamp(widget.min, widget.max);
+      widget.onChanged(clamped);
+      _c.text = _fmt(clamped);
+    } else {
+      _c.text = _fmt(widget.value);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    _f.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(widget.label, style: const TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 4),
+      TextField(
+        controller: _c,
+        focusNode: _f,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'IBMPlexMono'),
+        cursorColor: _kAccent,
+        onSubmitted: (_) => _commit(),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 9),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.06),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
         ),
       ),
     ]);
