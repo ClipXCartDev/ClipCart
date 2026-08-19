@@ -61,7 +61,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
 
   Widget _stat(String label, String value) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
           Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
         ]),
       );
@@ -121,7 +121,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                     children: [
                       const Text('AVAILABLE BALANCE', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1)),
                       const SizedBox(height: 2),
-                      Text('\$${available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900)),
+                      Text('\$${available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 14),
                       Row(children: [
                         _stat('Earned', '\$${e?['earned'] ?? 0}'),
@@ -187,7 +187,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                             decoration: BoxDecoration(color: _statusColor(c.status).withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
-                            child: Text((c.status ?? '').toUpperCase(), style: TextStyle(color: _statusColor(c.status), fontSize: 9.5, fontWeight: FontWeight.w900)),
+                            child: Text((c.status ?? '').toUpperCase(), style: TextStyle(color: _statusColor(c.status), fontSize: 9.5, fontWeight: FontWeight.w700)),
                           ),
                         ]),
                       )).toList(),

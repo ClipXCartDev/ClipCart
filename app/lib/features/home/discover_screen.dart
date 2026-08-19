@@ -140,23 +140,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _header() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 12, 4),
+      padding: const EdgeInsets.fromLTRB(18, 16, 12, 6),
       child: Row(
         children: [
           Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(10)),
+            width: 36, height: 36,
+            decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(11)),
             alignment: Alignment.center,
-            child: const Text('C', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
+            child: const Text('C', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 20)),
           ),
-          const SizedBox(width: 10),
-          const Expanded(
+          const SizedBox(width: 11),
+          Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Discover', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, height: 1.0)),
-              Text('Viral clips, ready for your brand', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('Discover', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 26, height: 1.0, letterSpacing: -0.5, color: AppColors.ink)),
+              const Text('Viral clips, ready for your brand', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: AppColors.mut, fontSize: 13)),
             ]),
           ),
-          IconButton(onPressed: () => homeTab.value = 1, icon: const Icon(Icons.search_rounded)),
+          IconButton(onPressed: () => homeTab.value = 1, icon: const Icon(Icons.search_rounded, color: AppColors.ink)),
         ],
       ),
     );
@@ -187,7 +187,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (soon) {
       return _banner(
         icon: Icons.autorenew_rounded,
-        gradient: const [Color(0xFFFF8A3D), Color(0xFFFFC400)],
+        gradient: const [Color(0xFF7E57DE), Color(0xFFFFC400)],
         title: 'Your subscription ends soon',
         subtitle: expires != null ? 'Renew before ${_fmtDate(expires)} to keep exporting' : 'Renew to keep unlimited exports',
         cta: 'Renew',
@@ -197,7 +197,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     // no subscription
     return _banner(
       icon: Icons.workspace_premium_rounded,
-      gradient: const [Color(0xFF7B2FF7), Color(0xFFFF4D6D)],
+      gradient: const [Color(0xFF7B2FF7), Color(0xFF6D45C9)],
       title: 'Unlock every clip',
       subtitle: 'Subscribe for unlimited exports · no watermark',
       cta: 'Subscribe',
@@ -226,7 +226,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             const SizedBox(width: 14),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15.5)),
+                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15.5)),
                 const SizedBox(height: 2),
                 Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 12)),
               ]),
@@ -235,7 +235,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-              child: Text(cta, style: TextStyle(color: gradient.last, fontWeight: FontWeight.w900, fontSize: 12.5)),
+              child: Text(cta, style: TextStyle(color: gradient.last, fontWeight: FontWeight.w700, fontSize: 12.5)),
             ),
           ]),
         ),
@@ -292,16 +292,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   Widget _rowHeader(String title, String? sub, {VoidCallback? onSeeAll}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
+      padding: const EdgeInsets.fromLTRB(18, 18, 12, 10),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-            if (sub != null) Text(sub, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, letterSpacing: -0.3, color: AppColors.ink)),
+            if (sub != null) Text(sub, style: const TextStyle(color: AppColors.mut, fontSize: 12.5)),
           ]),
         ),
         if (onSeeAll != null)
-          TextButton(onPressed: onSeeAll, child: const Text('See all', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w800, fontSize: 13))),
+          TextButton(onPressed: onSeeAll, child: const Text('See all', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w700, fontSize: 13))),
       ]),
     );
   }

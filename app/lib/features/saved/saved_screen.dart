@@ -46,7 +46,7 @@ class _SavedScreenState extends State<SavedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Templates', style: TextStyle(fontWeight: FontWeight.w900)), centerTitle: false),
+      appBar: AppBar(title: const Text('Templates', style: TextStyle(fontWeight: FontWeight.w700)), centerTitle: false),
       body: RefreshIndicator(
         onRefresh: () async => setState(() => _future = context.read<CatalogService>().favorites()),
         child: FutureBuilder<List<Clip>>(
@@ -60,7 +60,7 @@ class _SavedScreenState extends State<SavedScreen> {
                 const SizedBox(height: 80),
                 Center(
                   child: Column(children: [
-                    Text("Couldn't load your templates.", style: TextStyle(color: Colors.grey.shade600)),
+                    Text("Couldn't load your templates.", style: TextStyle(color: AppColors.mut)),
                     TextButton(onPressed: () => setState(() => _future = context.read<CatalogService>().favorites()), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
                   ]),
                 ),

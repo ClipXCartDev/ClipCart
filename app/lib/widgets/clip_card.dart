@@ -6,10 +6,10 @@ import '../core/theme.dart';
 import '../models/clip.dart';
 
 const _cardGradients = [
-  [Color(0xFFFF7A59), Color(0xFFFF4D8D)],
+  [Color(0xFF7E57DE), Color(0xFF6D45C9)],
   [Color(0xFF12C7A0), Color(0xFF3B9EFF)],
-  [Color(0xFFFF9247), Color(0xFFFF2D6B)],
-  [Color(0xFFF5A623), Color(0xFFFF4D6D)],
+  [Color(0xFF7E57DE), Color(0xFF6D45C9)],
+  [Color(0xFFF5A623), Color(0xFF6D45C9)],
   [Color(0xFF7B61FF), Color(0xFF4C9AFF)],
   [Color(0xFF1A2740), Color(0xFFC0304A)],
 ];

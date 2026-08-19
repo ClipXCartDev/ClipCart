@@ -19,10 +19,11 @@ import '../../services/sticker_service.dart';
 import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
 
-const _kBg = Color(0xFF0B0A0C);
-const _kPanel = Color(0xFF161318);
-const _kChip = Color(0xFF221D24);
-const _kAccent = Color(0xFFFF4D6D);
+// Editor dark chrome — the design's "room you enter and leave" (warm near-black).
+const _kBg = Color(0xFF17140F);   // editor canvas backdrop
+const _kPanel = Color(0xFF232019); // --dk control panels
+const _kChip = Color(0xFF37332C);  // raised tool tiles
+const _kAccent = Color(0xFF846EEA); // brighter violet on dark chrome (--brl proxy)
 
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
@@ -399,7 +400,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final seg = SubtitleSegment(
       text: 'Follow for more', start: s0, end: dz <= 0 ? 3 : dz,
       fontSize: 40, dx: 0.5, dy: 0.5, bold: true,
-      bgEnabled: true, bgColor: 0xFFFF4D6D, color: 0xFFFFFFFF,
+      bgEnabled: true, bgColor: 0xFF6D45C9, color: 0xFFFFFFFF,
       anim: OverlayAnim.popIn, z: _topZ(),
     );
     setState(() { _project!.subtitles.add(seg); _selected = seg; });
@@ -754,7 +755,7 @@ class _EditorScreenState extends State<EditorScreen> {
   // slim input + Done. Everything uses the same subtle chip language.
   Widget _inlineTextEditor() {
     final s = _selected is SubtitleSegment ? _selected as SubtitleSegment : null;
-    const colors = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5];
+    const colors = [0xFFFFFFFF, 0xFF000000, 0xFF6D45C9, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF7E57DE, 0xFF9B5DE5];
     return Container(
       color: _kPanel,
       padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).viewPadding.bottom),
@@ -848,7 +849,7 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Clean', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0x80000000, 'sw': 0.0, 'sc': 0xFF000000},
     {'name': 'Outline', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x80000000, 'sw': 5.0, 'sc': 0xFF000000},
     {'name': 'Sunny', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000},
-    {'name': 'Neon', 'color': 0xFFFF4D6D, 'bg': false, 'bgc': 0x80000000, 'sw': 4.0, 'sc': 0xFFFFFFFF},
+    {'name': 'Neon', 'color': 0xFF6D45C9, 'bg': false, 'bgc': 0x80000000, 'sw': 4.0, 'sc': 0xFFFFFFFF},
     {'name': 'Mint', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF12B76A, 'sw': 0.0, 'sc': 0xFF000000},
     {'name': 'Ink', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF3B9EFF, 'sw': 0.0, 'sc': 0xFF000000},
   ];
@@ -859,13 +860,13 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Bold Meme', 'font': 'Anton', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 6.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
     {'name': 'Subtitle', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xB3000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
     {'name': 'Impact', 'font': 'Archivo Black', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
-    {'name': 'Neon Pop', 'font': 'Bebas Neue', 'color': 0xFFFF4D6D, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.bounce},
+    {'name': 'Neon Pop', 'font': 'Bebas Neue', 'color': 0xFF6D45C9, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.bounce},
     {'name': 'Sunshine', 'font': 'Poppins', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideUp},
     {'name': 'Marker', 'font': 'Permanent Marker', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.shake},
     {'name': 'Retro', 'font': 'Lobster', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideDown},
-    {'name': 'Headline', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFFFF4D6D, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.typewriter},
+    {'name': 'Headline', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF6D45C9, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.typewriter},
     {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFFFF7A00, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
+    {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFF7E57DE, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
   ];
 
   // ---------- Brand Kit ----------
@@ -970,7 +971,7 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<int?> _pickBrandColor(int current) async {
-    const palette = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFF7A00, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF9B5DE5, 0xFF17131F, 0xFFFF2D6B];
+    const palette = [0xFFFFFFFF, 0xFF000000, 0xFF6D45C9, 0xFF7E57DE, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF9B5DE5, 0xFF17131F, 0xFF6D45C9];
     return showModalBottomSheet<int>(
       context: context,
       backgroundColor: _kPanel,
@@ -1839,8 +1840,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       ),
                     ),
                     ...overlays.map((e) => e.value),
-                    if (_snapX) Positioned(left: w / 2 - 0.5, top: 0, bottom: 0, child: const IgnorePointer(child: SizedBox(width: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
-                    if (_snapY) Positioned(top: h / 2 - 0.5, left: 0, right: 0, child: const IgnorePointer(child: SizedBox(height: 1, child: ColoredBox(color: Color(0x88FF4D6D))))),
+                    if (_snapX) Positioned(left: w / 2 - 0.5, top: 0, bottom: 0, child: const IgnorePointer(child: SizedBox(width: 1, child: ColoredBox(color: Color(0x886D45C9))))),
+                    if (_snapY) Positioned(top: h / 2 - 0.5, left: 0, right: 0, child: const IgnorePointer(child: SizedBox(height: 1, child: ColoredBox(color: Color(0x886D45C9))))),
                     if (_hint != null)
                       Positioned(
                         top: 12,
@@ -2286,7 +2287,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       label: s.text.isEmpty ? 'Text' : s.text,
                       icon: Icons.title_rounded,
                       selected: identical(_selected, s),
-                      gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]),
+                      gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]),
                       onTap: () => setState(() => _selected = s),
                       onDrag: (dx) => setState(() {
                         final len = s.end - s.start;
@@ -2528,7 +2529,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   onTap: () => setState(() => _selected = null),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(20)),
+                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]), borderRadius: BorderRadius.circular(20)),
                     child: const Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(Icons.check_rounded, size: 16, color: Colors.white),
                       SizedBox(width: 4),
@@ -2555,7 +2556,7 @@ class _EditorScreenState extends State<EditorScreen> {
       };
 
   void _quickColor(SubtitleSegment s) {
-    const swatches = [0xFFFFFFFF, 0xFF000000, 0xFFFF4D6D, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFFFF7A00, 0xFF9B5DE5, 0xFF7B2FF7, 0xFFFF2D6B, 0xFF00D1B2, 0xFF17131F];
+    const swatches = [0xFFFFFFFF, 0xFF000000, 0xFF6D45C9, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF7E57DE, 0xFF9B5DE5, 0xFF7B2FF7, 0xFF6D45C9, 0xFF00D1B2, 0xFF17131F];
     showModalBottomSheet(
       context: context,
       backgroundColor: _kPanel,
@@ -2682,7 +2683,7 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 }
 
-/// A hex color code input (e.g. `#FF4D6D`) with a live swatch. Lets the user
+/// A hex color code input (e.g. `#6D45C9`) with a live swatch. Lets the user
 /// type any exact color — client asked for a "color code daalne ka option".
 class _HexColorField extends StatefulWidget {
   const _HexColorField({required this.value, required this.onChanged});
@@ -2743,7 +2744,7 @@ class _HexColorFieldState extends State<_HexColorField> {
           },
           decoration: InputDecoration(
             prefixText: '',
-            hintText: '#FF4D6D',
+            hintText: '#6D45C9',
             hintStyle: const TextStyle(color: Colors.white38),
             filled: true, fillColor: Colors.white.withOpacity(0.06), isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),

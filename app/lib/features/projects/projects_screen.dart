@@ -63,7 +63,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Editor', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Editor', style: TextStyle(fontWeight: FontWeight.w700)),
         centerTitle: false,
       ),
       body: RefreshIndicator(
@@ -129,7 +129,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                             const SizedBox(height: 3),
-                            Text('Edited ${_ago(p.updatedAt)} · tap to continue', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                            Text('Edited ${_ago(p.updatedAt)} · tap to continue', style: TextStyle(color: AppColors.mut, fontSize: 12)),
                           ]),
                         ),
                         IconButton(

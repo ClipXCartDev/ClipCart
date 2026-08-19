@@ -24,7 +24,7 @@ class ClipPlayerScreen extends StatelessWidget {
         future: context.read<CatalogService>().getClip(slug),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D)));
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF6D45C9)));
           }
           if (snap.hasError || !snap.hasData) {
             return SafeArea(
@@ -40,7 +40,7 @@ class ClipPlayerScreen extends StatelessWidget {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text('Could not load clip', style: TextStyle(color: Colors.grey.shade400)),
                     const SizedBox(height: 12),
-                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: Color(0xFFFF4D6D)))),
+                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: Color(0xFF6D45C9)))),
                   ]),
                 ),
               ]),
@@ -259,7 +259,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           else if (clip.thumb != null)
             CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.contain, errorWidget: (_, __, ___) => const SizedBox.shrink()),
           // only show a spinner when there's no thumbnail to communicate content
-          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: Color(0xFFFF4D6D))),
+          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: Color(0xFF6D45C9))),
           if (ready && !c.value.isPlaying)
             IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white.withOpacity(0.85)))),
           // bottom gradient scrim + meta
@@ -308,7 +308,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                       return Transform.scale(scale: scale, child: child);
                     },
                     child: Icon(_faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: _faved.contains(clip.id) ? const Color(0xFFFF4D6D) : Colors.white, size: 22),
+                        color: _faved.contains(clip.id) ? const Color(0xFF6D45C9) : Colors.white, size: 22),
                   ),
                 ),
                 const SizedBox(height: 2),

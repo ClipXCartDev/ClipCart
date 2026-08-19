@@ -89,7 +89,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(children: [
                     Container(
                       width: 32, height: 32,
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]), borderRadius: BorderRadius.circular(10)),
                       alignment: Alignment.center,
                       child: const Text('C', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 19)),
                     ),
@@ -133,7 +133,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text('BROWSE · CUSTOMIZE · EXPORT', style: TextStyle(color: Color(0xFFFF8A9B), fontWeight: FontWeight.w800, letterSpacing: 2.5, fontSize: 11)),
+                  const Text('BROWSE · CUSTOMIZE · EXPORT', style: TextStyle(color: Color(0xFF846EEA), fontWeight: FontWeight.w800, letterSpacing: 2.5, fontSize: 11)),
                   const SizedBox(height: 8),
                   const Text('Turn viral clips\ninto your brand', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: 1.05)),
                   const SizedBox(height: 10),

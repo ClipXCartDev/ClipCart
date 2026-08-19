@@ -96,11 +96,11 @@ class _PlansScreenState extends State<PlansScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
                 width: 52, height: 52,
-                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFFFF7A00)]), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFF7E57DE)]), borderRadius: BorderRadius.circular(14)),
                 child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(height: 14),
-              const Text('Unlock every Pro clip', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1)),
+              const Text('Unlock every Pro clip', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700, height: 1.1)),
               const SizedBox(height: 6),
               const Text('Unlimited exports · no watermark · priority new drops. Crypto only · Binance Pay.', style: TextStyle(color: Colors.white60, fontSize: 13, height: 1.4)),
             ]),
@@ -157,7 +157,7 @@ class _PlansScreenState extends State<PlansScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        gradient: popular ? const LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)]) : null,
+        gradient: popular ? const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]) : null,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
@@ -171,18 +171,18 @@ class _PlansScreenState extends State<PlansScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Flexible(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18))),
+              Flexible(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18))),
               const SizedBox(width: 10),
               if (popular)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)]), borderRadius: BorderRadius.circular(20)),
-                  child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]), borderRadius: BorderRadius.circular(20)),
+                  child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
                 ),
             ]),
             const SizedBox(height: 6),
             Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-              Text('\$${p.priceUsd.toStringAsFixed(0)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900)),
+              Text('\$${p.priceUsd.toStringAsFixed(0)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700)),
               const Text(' / mo', style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
             ]),
             const SizedBox(height: 12),

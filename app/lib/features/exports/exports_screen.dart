@@ -63,7 +63,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('My exports', style: TextStyle(fontWeight: FontWeight.w900)), centerTitle: false),
+      appBar: AppBar(title: const Text('My exports', style: TextStyle(fontWeight: FontWeight.w700)), centerTitle: false),
       body: RefreshIndicator(
         onRefresh: () async => setState(() => _future = _load()),
         child: FutureBuilder<List<_Export>>(
@@ -76,7 +76,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
               return ListView(children: [
                 const SizedBox(height: 80),
                 Center(child: Column(children: [
-                  Text("Couldn't load your exports.", style: TextStyle(color: Colors.grey.shade600)),
+                  Text("Couldn't load your exports.", style: TextStyle(color: AppColors.mut)),
                   TextButton(onPressed: () => setState(() => _future = _load()), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
                 ])),
               ]);
@@ -129,7 +129,7 @@ class _ExportsScreenState extends State<ExportsScreen> {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(_name(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
                           const SizedBox(height: 3),
-                          Text('${e.sizeMb.toStringAsFixed(1)} MB · saved to Gallery', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                          Text('${e.sizeMb.toStringAsFixed(1)} MB · saved to Gallery', style: TextStyle(color: AppColors.mut, fontSize: 12)),
                         ]),
                       ),
                       IconButton(icon: const Icon(Icons.ios_share_rounded, color: AppColors.accent), onPressed: () => _share(e.file.path)),

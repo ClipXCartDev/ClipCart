@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
 
-/// Coral gradient CTA button (matches design "Use template" style).
+/// Primary CTA — flat violet, radius 10 (design system). The one violet accent
+/// that carries every commit action.
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({super.key, required this.label, this.onPressed, this.loading = false, this.icon});
 
@@ -13,27 +14,27 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null && !loading;
     return Material(
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          gradient: coralGradient,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 8))],
+          color: enabled ? AppColors.brand : const Color(0xFFDAD5E2),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           onTap: loading ? null : onPressed,
           child: Container(
-            height: 50,
+            height: 52,
             alignment: Alignment.center,
             child: loading
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (icon != null) ...[Icon(icon, color: Colors.white, size: 19), const SizedBox(width: 8)],
-                      Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                      if (icon != null) ...[Icon(icon, color: enabled ? Colors.white : const Color(0xFF94909C), size: 19), const SizedBox(width: 8)],
+                      Text(label, style: TextStyle(color: enabled ? Colors.white : const Color(0xFF94909C), fontWeight: FontWeight.w600, fontSize: 16)),
                     ],
                   ),
           ),

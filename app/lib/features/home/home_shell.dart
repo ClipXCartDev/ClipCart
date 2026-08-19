@@ -223,19 +223,19 @@ class _AccountTab extends StatelessWidget {
           Container(
             padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 24, 20, 26),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFFFF7A59), Color(0xFFFF4D6D)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)], begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
             child: Row(children: [
               Container(
                 width: 62, height: 62,
                 decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), shape: BoxShape.circle, border: Border.all(color: Colors.white54, width: 2)),
                 alignment: Alignment.center,
-                child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900)),
+                child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(user?.name ?? '', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                  Text(user?.name ?? '', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 2),
                   Text(user?.email ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
                   const SizedBox(height: 8),
@@ -264,13 +264,13 @@ class _AccountTab extends StatelessWidget {
                   child: Row(children: [
                     Container(
                       width: 44, height: 44,
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFFFF7A00)]), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFD89A3C), Color(0xFFEBAA2D)]), borderRadius: BorderRadius.circular(12)),
                       child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 24),
                     ),
                     const SizedBox(width: 14),
                     const Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                        Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
                         SizedBox(height: 2),
                         Text('All Pro clips · unlimited exports · no watermark', style: TextStyle(color: Colors.white60, fontSize: 12)),
                       ]),

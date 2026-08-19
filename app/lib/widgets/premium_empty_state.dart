@@ -23,7 +23,7 @@ class PremiumEmptyState extends StatelessWidget {
             Container(
               width: 92, height: 92,
               decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0x22FF7A59), Color(0x22FF4D6D)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                gradient: LinearGradient(colors: [Color(0x226D45C9), Color(0x22846EEA)], begin: Alignment.topLeft, end: Alignment.bottomRight),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 42, color: AppColors.accent),
