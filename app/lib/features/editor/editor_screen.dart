@@ -2782,43 +2782,21 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     }
     final hasSel = _selected != null;
-    final selLabel = _selected is SubtitleSegment
-        ? 'Text'
-        : _selected is StickerOverlay
-            ? ((_selected as StickerOverlay).emoji != null ? 'Emoji' : 'Sticker')
-            : _selected == 'logo'
-                ? 'Logo'
-                : '';
-    // §4.1 property panel — background oklch(0.22 0.008 80), top border oklch(0.3 0.01 80).
+    // Tool deck — no heading, no grey box; tiles sit directly on the editor
+    // backdrop with the least possible spacing (icons carry the meaning; tap the
+    // canvas to deselect). Applied uniformly to project + every selection state.
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF39352E),
-        border: Border(top: BorderSide(color: Color(0xFF4B463E))),
-      ),
-      padding: EdgeInsets.fromLTRB(12, 9, 12, 8 + MediaQuery.of(context).viewPadding.bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // panel header: title + Done (dimmed in project context)
-          Row(children: [
-            Text(hasSel ? '$selLabel layer' : 'Project tools', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-            const Spacer(),
-            GestureDetector(
-              onTap: hasSel ? () => setState(() => _selected = null) : null,
-              child: Text('Done', style: TextStyle(color: hasSel ? _kAccent : Colors.white24, fontWeight: FontWeight.w600, fontSize: 13)),
-            ),
-          ]),
-          const SizedBox(height: 8),
-          if (!hasSel)
-            // PROJECT tools — 8-tile 4-column grid, compact (short tiles, no scroll)
-            GridView.count(
+      color: _kBg,
+      padding: EdgeInsets.fromLTRB(10, 6, 10, 6 + MediaQuery.of(context).viewPadding.bottom),
+      child: !hasSel
+          // PROJECT tools — 8-tile 4-column grid, compact (short tiles, no scroll)
+          ? GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 4,
-              mainAxisSpacing: 7,
-              crossAxisSpacing: 7,
-              childAspectRatio: 1.55,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: 1.7,
               children: [
                 _projTile(Icons.title_rounded, 'Text', _addSubtitle),
                 _projTile(Icons.image_outlined, 'Logo', _pickLogo, onLongPress: _openBrandKit),
@@ -2830,13 +2808,10 @@ class _EditorScreenState extends State<EditorScreen> {
                 _projTile(Icons.layers_rounded, 'Layers', _openLayers),
               ],
             )
-          else
-            SingleChildScrollView(
+          : SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(children: tools),
             ),
-        ],
-      ),
     );
   }
 
