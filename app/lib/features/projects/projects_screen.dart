@@ -37,11 +37,11 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete project?', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Delete project?', style: TextStyle(fontWeight: FontWeight.w600)),
         content: Text('“${p.name}” and its saved edits will be removed. This frees up space.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w600))),
         ],
       ),
     );
@@ -101,21 +101,21 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   },
                   background: Container(
                     alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 22),
-                    decoration: BoxDecoration(color: AppColors.err.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(color: AppColors.errBg, borderRadius: BorderRadius.circular(R.card)),
                     child: const Icon(Icons.delete_outline_rounded, color: AppColors.err),
                   ),
                   child: GestureDetector(
                     onTap: () { HapticFeedback.lightImpact(); _open(p); },
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(R.card),
+                        border: Border.all(color: AppColors.line),
                       ),
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       child: Row(children: [
-                        // thumbnail (network clip thumb) or gradient fallback
+                        // thumbnail (network clip thumb) or flat fallback
                         ClipRRect(
                           borderRadius: BorderRadius.circular(11),
                           child: SizedBox(
@@ -128,9 +128,9 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                            Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                             const SizedBox(height: 3),
-                            Text('Edited ${_ago(p.updatedAt)} · tap to continue', style: TextStyle(color: AppColors.mut, fontSize: 12)),
+                            Text('Edited ${_ago(p.updatedAt)} · tap to continue', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mut, fontSize: 12)),
                           ]),
                         ),
                         IconButton(
@@ -161,7 +161,7 @@ class _ThumbFallback extends StatelessWidget {
   const _ThumbFallback();
   @override
   Widget build(BuildContext context) => const DecoratedBox(
-        decoration: BoxDecoration(color: AppColors.brand),
-        child: Icon(Icons.movie_creation_outlined, color: Colors.white70, size: 22),
+        decoration: BoxDecoration(color: AppColors.dark2),
+        child: Icon(Icons.movie_creation_outlined, color: AppColors.mut, size: 22),
       );
 }

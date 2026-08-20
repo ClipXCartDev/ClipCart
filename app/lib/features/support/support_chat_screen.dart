@@ -151,8 +151,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: mine ? AppColors.brand : null,
-          color: mine ? null : Theme.of(context).cardColor,
+          color: mine ? AppColors.brand : AppColors.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),

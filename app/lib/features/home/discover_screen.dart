@@ -181,8 +181,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (soon) {
       // ending soon — amber
       return _banner(
-        border: const Color(0xFFE7CBA1), bg: const Color(0xFFFDF7F0),
-        icon: '◆', iconColor: AppColors.warn,
+        border: const Color(0xFFFDE3C0), bg: const Color(0xFFFDF7EF),
         title: 'Creator plan ends in ${daysLeft <= 0 ? 'under a day' : '$daysLeft day${daysLeft == 1 ? '' : 's'}'}',
         subtitle: 'Renew to keep clean 1080p exports',
         cta: 'Renew', onTap: () => context.push('/plans'),
@@ -195,7 +194,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       final left = (quota is num && used is num) ? '${(quota - used).toInt()} of ${quota.toInt()} exports left' : 'Exports available';
       final renews = expires != null ? ' · renews ${_fmtDate(expires)}' : '';
       return _banner(
-        border: const Color(0xFFCFE6D6), bg: const Color(0xFFF5FBF7),
+        border: const Color(0xFFCFE6D8), bg: const Color(0xFFF4FBF6),
         dot: AppColors.ok,
         title: 'Creator plan active',
         subtitle: '$left$renews',
@@ -205,35 +204,33 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     // no plan — neutral card
     return _banner(
       border: AppColors.line, bg: AppColors.surface,
-      icon: '◆', iconColor: AppColors.mut,
       title: 'Unlock exports from 6.00 USDT',
       subtitle: 'Browse free · export with a plan',
       cta: 'See plans', onTap: () => context.push('/plans'),
     );
   }
 
+  // Flat, one-line banner (~58px). No ◆ glyph; only the active state shows an ok dot.
   Widget _banner({
     required Color border, required Color bg, required String title, required String subtitle,
-    required String cta, required VoidCallback onTap,
-    String? icon, Color? iconColor, Color? dot, bool ctaAsText = false,
+    required String cta, required VoidCallback onTap, Color? dot, bool ctaAsText = false,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
+          padding: const EdgeInsets.all(11),
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(R.card), border: Border.all(color: border)),
           child: Row(children: [
-            if (dot != null)
-              Container(width: 9, height: 9, decoration: BoxDecoration(color: dot, shape: BoxShape.circle))
-            else if (icon != null)
-              Text(icon, style: TextStyle(fontSize: 14, color: iconColor)),
-            const SizedBox(width: 11),
+            if (dot != null) ...[
+              Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+              const SizedBox(width: 10),
+            ],
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13, height: 1.3)),
-                Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mut, fontSize: 12.5, height: 1.3)),
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13.5, height: 1.25)),
+                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mut, fontSize: 12.5, height: 1.25)),
               ]),
             ),
             const SizedBox(width: 10),
@@ -243,8 +240,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               Container(
                 height: 34,
                 alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 13),
-                decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(9)),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.sm)),
                 child: Text(cta, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
               ),
           ]),
