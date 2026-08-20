@@ -48,6 +48,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Object? _selected; // SubtitleSegment | 'logo' | null
   bool _trimMode = false;
+  int _textTab = 0; // §4.1 text panel sub-tab: 0 Style · 1 Advanced · 2 Timing · 3 Presets
 
   // Stable id for this project's on-disk save (reused when resuming so re-saving
   // updates the same file rather than piling up duplicates).
@@ -2811,25 +2812,226 @@ class _EditorScreenState extends State<EditorScreen> {
                 _projTile(Icons.layers_rounded, 'Layers', _openLayers),
               ],
             )
-          : Row(children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: tools),
-                ),
-              ),
-              // minimal round ✓ to finish editing this layer (deselect)
-              GestureDetector(
-                onTap: () => setState(() => _selected = null),
-                child: Container(
-                  margin: const EdgeInsets.only(left: 8),
-                  width: 40, height: 40,
-                  decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
-                  child: const Icon(Icons.check_rounded, size: 20, color: Colors.white),
-                ),
-              ),
-            ]),
+          : _selected is SubtitleSegment
+              // §4.1 Text property panel with inline sub-tabs
+              ? _textPanel(_selected as SubtitleSegment)
+              : Row(children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: tools),
+                    ),
+                  ),
+                  // minimal round ✓ to finish editing this layer (deselect)
+                  GestureDetector(
+                    onTap: () => setState(() => _selected = null),
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      width: 40, height: 40,
+                      decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
+                      child: const Icon(Icons.check_rounded, size: 20, color: Colors.white),
+                    ),
+                  ),
+                ]),
     );
+  }
+
+  // ================= §4.1 Text property panel (inline sub-tabs) =================
+  Widget _textPanel(SubtitleSegment s) {
+    const ink = AppColors.ink, mut = AppColors.mut, line = AppColors.line, brand = AppColors.brand;
+    const tile = Color(0xFFF3F3F1);
+    Widget subTab(String label, int i) {
+      final on = _textTab == i;
+      return GestureDetector(
+        onTap: () => setState(() => _textTab = i),
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: on ? ink : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+            border: on ? null : Border.all(color: line),
+          ),
+          child: Text(label, style: TextStyle(fontSize: 13, color: on ? Colors.white : ink, fontWeight: on ? FontWeight.w600 : FontWeight.w400)),
+        ),
+      );
+    }
+
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // header: sub-tab pills + round ✓ done
+      Row(children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              subTab('Style', 0), const SizedBox(width: 7),
+              subTab('Advanced', 1), const SizedBox(width: 7),
+              subTab('Timing', 2), const SizedBox(width: 7),
+              subTab('Presets', 3),
+            ]),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => setState(() => _selected = null),
+          child: Container(width: 36, height: 36, decoration: const BoxDecoration(color: brand, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 18, color: Colors.white)),
+        ),
+      ]),
+      const SizedBox(height: 12),
+      // sub-tab content (fixed-ish height, scrolls if needed)
+      ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 210),
+        child: SingleChildScrollView(
+          child: switch (_textTab) {
+            0 => _textStyle(s, ink, mut, tile, line, brand),
+            1 => _textAdvanced(s, mut, tile, line, brand),
+            2 => _textTiming(s, ink, mut, tile, line, brand),
+            _ => _textPresetsTab(s, ink, tile, line, brand),
+          },
+        ),
+      ),
+      const SizedBox(height: 10),
+      // footer: Duplicate · Hide · Delete
+      Row(children: [
+        Expanded(child: _textFootBtn('Duplicate', tile, line, ink, _duplicateSelected)),
+        const SizedBox(width: 7),
+        Expanded(child: _textFootBtn(s.hidden ? 'Show' : 'Hide', tile, line, ink, () => _mutate(() => s.hidden = !s.hidden))),
+        const SizedBox(width: 7),
+        Expanded(child: _textFootBtn('Delete', AppColors.errBg, AppColors.errBg, AppColors.err, _deleteSelected)),
+      ]),
+    ]);
+  }
+
+  Widget _textFootBtn(String label, Color bg, Color border, Color fg, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 38, alignment: Alignment.center,
+          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(9), border: Border.all(color: border)),
+          child: Text(label, style: TextStyle(fontSize: 13, color: fg, fontWeight: FontWeight.w500)),
+        ),
+      );
+
+  // light slider row (dark text on the white deck)
+  Widget _lightSlider(String label, double value, double min, double max, ValueChanged<double> onChanged, {required String display, double labelW = 66}) => Row(children: [
+        SizedBox(width: labelW, child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.mut))),
+        Expanded(
+          child: SliderTheme(
+            data: const SliderThemeData(activeTrackColor: AppColors.brand, thumbColor: AppColors.brand, inactiveTrackColor: Color(0xFFE3E3DF), trackHeight: 3, overlayShape: RoundSliderOverlayShape(overlayRadius: 14)),
+            child: Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged, onChangeEnd: (_) => _gestureSnapped = false),
+          ),
+        ),
+        SizedBox(width: 44, child: Text(display, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: AppColors.ink))),
+      ]);
+
+  // ---- Style tab: font · B/I · size · colours · align ----
+  Widget _textStyle(SubtitleSegment s, Color ink, Color mut, Color tile, Color line, Color brand) {
+    Widget bi(String t, bool on, VoidCallback tap, {bool italic = false}) => GestureDetector(
+          onTap: tap,
+          child: Container(
+            width: 44, height: 40, alignment: Alignment.center,
+            decoration: BoxDecoration(color: on ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: on ? brand : line)),
+            child: Text(t, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontStyle: italic ? FontStyle.italic : FontStyle.normal, color: on ? brand : ink)),
+          ),
+        );
+    const swatches = [0xFFFFFFFF, 0xFF000000, 0xFF0E9E6E, 0xFFD89A3C, 0xFFDC2626, 0xFF2D7FF9, 0xFFFFC400, 0xFF9B5DE5];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 40, padding: const EdgeInsets.symmetric(horizontal: 11), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: line)), child: Row(children: [Text(s.fontFamily ?? 'Default', style: TextStyle(fontFamily: s.fontFamily, fontSize: 13, color: ink)), const Spacer(), const Icon(Icons.expand_more_rounded, size: 18, color: AppColors.mut)])))),
+        const SizedBox(width: 7),
+        bi('B', s.bold, () => _mutate(() => s.bold = !s.bold)),
+        const SizedBox(width: 7),
+        bi('I', s.italic, () => _mutate(() => s.italic = !s.italic), italic: true),
+      ]),
+      const SizedBox(height: 11),
+      _lightSlider('Size', s.scale, 0.4, 4.0, (v) => setState(() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } s.scale = v; }), display: '${(s.fontSize * s.scale).round()}', labelW: 40),
+      const SizedBox(height: 8),
+      Row(children: [
+        const SizedBox(width: 40, child: Text('Colour', style: TextStyle(fontSize: 12, color: AppColors.mut))),
+        Expanded(child: SizedBox(height: 30, child: ListView(scrollDirection: Axis.horizontal, children: [
+          for (final c in swatches) Padding(padding: const EdgeInsets.only(right: 8), child: GestureDetector(onTap: () => _mutate(() => s.color = c), child: Container(width: 30, height: 30, decoration: BoxDecoration(color: Color(c), borderRadius: BorderRadius.circular(8), border: Border.all(color: s.color == c ? brand : line, width: s.color == c ? 2 : 1))))),
+          GestureDetector(onTap: () => _quickColor(s), child: Container(width: 30, height: 30, alignment: Alignment.center, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: line)), child: const Icon(Icons.add_rounded, size: 16, color: AppColors.mut))),
+        ]))),
+      ]),
+      const SizedBox(height: 11),
+      Row(children: [
+        for (final a in TextAlignH.values) ...[
+          Expanded(child: GestureDetector(
+            onTap: () => _mutate(() => s.align = a),
+            child: Container(height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: s.align == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.align == a ? brand : line)), child: Icon(_alignIcon(a), size: 18, color: s.align == a ? brand : ink)),
+          )),
+          if (a != TextAlignH.right) const SizedBox(width: 7),
+        ],
+      ]),
+    ]);
+  }
+
+  // ---- Advanced tab: stroke · shadow(toggle) · box(toggle) · opacity · letter · line · rotation ----
+  Widget _textAdvanced(SubtitleSegment s, Color mut, Color tile, Color line, Color brand) {
+    void snap() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _lightSlider('Stroke', s.strokeWidth, 0, 12, (v) => setState(() { snap(); s.strokeWidth = v; }), display: s.strokeWidth.toStringAsFixed(0)),
+      const SizedBox(height: 8),
+      _lightSlider('Opacity', s.opacity, 0.1, 1.0, (v) => setState(() { snap(); s.opacity = v; }), display: '${(s.opacity * 100).round()}%'),
+      const SizedBox(height: 8),
+      _lightSlider('Letter', s.letterSpacing, -3, 12, (v) => setState(() { snap(); s.letterSpacing = v; }), display: s.letterSpacing.toStringAsFixed(1)),
+      const SizedBox(height: 8),
+      _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
+      const SizedBox(height: 11),
+      Row(children: [
+        Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? AppColors.brandSurface : tile, s.shadow ? brand : line, s.shadow ? brand : AppColors.ink, () => _mutate(() => s.shadow = !s.shadow))),
+        const SizedBox(width: 7),
+        Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? AppColors.brandSurface : tile, s.bgEnabled ? brand : line, s.bgEnabled ? brand : AppColors.ink, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
+        const SizedBox(width: 7),
+        Expanded(child: _NumFieldLight(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dx = (v / 100).clamp(0.0, 1.0)))),
+        const SizedBox(width: 7),
+        Expanded(child: _NumFieldLight(label: 'Y %', value: s.dy * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dy = (v / 100).clamp(0.0, 1.0)))),
+      ]),
+    ]);
+  }
+
+  // ---- Timing tab: start/end fields + animation quick-select ----
+  Widget _textTiming(SubtitleSegment s, Color ink, Color mut, Color tile, Color line, Color brand) {
+    final dz = _duration <= 0 ? 9999.0 : _duration;
+    Widget anim(String label, OverlayAnim a) => Expanded(
+          child: GestureDetector(
+            onTap: () => _mutate(() => s.anim = a),
+            child: Container(height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: s.anim == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.anim == a ? brand : line)), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: s.anim == a ? brand : ink))),
+          ),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Expanded(child: _NumFieldLight(label: 'Starts (s)', value: s.start, min: 0, max: dz, decimals: 1, onChanged: (v) => _mutate(() => s.start = v.clamp(0.0, s.end - 0.2)))),
+        const SizedBox(width: 9),
+        Expanded(child: _NumFieldLight(label: 'Ends (s)', value: s.end, min: 0, max: dz, decimals: 1, onChanged: (v) => _mutate(() => s.end = v.clamp(s.start + 0.2, dz)))),
+      ]),
+      const SizedBox(height: 11),
+      Row(children: [
+        anim('None', OverlayAnim.none), const SizedBox(width: 7),
+        anim('Fade', OverlayAnim.fade), const SizedBox(width: 7),
+        anim('Pop', OverlayAnim.popIn), const SizedBox(width: 7),
+        anim('Type', OverlayAnim.typewriter),
+      ]),
+    ]);
+  }
+
+  // ---- Presets tab: horizontal preset strip ----
+  Widget _textPresetsTab(SubtitleSegment s, Color ink, Color tile, Color line, Color brand) {
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      for (final tpl in _styleTemplates)
+        GestureDetector(
+          onTap: () => _applyStyle(s, tpl),
+          child: Container(
+            width: 100, height: 52, alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : tile,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: s.fontFamily == tpl['font'] ? brand : line, width: s.fontFamily == tpl['font'] ? 2 : 1),
+            ),
+            child: Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: tpl['font'] as String?, color: Color(tpl['color'] as int), fontWeight: FontWeight.w700, fontSize: 13)),
+          ),
+        ),
+    ]);
   }
 
   /// A 64px project-tool tile (§4.1 PROJECT grid): icon over label on a dark tile.
@@ -3163,6 +3365,64 @@ class _NumFieldState extends State<_NumField> {
           filled: true,
           fillColor: Colors.white.withOpacity(0.06),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// Light-styled numeric field for the white text panel (dark text on light).
+class _NumFieldLight extends StatefulWidget {
+  const _NumFieldLight({required this.label, required this.value, required this.min, required this.max, required this.onChanged, this.decimals = 0});
+  final String label;
+  final double value, min, max;
+  final int decimals;
+  final ValueChanged<double> onChanged;
+  @override
+  State<_NumFieldLight> createState() => _NumFieldLightState();
+}
+
+class _NumFieldLightState extends State<_NumFieldLight> {
+  late final TextEditingController _c;
+  late final FocusNode _f;
+  @override
+  void initState() {
+    super.initState();
+    _c = TextEditingController(text: _fmt(widget.value));
+    _f = FocusNode()..addListener(() { if (!_f.hasFocus) _commit(); });
+  }
+  @override
+  void didUpdateWidget(covariant _NumFieldLight old) {
+    super.didUpdateWidget(old);
+    if (!_f.hasFocus && (widget.value - old.value).abs() > 0.001) _c.text = _fmt(widget.value);
+  }
+  String _fmt(double v) => widget.decimals == 0 ? v.round().toString() : v.toStringAsFixed(widget.decimals);
+  void _commit() {
+    final v = double.tryParse(_c.text.trim());
+    if (v != null) { final cl = v.clamp(widget.min, widget.max); widget.onChanged(cl); _c.text = _fmt(cl); }
+    else { _c.text = _fmt(widget.value); }
+  }
+  @override
+  void dispose() { _c.dispose(); _f.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(widget.label, style: const TextStyle(color: AppColors.mut, fontSize: 11)),
+      const SizedBox(height: 4),
+      TextField(
+        controller: _c, focusNode: _f,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'IBMPlexMono'),
+        cursorColor: AppColors.brand,
+        onSubmitted: (_) => _commit(),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 9),
+          filled: true, fillColor: const Color(0xFFF3F3F1),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.brand)),
         ),
       ),
     ]);
