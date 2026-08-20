@@ -186,7 +186,7 @@ class _AccountTab extends StatelessWidget {
           Container(
             padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 24, 20, 26),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: LinearGradient(colors: [Color(0xFF12B886), Color(0xFF0E9E6E)], begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
             child: Row(children: [
               Container(

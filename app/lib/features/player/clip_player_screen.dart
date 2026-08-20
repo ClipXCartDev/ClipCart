@@ -25,7 +25,7 @@ class ClipPlayerScreen extends StatelessWidget {
         future: context.read<CatalogService>().getClip(slug),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)));
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF0E9E6E)));
           }
           if (snap.hasError || !snap.hasData) {
             return SafeArea(
@@ -41,7 +41,7 @@ class ClipPlayerScreen extends StatelessWidget {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text('Could not load clip', style: TextStyle(color: Colors.grey.shade400)),
                     const SizedBox(height: 12),
-                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: Color(0xFF2563EB)))),
+                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: Color(0xFF0E9E6E)))),
                   ]),
                 ),
               ]),
@@ -278,7 +278,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           else if (clip.thumb != null)
             CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.contain, errorWidget: (_, __, ___) => const SizedBox.shrink()),
           // only show a spinner when there's no thumbnail to communicate content
-          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))),
+          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: Color(0xFF0E9E6E))),
           if (ready && !c.value.isPlaying)
             IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white.withOpacity(0.85)))),
           // bottom gradient scrim + meta
@@ -300,7 +300,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                 _faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                 'Save',
                 () => _toggleFav(clip),
-                color: _faved.contains(clip.id) ? const Color(0xFF2563EB) : Colors.white,
+                color: _faved.contains(clip.id) ? const Color(0xFF0E9E6E) : Colors.white,
               ),
               const SizedBox(height: 14),
               _railBtn(Icons.ios_share_rounded, 'Share', () => _sharePreview(clip)),
@@ -357,7 +357,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           width: double.infinity,
           child: FilledButton(
             onPressed: () => _openEditor(clip),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF2563EB), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0E9E6E), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
             child: const Text('Use this template', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           ),
         ),

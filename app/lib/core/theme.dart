@@ -4,24 +4,24 @@ import 'package:flutter/material.dart';
 /// Violet brand · warm-paper canvas · Instrument Sans + IBM Plex Mono.
 /// oklch tokens converted to sRGB. One violet accent carries every commit action.
 class AppColors {
-  // brand — clean modern blue (replaces the old violet), one accent everywhere
-  static const brand = Color(0xFF2563EB);      // primary blue
-  static const brandHover = Color(0xFF1D4ED8); // pressed / ink-blue
-  static const brandLight = Color(0xFF60A5FA);  // brighter blue (on dark chrome)
-  static const brandSurface = Color(0xFFE7EEFD);// subtle blue tint (active pills)
+  // brand — refined emerald green (clean, premium, one accent everywhere)
+  static const brand = Color(0xFF0E9E6E);      // primary emerald
+  static const brandHover = Color(0xFF0A7D57); // pressed / deep emerald
+  static const brandLight = Color(0xFF34D399);  // bright emerald (on dark chrome)
+  static const brandSurface = Color(0xFFD9F5E9);// subtle emerald tint (active pills)
 
-  // neutrals (cool, clean)
-  static const bg = Color(0xFFF6F7F9);   // app background
-  static const paper = Color(0xFFF6F7F9); // header/frame background (same clean grey-white)
+  // neutrals (clean, warm-neutral)
+  static const bg = Color(0xFFF7F7F5);   // app background (soft near-white)
+  static const paper = Color(0xFFF7F7F5); // header/frame background
   static const surface = Color(0xFFFFFFFF); // cards / sheets
-  static const ink = Color(0xFF191C20);  // primary text (cool near-black)
-  static const mut = Color(0xFF6B7280);  // secondary text (cool grey)
-  static const line = Color(0xFFE5E7EB); // borders / dividers
+  static const ink = Color(0xFF17181C);  // primary text (near-black)
+  static const mut = Color(0xFF70737A);  // secondary text (grey)
+  static const line = Color(0xFFE9E9E5); // borders / dividers
 
-  // media / dark chrome (editor, player) — cool neutral near-black
+  // media / dark chrome (player) — neutral near-black
   static const dark = Color(0xFF121316);  // media surfaces
-  static const dark2 = Color(0xFF23262C); // editor panel
-  static const dark3 = Color(0xFF33373F); // editor border/track
+  static const dark2 = Color(0xFF23262C); // raised dark
+  static const dark3 = Color(0xFF33373F); // dark border/track
 
   // premium + status
   static const gold = Color(0xFFE0A73B); // premium/featured
@@ -40,8 +40,8 @@ class AppColors {
   static const accent2 = brandLight;
   static const accentInk = brandHover;
 
-  // Flat blue for commit actions; a soft gradient for a few hero moments.
-  static const gradient = [Color(0xFF3B82F6), Color(0xFF2563EB)];
+  // Flat emerald for commit actions; a soft gradient for a few hero moments.
+  static const gradient = [Color(0xFF12B886), Color(0xFF0E9E6E)];
 
   // dark-mode neutrals
   static const bgDark = Color(0xFF101114);

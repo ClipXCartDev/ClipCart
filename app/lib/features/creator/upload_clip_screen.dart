@@ -96,7 +96,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
               child: _uploading
                   ? const Center(child: Padding(padding: EdgeInsets.all(6), child: CircularProgressIndicator()))
                   : Column(children: [
-                      Icon(_baseKey != null ? Icons.check_circle : Icons.upload_file, color: _baseKey != null ? const Color(0xFF12B76A) : const Color(0xFF2563EB), size: 26),
+                      Icon(_baseKey != null ? Icons.check_circle : Icons.upload_file, color: _baseKey != null ? const Color(0xFF12B76A) : const Color(0xFF0E9E6E), size: 26),
                       const SizedBox(height: 8),
                       Text(_baseKey != null ? 'Base clip uploaded ✓' : 'Tap to upload base clip (MP4)', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 12)),
                     ]),
