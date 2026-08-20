@@ -81,13 +81,14 @@ ThemeData buildTheme(Brightness brightness) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    scaffoldBackgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
+    // Design frame background is --bg (warm paper #FBFAF7), not the deeper canvas.
+    scaffoldBackgroundColor: isDark ? AppColors.bgDark : AppColors.paper,
     fontFamily: kSans,
     cardColor: surface,
     dividerColor: line,
     textTheme: _textTheme(ink),
     appBarTheme: AppBarTheme(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
+      backgroundColor: isDark ? AppColors.bgDark : AppColors.paper,
       foregroundColor: ink,
       elevation: 0,
       scrolledUnderElevation: 0,

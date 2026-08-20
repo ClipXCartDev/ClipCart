@@ -211,7 +211,7 @@ class _SearchScreenState extends State<SearchScreen> {
           crossAxisCount: 3, mainAxisSpacing: 7, crossAxisSpacing: 7, childAspectRatio: 9 / 14),
         itemCount: _grid.length,
         // Explore tiles are caption-less (feedback 2) — text shows only when opened.
-        itemBuilder: (context, i) => ClipTile(clip: _grid[i], aspect: 9 / 14, onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
+        itemBuilder: (context, i) => ClipTile(clip: _grid[i], aspect: 9 / 14, radius: 10, onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
       ),
     );
   }

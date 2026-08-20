@@ -150,11 +150,12 @@ double masonryAspect(String id) {
 /// it (client: "home page videos mein text na show ho, click karne par dikhe"),
 /// while the full-screen player is where the caption/text appears.
 class ClipTile extends StatelessWidget {
-  const ClipTile({super.key, required this.clip, this.onTap, this.showText = false, this.aspect});
+  const ClipTile({super.key, required this.clip, this.onTap, this.showText = false, this.aspect, this.radius = 12});
   final Clip clip;
   final VoidCallback? onTap;
   final bool showText; // show the title caption on the tile
   final double? aspect; // override the deterministic masonry ratio (rows use fixed)
+  final double radius; // corner radius (design: Home shelf 11 · Explore 10 · Library 9)
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +165,7 @@ class ClipTile extends StatelessWidget {
       child: Hero(
         tag: 'clip_${clip.id}',
         child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(radius),
         child: AspectRatio(
           aspectRatio: aspect ?? masonryAspect(clip.id),
           child: Stack(

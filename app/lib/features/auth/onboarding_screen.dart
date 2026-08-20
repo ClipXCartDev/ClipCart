@@ -5,8 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/runtime_config.dart';
-import '../../state/auth_controller.dart';
-import '../../widgets/primary_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -52,9 +50,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  Widget _dot(bool active) => Container(
+        width: 26, height: 3,
+        decoration: BoxDecoration(color: active ? Colors.white : Colors.white30, borderRadius: BorderRadius.circular(999)),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final auth = context.read<AuthController>();
     final ready = _vc != null && _vc!.value.isInitialized;
     return Scaffold(
       backgroundColor: const Color(0xFF0B0A0C),
@@ -80,83 +82,51 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
           ),
+          // §3.1 onboarding: bottom-anchored content over a full-bleed scrim.
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 8, 22, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    Container(
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]), borderRadius: BorderRadius.circular(10)),
-                      alignment: Alignment.center,
-                      child: const Text('C', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 19)),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text('ClipCart', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 19)),
-                  ]),
-                  const SizedBox(height: 18),
-                  // crisp native-aspect hero card of the live clip
-                  Expanded(
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: ready ? _vc!.value.aspectRatio : 1,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(22),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              if (_thumb != null) Image.network(_thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF161318))),
-                              if (ready) VideoPlayer(_vc!),
-                              const DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(colors: [Colors.transparent, Color(0x55000000)], begin: Alignment.center, end: Alignment.bottomCenter),
-                                ),
-                              ),
-                              Positioned(
-                                left: 12, bottom: 12,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(20)),
-                                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(Icons.bolt_rounded, color: Color(0xFFFFC400), size: 15),
-                                    SizedBox(width: 4),
-                                    Text('Trending now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
-                                  ]),
-                                ),
-                              ),
-                            ],
-                          ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // 3-dot progress (slide 1 active)
+                      Row(children: [
+                        _dot(true), const SizedBox(width: 6), _dot(false), const SizedBox(width: 6), _dot(false),
+                      ]),
+                      const SizedBox(height: 14),
+                      const Text('Every clip is already edited.',
+                          style: TextStyle(color: Colors.white, fontSize: 38, height: 1.05, letterSpacing: -1.1, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 14),
+                      const Text(
+                        'You only change the words, your handle and your logo. The cut, the timing and the look stay as the creator built them.',
+                        style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
+                      ),
+                      const SizedBox(height: 22),
+                      SizedBox(
+                        height: 52,
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: () => context.go('/login'),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF232019), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                          child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => context.go('/login'),
+                          child: const Text('Skip', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 18),
-                  const Text('BROWSE · CUSTOMIZE · EXPORT', style: TextStyle(color: Color(0xFF846EEA), fontWeight: FontWeight.w800, letterSpacing: 2.5, fontSize: 11)),
-                  const SizedBox(height: 8),
-                  const Text('Turn viral clips\ninto your brand', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, height: 1.05)),
-                  const SizedBox(height: 10),
-                  const Text('Browse trending meme & movie clips, drop in your text, logo & subtitles, and export in seconds.',
-                      style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.35)),
-                  const SizedBox(height: 20),
-                  PrimaryButton(label: 'Get started', onPressed: () => context.go('/register')),
-                  const SizedBox(height: 10),
-                  GoogleButton(onPressed: () async {
-                    final err = await auth.googleSignIn();
-                    if (err != null && err != 'Cancelled' && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
-                    }
-                  }),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text('I already have an account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

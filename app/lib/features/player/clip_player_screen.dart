@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../models/clip.dart';
@@ -221,15 +222,33 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           },
           itemBuilder: (context, i) => _page(widget.clips[i], i),
         ),
+        // §3.2 top bar: close · PREVIEW · WATERMARKED · more
         SafeArea(
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: IconButton(icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 30), onPressed: () => context.canPop() ? context.pop() : context.go('/home')),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              _circleBtn(Icons.close_rounded, () => context.canPop() ? context.pop() : context.go('/home')),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white.withOpacity(0.35))),
+                child: Text('PREVIEW · WATERMARKED', style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 10, color: Colors.white.withOpacity(0.8))),
+              ),
+              _circleBtn(Icons.more_horiz_rounded, () {}),
+            ]),
           ),
         ),
       ]),
     );
   }
+
+  Widget _circleBtn(IconData icon, VoidCallback onTap) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+          child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      );
 
   Widget _page(Clip clip, int i) {
     final c = _ctrls[i];
@@ -272,53 +291,47 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               ),
             ),
           ),
-          // meta + CTA sit above the system nav bar (viewPadding.bottom)
-          Positioned(left: 16, right: 16, bottom: 20 + MediaQuery.of(context).viewPadding.bottom, child: _meta(clip)),
+          // right action rail (Save · Share · Sound), above the meta block
           Positioned(
-            right: 10,
-            top: 10 + MediaQuery.of(context).viewPadding.top,
-            child: GestureDetector(
-              onTap: _toggleMute,
-              child: Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                child: Icon(_muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, color: Colors.white, size: 22),
+            right: 16,
+            bottom: 190 + MediaQuery.of(context).viewPadding.bottom,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _railBtn(
+                _faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                'Save',
+                () => _toggleFav(clip),
+                color: _faved.contains(clip.id) ? const Color(0xFF6D45C9) : Colors.white,
               ),
-            ),
+              const SizedBox(height: 14),
+              _railBtn(Icons.ios_share_rounded, 'Share', () => _sharePreview(clip)),
+              const SizedBox(height: 14),
+              _railBtn(_muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, 'Sound', _toggleMute),
+            ]),
           ),
-          // Save/favorite heart — populates the Saved tab
-          Positioned(
-            right: 10,
-            top: 62 + MediaQuery.of(context).viewPadding.top,
-            child: GestureDetector(
-              onTap: () => _toggleFav(clip),
-              child: Column(children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-                  // quick scale-pop (1.0→1.35→1.0) + color pulse whenever the faved state flips
-                  child: TweenAnimationBuilder<double>(
-                    key: ValueKey(_faved.contains(clip.id)),
-                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeOut,
-                    builder: (context, t, child) {
-                      // t: 0→1; bump peaks at t≈0.5 then settles back to 1.0
-                      final scale = 1.0 + 0.35 * (t < 0.5 ? (t * 2) : (1 - (t - 0.5) * 2));
-                      return Transform.scale(scale: scale, child: child);
-                    },
-                    child: Icon(_faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: _faved.contains(clip.id) ? const Color(0xFF6D45C9) : Colors.white, size: 22),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(_faved.contains(clip.id) ? 'Liked' : 'Like', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
-              ]),
-            ),
-          ),
+          // meta + CTA sit above the system nav bar (viewPadding.bottom)
+          Positioned(left: 18, right: 18, bottom: 22 + MediaQuery.of(context).viewPadding.bottom, child: _meta(clip)),
         ],
       ),
     );
+  }
+
+  Widget _railBtn(IconData icon, String label, VoidCallback onTap, {Color color = Colors.white}) => GestureDetector(
+        onTap: onTap,
+        child: Column(children: [
+          Container(
+            width: 46, height: 46,
+            decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+        ]),
+      );
+
+  Future<void> _sharePreview(Clip clip) async {
+    try {
+      await Share.share('Check out "${clip.title}" on ClipCart');
+    } catch (_) {}
   }
 
   Widget _grad() => const DecoratedBox(
@@ -326,31 +339,28 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       );
 
   Widget _meta(Clip clip) {
+    // meta line: CATEGORY · DURATION · RATIO · @handle (mono, §3.2)
+    final cat = (clip.category ?? clip.genre ?? 'clip').toUpperCase();
+    final metaLine = '$cat · ${clip.durationLabel} · 9:16 · @${clip.editorName ?? 'creator'}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          Text('@${clip.editorName ?? 'creator'}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-          const SizedBox(width: 8),
-          if (clip.isPro)
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFF5A623), borderRadius: BorderRadius.circular(6)), child: const Text('PRO', style: TextStyle(color: Color(0xFF3A2600), fontSize: 10, fontWeight: FontWeight.w900))),
-        ]),
-        const SizedBox(height: 6),
-        Text(clip.title, style: const TextStyle(color: Colors.white, fontSize: 13)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, children: [
-          for (final t in [clip.category ?? clip.genre ?? 'clip', clip.language, clip.durationLabel])
-            Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(6)), child: Text('#$t', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))),
-        ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          const Icon(Icons.lock_outline_rounded, color: Colors.white70, size: 14),
-          const SizedBox(width: 5),
-          Text('Preview quality · full HD unlocks in the editor', style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 11.5, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 10),
-        PrimaryButton(label: 'Use template · Unlock HD', icon: Icons.auto_awesome, onPressed: () => _openEditor(clip)),
+        Text(metaLine, style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: Colors.white.withOpacity(0.75))),
+        const SizedBox(height: 7),
+        Text(clip.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -0.4, height: 1.1)),
+        const SizedBox(height: 7),
+        Text('Preview quality · full HD unlocks in the editor.', style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 14, height: 1.45)),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 54,
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: () => _openEditor(clip),
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF6D45C9), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+            child: const Text('Use this template', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          ),
+        ),
       ],
     );
   }

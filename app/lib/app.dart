@@ -13,6 +13,7 @@ import 'features/creator/creator_dashboard.dart';
 import 'features/creator/upload_clip_screen.dart';
 import 'features/editor/editor_screen.dart';
 import 'features/home/home_shell.dart';
+import 'features/notifications/notifications_screen.dart';
 import 'features/player/clip_player_screen.dart';
 import 'features/support/support_screen.dart';
 import 'models/clip.dart';
@@ -99,6 +100,7 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansScreen())),
         GoRoute(path: '/devices', pageBuilder: (c, s) => _fadeScalePage(s, const DevicesScreen())),
         GoRoute(path: '/support', pageBuilder: (c, s) => _fadeScalePage(s, const SupportScreen())),
+        GoRoute(path: '/notifications', pageBuilder: (c, s) => _fadeScalePage(s, const NotificationsScreen())),
         GoRoute(path: '/creator', pageBuilder: (c, s) => _fadeScalePage(s, const CreatorDashboard())),
         GoRoute(path: '/creator/upload', pageBuilder: (c, s) => _fadeScalePage(s, const UploadClipScreen())),
       ],

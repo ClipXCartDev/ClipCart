@@ -147,7 +147,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             child: Text('ClipCart', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 26, height: 1.0, letterSpacing: -0.65, color: AppColors.ink)),
           ),
           GestureDetector(
-            onTap: () => homeTab.value = 1,
+            onTap: () => context.push('/notifications'),
             child: SizedBox(
               width: 38, height: 38,
               child: Stack(children: [
@@ -287,7 +287,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           itemBuilder: (context, i) => SizedBox(
             width: 108,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SizedBox(width: 108, height: 168, child: ClipTile(clip: clips[i], aspect: 108 / 168, onTap: () => _openRow(clips, i))),
+              SizedBox(width: 108, height: 168, child: ClipTile(clip: clips[i], aspect: 108 / 168, radius: 11, onTap: () => _openRow(clips, i))),
               const SizedBox(height: 6),
               Text(clips[i].title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.ink)),
             ]),
