@@ -42,7 +42,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800)),
+            child: const Text('Remove', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -140,7 +140,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                           )
                         : TextButton(
                             onPressed: _removingId != null ? null : () => _remove(d),
-                            child: const Text('Remove', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800)),
+                            child: const Text('Remove', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800)),
                           ),
                   ),
                 );

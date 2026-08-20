@@ -87,7 +87,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         title: Row(children: [
           Container(
             width: 34, height: 34,
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
             child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 10),
@@ -151,7 +151,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          gradient: mine ? const LinearGradient(colors: AppColors.gradient) : null,
+          color: mine ? AppColors.brand : null,
           color: mine ? null : Theme.of(context).cardColor,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
@@ -209,7 +209,7 @@ class _SupportChatScreenState extends State<SupportChatScreen> {
             onTap: _send,
             child: Container(
               width: 46, height: 46,
-              decoration: const BoxDecoration(gradient: LinearGradient(colors: AppColors.gradient), shape: BoxShape.circle),
+              decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
               child: _sending
                   ? const Padding(padding: EdgeInsets.all(13), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.arrow_upward_rounded, color: Colors.white),

@@ -69,7 +69,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
   Color _statusColor(String? s) => switch (s) {
         'approved' => const Color(0xFF12B76A),
         'pending' => const Color(0xFFF79009),
-        'changes' || 'rejected' => const Color(0xFFF04438),
+        'changes' || 'rejected' => AppColors.err,
         _ => Colors.grey,
       };
 
@@ -97,7 +97,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return Container(
                     height: 176,
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(16)),
                     child: const Center(child: CircularProgressIndicator(color: Colors.white)),
                   );
                 }
@@ -115,7 +115,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 final available = (e?['available'] as num?)?.toDouble() ?? 0;
                 return Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(gradient: const LinearGradient(colors: AppColors.gradient), borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(16)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -171,7 +171,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                               width: 44, height: 56,
                               child: c.thumb != null
                                   ? Image.network(c.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF241E28)))
-                                  : const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: AppColors.gradient))),
+                                  : const DecoratedBox(decoration: BoxDecoration(color: AppColors.brand)),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -180,7 +180,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                               Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                               const SizedBox(height: 2),
                               Text('${c.category ?? c.genre ?? ''} · ${c.downloads} downloads', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                              if (c.reviewNote != null) Text('“${c.reviewNote}”', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFF04438), fontSize: 11, fontStyle: FontStyle.italic)),
+                              if (c.reviewNote != null) Text('“${c.reviewNote}”', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.err, fontSize: 11, fontStyle: FontStyle.italic)),
                             ]),
                           ),
                           const SizedBox(width: 8),

@@ -716,7 +716,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF04438), size: 20),
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.err, size: 20),
                   onPressed: () {
                     _snapshot();
                     setState(() {
@@ -809,7 +809,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     });
                     setSheet(() { sel.clear(); selectMode = false; });
                   },
-                  style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFF04438), side: const BorderSide(color: Color(0x55F04438)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.err, side: const BorderSide(color: Color(0x55F04438)), padding: const EdgeInsets.symmetric(vertical: 12)),
                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
                   label: Text('Delete (${sel.length})'),
                 )),
@@ -1035,8 +1035,8 @@ class _EditorScreenState extends State<EditorScreen> {
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
                       onPressed: () { _mutate(() => p.musicPath = null); setSheet(() {}); },
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFF04438)),
-                      label: const Text('Remove music', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w700)),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.err),
+                      label: const Text('Remove music', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],

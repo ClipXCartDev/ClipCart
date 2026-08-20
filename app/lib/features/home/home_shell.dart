@@ -301,7 +301,7 @@ class _MenuRow extends StatelessWidget {
   final bool danger;
   @override
   Widget build(BuildContext context) {
-    final c = danger ? const Color(0xFFF04438) : null;
+    final c = danger ? AppColors.err : null;
     return ListTile(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       leading: Icon(icon, color: c ?? AppColors.accent, size: 22),

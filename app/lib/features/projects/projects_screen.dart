@@ -41,7 +41,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
         content: Text('“${p.name}” and its saved edits will be removed. This frees up space.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Color(0xFFF04438), fontWeight: FontWeight.w800))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800))),
         ],
       ),
     );
@@ -102,8 +102,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   background: Container(
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.only(right: 22),
-                    decoration: BoxDecoration(color: const Color(0xFFF04438).withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
-                    child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF04438)),
+                    decoration: BoxDecoration(color: AppColors.err.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
+                    child: const Icon(Icons.delete_outline_rounded, color: AppColors.err),
                   ),
                   child: GestureDetector(
                     onTap: () { HapticFeedback.lightImpact(); _open(p); },
@@ -134,7 +134,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                           ]),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFF04438)),
+                          icon: const Icon(Icons.delete_outline_rounded, color: AppColors.err),
                           onPressed: () => _delete(p),
                         ),
                         const Padding(
@@ -161,7 +161,7 @@ class _ThumbFallback extends StatelessWidget {
   const _ThumbFallback();
   @override
   Widget build(BuildContext context) => const DecoratedBox(
-        decoration: BoxDecoration(gradient: LinearGradient(colors: AppColors.gradient)),
+        decoration: BoxDecoration(color: AppColors.brand),
         child: Icon(Icons.movie_creation_outlined, color: Colors.white70, size: 22),
       );
 }

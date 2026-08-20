@@ -201,7 +201,7 @@ class _PlansScreenState extends State<PlansScreen> {
   Widget _feat(String t) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(children: [
-          Container(width: 18, height: 18, decoration: const BoxDecoration(color: Color(0x2212B76A), shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 12, color: AppColors.ok)),
+          Container(width: 18, height: 18, decoration: const BoxDecoration(color: AppColors.okBg, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 12, color: AppColors.ok)),
           const SizedBox(width: 10),
           Expanded(child: Text(t, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500))),
         ]),
