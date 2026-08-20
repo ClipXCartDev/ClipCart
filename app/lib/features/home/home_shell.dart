@@ -112,7 +112,7 @@ class _LiquidDock extends StatelessWidget {
         border: Border(top: BorderSide(color: dark ? AppColors.lineDark : AppColors.line)),
       ),
       child: SizedBox(
-        height: 60,
+        height: 70,
         child: Row(
           children: [
             for (var i = 0; i < n; i++)
@@ -123,28 +123,28 @@ class _LiquidDock extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // M3 active-indicator pill (56×30, brandSurface) behind the icon
+                      // active-indicator pill (56×30, brandSurface) behind the icon
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         curve: Curves.easeOut,
                         width: 56, height: 30,
                         decoration: BoxDecoration(
                           color: index == i ? AppColors.brandSurface : Colors.transparent,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(R.pill),
                         ),
                         alignment: Alignment.center,
                         child: Icon(
                           index == i ? _dockItems[i].$2 : _dockItems[i].$1,
                           color: index == i ? AppColors.brand : inactive,
-                          size: 20,
+                          size: 17,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         _dockItems[i].$3,
                         style: TextStyle(
                           fontSize: 10.5,
-                          fontWeight: index == i ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: index == i ? FontWeight.w600 : FontWeight.w400,
                           color: index == i ? AppColors.brand : inactive,
                         ),
                       ),
@@ -182,31 +182,28 @@ class _AccountTab extends StatelessWidget {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          // gradient profile header
+          // flat profile header (no gradient) — warm bg with a bottom hairline
           Container(
-            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 24, 20, 26),
+            padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 16, 20, 18),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF12B886), Color(0xFF0E9E6E)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              color: AppColors.bg,
+              border: Border(bottom: BorderSide(color: AppColors.line)),
             ),
             child: Row(children: [
               Container(
-                width: 62, height: 62,
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), shape: BoxShape.circle, border: Border.all(color: Colors.white54, width: 2)),
+                width: 56, height: 56,
+                decoration: const BoxDecoration(color: AppColors.brandSurface, shape: BoxShape.circle),
                 alignment: Alignment.center,
-                child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
+                child: Text(initial, style: const TextStyle(color: AppColors.brand, fontSize: 22, fontWeight: FontWeight.w600)),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(user?.name ?? '', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Text(user?.name ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.4)),
                   const SizedBox(height: 2),
-                  Text(user?.email ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
+                  Text(user?.email ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.mut, fontSize: 12.5)),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), borderRadius: BorderRadius.circular(20)),
-                    child: Text((user?.role ?? 'customer').toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-                  ),
+                  StatusPill.ok((user?.role ?? 'customer').toUpperCase()),
                 ]),
               ),
             ]),
@@ -254,7 +251,7 @@ class _AccountTab extends StatelessWidget {
               _MenuCard(children: [
                 _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
                 if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
-                _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/devices')),
+                _MenuRow(Icons.phone_android_rounded, 'Devices', () => context.push('/devices'), trailingText: '1 OF 2'),
               ]),
               const SizedBox(height: 14),
               _MenuCard(children: [
@@ -284,29 +281,36 @@ class _MenuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.15)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(R.card),
+        border: Border.all(color: AppColors.line),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(children: children),
     );
   }
 }
 
 class _MenuRow extends StatelessWidget {
-  const _MenuRow(this.icon, this.label, this.onTap, {this.danger = false});
+  const _MenuRow(this.icon, this.label, this.onTap, {this.danger = false, this.trailingText});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool danger;
+  final String? trailingText; // mono count, e.g. "1 OF 2"
   @override
   Widget build(BuildContext context) {
-    final c = danger ? AppColors.err : null;
+    final c = danger ? AppColors.err : AppColors.ink;
     return ListTile(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      leading: Icon(icon, color: c ?? AppColors.accent, size: 22),
-      title: Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: c)),
-      trailing: danger ? null : Icon(Icons.chevron_right_rounded, color: Colors.grey.withOpacity(0.5)),
+      leading: Icon(icon, color: danger ? AppColors.err : AppColors.brand, size: 17),
+      title: Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: c)),
+      trailing: danger
+          ? null
+          : Row(mainAxisSize: MainAxisSize.min, children: [
+              if (trailingText != null) Text(trailingText!, style: const TextStyle(fontFamily: kMono, fontSize: 11, color: AppColors.mut)),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.mut, size: 22),
+            ]),
       onTap: onTap,
     );
   }
