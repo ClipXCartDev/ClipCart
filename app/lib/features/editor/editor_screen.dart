@@ -22,10 +22,10 @@ import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
 
 // Editor dark chrome — the design's "room you enter and leave" (warm near-black).
-const _kBg = Color(0xFF101114);   // editor canvas backdrop
-const _kPanel = Color(0xFF191B1F); // --dk control panels
-const _kChip = Color(0xFF23262C);  // raised tool tiles
-const _kAccent = Color(0xFF34D399); // brighter violet on dark chrome (--brl proxy)
+const _kBg = Color(0xFF15120F);   // --dk  editor canvas backdrop
+const _kPanel = Color(0xFF27241F); // --dk2 control panels
+const _kChip = Color(0xFF38342D);  // raised tool tiles
+const _kAccent = Color(0xFF9B87E8); // --brl brand-light on dark chrome
 
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
@@ -2784,12 +2784,11 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     }
     final hasSel = _selected != null;
-    // WHITE tool deck — clean light menu with dark items (least spacing, no
-    // heading). Selection state ends by tapping the canvas or the small ✓ chip.
+    // Dark tool deck (design chrome). Selection ends by tapping the canvas or ✓.
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.line)),
+        color: _kPanel,
+        border: Border(top: BorderSide(color: _kChip)),
       ),
       padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).viewPadding.bottom),
       child: !hasSel
@@ -2838,8 +2837,8 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ================= §4.1 Text property panel (inline sub-tabs) =================
   Widget _textPanel(SubtitleSegment s) {
-    const ink = AppColors.ink, mut = AppColors.mut, line = AppColors.line, brand = AppColors.brand;
-    const tile = Color(0xFFF3F3F1);
+    const ink = Colors.white, mut = Colors.white54, line = _kChip, brand = _kAccent;
+    const tile = _kChip;
     Widget subTab(String label, int i) {
       final on = _textTab == i;
       return GestureDetector(
@@ -2914,14 +2913,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // light slider row (dark text on the white deck)
   Widget _lightSlider(String label, double value, double min, double max, ValueChanged<double> onChanged, {required String display, double labelW = 66}) => Row(children: [
-        SizedBox(width: labelW, child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.mut))),
+        SizedBox(width: labelW, child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white54))),
         Expanded(
           child: SliderTheme(
-            data: const SliderThemeData(activeTrackColor: AppColors.brand, thumbColor: AppColors.brand, inactiveTrackColor: Color(0xFFE3E3DF), trackHeight: 3, overlayShape: RoundSliderOverlayShape(overlayRadius: 14)),
+            data: const SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: _kChip, trackHeight: 4, overlayShape: RoundSliderOverlayShape(overlayRadius: 14)),
             child: Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged, onChangeEnd: (_) => _gestureSnapped = false),
           ),
         ),
-        SizedBox(width: 44, child: Text(display, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: AppColors.ink))),
+        SizedBox(width: 44, child: Text(display, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: Colors.white))),
       ]);
 
   // ---- Style tab: font · B/I · size · colours · align ----
@@ -2979,9 +2978,9 @@ class _EditorScreenState extends State<EditorScreen> {
       _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
       const SizedBox(height: 11),
       Row(children: [
-        Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? AppColors.brandSurface : tile, s.shadow ? brand : line, s.shadow ? brand : AppColors.ink, () => _mutate(() => s.shadow = !s.shadow))),
+        Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? brand : tile, s.shadow ? brand : line, Colors.white, () => _mutate(() => s.shadow = !s.shadow))),
         const SizedBox(width: 7),
-        Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? AppColors.brandSurface : tile, s.bgEnabled ? brand : line, s.bgEnabled ? brand : AppColors.ink, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
+        Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? brand : tile, s.bgEnabled ? brand : line, Colors.white, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
         const SizedBox(width: 7),
         Expanded(child: _NumFieldLight(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dx = (v / 100).clamp(0.0, 1.0)))),
         const SizedBox(width: 7),
@@ -3040,14 +3039,14 @@ class _EditorScreenState extends State<EditorScreen> {
         onLongPress: onLongPress,
         child: Container(
           decoration: BoxDecoration(
-            color: on ? AppColors.brandSurface : const Color(0xFFF3F3F1),
+            color: on ? AppColors.brand : _kChip,
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: on ? AppColors.brand : AppColors.line),
+            border: Border.all(color: on ? AppColors.brand : _kChip),
           ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: on ? AppColors.brand : AppColors.ink, size: 18),
+            Icon(icon, color: Colors.white, size: 18),
             const SizedBox(height: 4),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? AppColors.brand : AppColors.ink, fontSize: 10.5, fontWeight: FontWeight.w500)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w500)),
           ]),
         ),
       );
@@ -3197,7 +3196,7 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Widget _tool(IconData icon, String label, VoidCallback onTap, {bool danger = false, bool active = false}) {
-    final c = danger ? AppColors.err : (active ? AppColors.brand : AppColors.ink);
+    final c = danger ? const Color(0xFFE28086) : Colors.white;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: InkWell(
@@ -3206,9 +3205,9 @@ class _EditorScreenState extends State<EditorScreen> {
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: active ? AppColors.brandSurface : const Color(0xFFF3F3F1),
+              color: active ? AppColors.brand : _kChip,
               borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: active ? AppColors.brand : AppColors.line),
+              border: Border.all(color: active ? AppColors.brand : _kChip),
             ),
             child: Icon(icon, color: c, size: 20),
           ),
@@ -3407,22 +3406,22 @@ class _NumFieldLightState extends State<_NumFieldLight> {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(widget.label, style: const TextStyle(color: AppColors.mut, fontSize: 11)),
+      Text(widget.label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
       const SizedBox(height: 4),
       TextField(
         controller: _c, focusNode: _f,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'IBMPlexMono'),
-        cursorColor: AppColors.brand,
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'IBMPlexMono'),
+        cursorColor: _kAccent,
         onSubmitted: (_) => _commit(),
         decoration: InputDecoration(
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 9),
-          filled: true, fillColor: const Color(0xFFF3F3F1),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.brand)),
+          filled: true, fillColor: _kChip,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _kAccent)),
         ),
       ),
     ]);
