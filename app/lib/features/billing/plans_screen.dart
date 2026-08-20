@@ -96,7 +96,7 @@ class _PlansScreenState extends State<PlansScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
                 width: 52, height: 52,
-                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFF7E57DE)]), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFFFC400), Color(0xFF3B82F6)]), borderRadius: BorderRadius.circular(14)),
                 child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 28),
               ),
               const SizedBox(height: 14),
@@ -157,7 +157,7 @@ class _PlansScreenState extends State<PlansScreen> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        gradient: popular ? const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]) : null,
+        gradient: popular ? const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]) : null,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Container(
@@ -176,7 +176,7 @@ class _PlansScreenState extends State<PlansScreen> {
               if (popular)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]), borderRadius: BorderRadius.circular(20)),
                   child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
                 ),
             ]),

@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 /// Applied to overlays in one tap so a creator's clips stay on-brand.
 class BrandKit {
   BrandKit({List<int>? colors, this.fontFamily, this.fontPath, this.logoPath})
-      : colors = colors ?? const [0xFFFFFFFF, 0xFF6D45C9, 0xFF17131F];
+      : colors = colors ?? const [0xFFFFFFFF, 0xFF2563EB, 0xFF17131F];
 
   List<int> colors; // ARGB, first = primary
   String? fontFamily; // registered family for preview

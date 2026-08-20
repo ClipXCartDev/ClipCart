@@ -112,7 +112,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         width: double.infinity,
                         child: FilledButton(
                           onPressed: () => context.go('/login'),
-                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF232019), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF191B1F), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
                           child: const Text('Next', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),

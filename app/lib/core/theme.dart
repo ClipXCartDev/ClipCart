@@ -4,52 +4,51 @@ import 'package:flutter/material.dart';
 /// Violet brand · warm-paper canvas · Instrument Sans + IBM Plex Mono.
 /// oklch tokens converted to sRGB. One violet accent carries every commit action.
 class AppColors {
-  // brand
-  static const brand = Color(0xFF6D45C9);      // --br  oklch(0.52 0.18 288) violet
-  static const brandHover = Color(0xFF5636A3); // brand pressed/ink
-  static const brandLight = Color(0xFF846EEA);  // brighter violet (on dark)
-  static const brandSurface = Color(0xFFF0ECFA);// --brs subtle violet fill
+  // brand — clean modern blue (replaces the old violet), one accent everywhere
+  static const brand = Color(0xFF2563EB);      // primary blue
+  static const brandHover = Color(0xFF1D4ED8); // pressed / ink-blue
+  static const brandLight = Color(0xFF60A5FA);  // brighter blue (on dark chrome)
+  static const brandSurface = Color(0xFFE7EEFD);// subtle blue tint (active pills)
 
-  // neutrals (warm paper)
-  static const bg = Color(0xFFF1EFEB);   // mobile body canvas (slightly deeper paper)
-  static const paper = Color(0xFFFBFAF7); // --bg true paper (headers/hero)
-  static const surface = Color(0xFFFFFFFF); // --sf cards/sheets
-  static const ink = Color(0xFF2E2A25);  // --ink primary text
-  static const mut = Color(0xFF77716A);  // --mut secondary text
-  static const line = Color(0xFFE7E4DF); // --ln borders
+  // neutrals (cool, clean)
+  static const bg = Color(0xFFF6F7F9);   // app background
+  static const paper = Color(0xFFF6F7F9); // header/frame background (same clean grey-white)
+  static const surface = Color(0xFFFFFFFF); // cards / sheets
+  static const ink = Color(0xFF191C20);  // primary text (cool near-black)
+  static const mut = Color(0xFF6B7280);  // secondary text (cool grey)
+  static const line = Color(0xFFE5E7EB); // borders / dividers
 
-  // media / dark chrome (editor, player)
-  static const dark = Color(0xFF232019);  // --dk  media surfaces
-  static const dark2 = Color(0xFF37332C); // editor panel
-  static const dark3 = Color(0xFF4B463E); // editor border/track
+  // media / dark chrome (editor, player) — cool neutral near-black
+  static const dark = Color(0xFF121316);  // media surfaces
+  static const dark2 = Color(0xFF23262C); // editor panel
+  static const dark3 = Color(0xFF33373F); // editor border/track
 
   // premium + status
-  static const gold = Color(0xFFD89A3C); // --gd  premium/featured
-  static const ok = Color(0xFF2E8A5C);   // --ok  success/active
-  static const warn = Color(0xFFC9862F); // --wn  pending/warning
-  static const err = Color(0xFFC24338);  // --er  error/failed
+  static const gold = Color(0xFFE0A73B); // premium/featured
+  static const ok = Color(0xFF16A34A);   // success/active
+  static const warn = Color(0xFFD97706); // pending/warning
+  static const err = Color(0xFFDC2626);  // error/failed
 
   // status badge fills (bg + text)
-  static const okBg = Color(0xFFE1F3E7), okText = Color(0xFF1F6743);
-  static const warnBg = Color(0xFFFBEBD4), warnText = Color(0xFF875416);
-  static const errBg = Color(0xFFFCE9E6);
-  static const goldBg = Color(0xFFF7E4C4), goldText = Color(0xFF71501C);
+  static const okBg = Color(0xFFDCFCE7), okText = Color(0xFF166534);
+  static const warnBg = Color(0xFFFEF3C7), warnText = Color(0xFF92590A);
+  static const errBg = Color(0xFFFEE2E2);
+  static const goldBg = Color(0xFFFBEFD3), goldText = Color(0xFF7A560F);
 
-  // Back-compat aliases (older widgets referenced these names). Now violet.
+  // Back-compat aliases (older widgets referenced these names).
   static const accent = brand;
   static const accent2 = brandLight;
   static const accentInk = brandHover;
 
-  // The design uses a flat violet for commit actions; a soft brand gradient is
-  // kept for a few hero moments (banner, FAB, avatar).
-  static const gradient = [Color(0xFF7E57DE), Color(0xFF6D45C9)];
+  // Flat blue for commit actions; a soft gradient for a few hero moments.
+  static const gradient = [Color(0xFF3B82F6), Color(0xFF2563EB)];
 
-  // dark-mode neutrals (paper → ink)
-  static const bgDark = Color(0xFF17140F);
-  static const surfaceDark = Color(0xFF221E18);
-  static const inkDark = Color(0xFFF2EFE9);
-  static const mutDark = Color(0xFF9A948B);
-  static const lineDark = Color(0xFF332E27);
+  // dark-mode neutrals
+  static const bgDark = Color(0xFF101114);
+  static const surfaceDark = Color(0xFF191B1F);
+  static const inkDark = Color(0xFFF3F4F6);
+  static const mutDark = Color(0xFF9AA0AA);
+  static const lineDark = Color(0xFF2A2D33);
 }
 
 /// Fonts.

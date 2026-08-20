@@ -186,7 +186,7 @@ class _AccountTab extends StatelessWidget {
           Container(
             padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 24, 20, 26),
             decoration: const BoxDecoration(
-              gradient: LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              gradient: LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)], begin: Alignment.topLeft, end: Alignment.bottomRight),
             ),
             child: Row(children: [
               Container(
@@ -214,35 +214,43 @@ class _AccountTab extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(children: [
-              // subscription upsell card
+              // subscription upsell — same clean card language as the Home plan
+              // banner (surface card · blue accent · no truncation).
               GestureDetector(
                 onTap: () => context.push('/plans'),
                 child: Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF17131F),
-                    borderRadius: BorderRadius.circular(18),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 8))],
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.line),
                   ),
                   child: Row(children: [
                     Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFD89A3C), Color(0xFFEBAA2D)]), borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 24),
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: AppColors.brandSurface, borderRadius: BorderRadius.circular(11)),
+                      child: const Icon(Icons.workspace_premium_rounded, color: AppColors.brand, size: 22),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     const Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Upgrade to Pro', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text('Upgrade to Pro', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 15)),
                         SizedBox(height: 2),
-                        Text('All Pro clips · unlimited exports · no watermark', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                        Text('Unlimited exports · no watermark', style: TextStyle(color: AppColors.mut, fontSize: 12.5, height: 1.35)),
                       ]),
                     ),
-                    const Icon(Icons.arrow_forward_rounded, color: Colors.white54),
+                    const SizedBox(width: 10),
+                    Container(
+                      height: 34,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(9)),
+                      child: const Text('See plans', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                    ),
                   ]),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               _MenuCard(children: [
                 _MenuRow(Icons.star_rounded, 'Plans & subscription', () => context.push('/plans')),
                 if (user?.isEditor == true) _MenuRow(Icons.video_camera_back_rounded, 'Creator studio', () => context.push('/creator')),
