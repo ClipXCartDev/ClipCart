@@ -1707,6 +1707,15 @@ class _EditorScreenState extends State<EditorScreen> {
               optRow<int>('QUALITY', const [('720p', 720), ('1080p', 1080)], p.resolution.shortEdge,
                   (v) => p.resolution = v == 720 ? ExportResolution.p720 : ExportResolution.p1080),
               optRow<int>('FRAME RATE', const [('30 fps', 30), ('60 fps', 60)], p.fps, (v) => p.fps = v),
+              // Watermark (design places it in export settings)
+              Row(children: [
+                const Text('Watermark', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 6),
+                Text(p.watermarkOn ? 'On' : 'Off', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                const Spacer(),
+                Switch(value: p.watermarkOn, activeColor: _kAccent, onChanged: (v) => setSheet(() => p.watermarkOn = v)),
+              ]),
+              const SizedBox(height: 12),
               SizedBox(width: double.infinity, child: PrimaryButton(label: 'Export video', icon: Icons.ios_share, onPressed: () => Navigator.pop(context, true))),
               const SizedBox(height: 8),
             ]),
@@ -2724,45 +2733,74 @@ class _EditorScreenState extends State<EditorScreen> {
             : _selected == 'logo'
                 ? 'Logo'
                 : '';
+    // §4.1 property panel — background oklch(0.22 0.008 80), top border oklch(0.3 0.01 80).
     return Container(
-      color: _kPanel,
-      padding: const EdgeInsets.only(top: 6, bottom: 10),
+      decoration: const BoxDecoration(
+        color: Color(0xFF39352E),
+        border: Border(top: BorderSide(color: Color(0xFF4B463E))),
+      ),
+      padding: EdgeInsets.fromLTRB(14, 12, 14, 12 + MediaQuery.of(context).viewPadding.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // When a layer is selected: a clear header with a Done button so the user
-          // can finish editing this layer and go back to adding another.
-          if (hasSel)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 10, 6),
-              child: Row(children: [
-                Container(width: 6, height: 6, decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle)),
-                const SizedBox(width: 8),
-                Text('Editing $selLabel', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => setState(() => _selected = null),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF7E57DE), Color(0xFF6D45C9)]), borderRadius: BorderRadius.circular(20)),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.check_rounded, size: 16, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
-                    ]),
-                  ),
-                ),
-              ]),
+          // panel header: title + Done (dimmed in project context)
+          Row(children: [
+            Text(hasSel ? '$selLabel layer' : 'Project tools', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+            const Spacer(),
+            GestureDetector(
+              onTap: hasSel ? () => setState(() => _selected = null) : null,
+              child: Text('Done', style: TextStyle(color: hasSel ? _kAccent : Colors.white24, fontWeight: FontWeight.w600, fontSize: 13)),
             ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(children: tools),
-          ),
+          ]),
+          const SizedBox(height: 12),
+          if (!hasSel)
+            // PROJECT tools — exact 8-tile 4-column grid
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 4,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 1.05,
+              children: [
+                _projTile(Icons.title_rounded, 'Text', _addSubtitle),
+                _projTile(Icons.image_outlined, 'Logo', _pickLogo, onLongPress: _openBrandKit),
+                _projTile(Icons.music_note_rounded, 'Music', _openMusicSheet, on: _project!.musicPath != null),
+                _projTile(Icons.crop_rounded, 'Ratio & trim', _pickAspect),
+                _projTile(Icons.emoji_emotions_outlined, 'Stickers', _openEmojiPicker),
+                _projTile(Icons.alternate_email_rounded, 'Handle', _addUsername),
+                _projTile(Icons.movie_filter_rounded, 'Outro', _addEndingScreen),
+                _projTile(Icons.layers_rounded, 'Layers', _openLayers),
+              ],
+            )
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: tools),
+            ),
         ],
       ),
     );
   }
+
+  /// A 64px project-tool tile (§4.1 PROJECT grid): icon over label on a dark tile.
+  Widget _projTile(IconData icon, String label, VoidCallback onTap, {bool on = false, VoidCallback? onLongPress}) => GestureDetector(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Container(
+          decoration: BoxDecoration(
+            color: on ? _kAccent : const Color(0xFF2C2822),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: on ? _kAccent : const Color(0xFF4B463E)),
+          ),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: Colors.white, size: 19),
+            const SizedBox(height: 6),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11)),
+          ]),
+        ),
+      );
 
   IconData _alignIcon(TextAlignH a) => switch (a) {
         TextAlignH.left => Icons.format_align_left,
