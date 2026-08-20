@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/theme.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/primary_button.dart';
@@ -25,7 +26,7 @@ class ClipPlayerScreen extends StatelessWidget {
         future: context.read<CatalogService>().getClip(slug),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Color(0xFF0E9E6E)));
+            return const Center(child: CircularProgressIndicator(color: AppColors.brand));
           }
           if (snap.hasError || !snap.hasData) {
             return SafeArea(
@@ -41,7 +42,7 @@ class ClipPlayerScreen extends StatelessWidget {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text('Could not load clip', style: TextStyle(color: Colors.grey.shade400)),
                     const SizedBox(height: 12),
-                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: Color(0xFF0E9E6E)))),
+                    TextButton(onPressed: () => context.go('/home'), child: const Text('Go home', style: TextStyle(color: AppColors.brand))),
                   ]),
                 ),
               ]),
@@ -278,7 +279,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           else if (clip.thumb != null)
             CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.contain, errorWidget: (_, __, ___) => const SizedBox.shrink()),
           // only show a spinner when there's no thumbnail to communicate content
-          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: Color(0xFF0E9E6E))),
+          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: AppColors.brand)),
           if (ready && !c.value.isPlaying)
             IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white.withOpacity(0.85)))),
           // bottom gradient scrim + meta
@@ -300,7 +301,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                 _faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                 'Save',
                 () => _toggleFav(clip),
-                color: _faved.contains(clip.id) ? const Color(0xFF0E9E6E) : Colors.white,
+                color: _faved.contains(clip.id) ? AppColors.brandLight : Colors.white,
               ),
               const SizedBox(height: 14),
               _railBtn(Icons.ios_share_rounded, 'Share', () => _sharePreview(clip)),
@@ -334,9 +335,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     } catch (_) {}
   }
 
-  Widget _grad() => const DecoratedBox(
-        decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF1A2740), Color(0xFFC0304A)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
-      );
+  Widget _grad() => const DecoratedBox(decoration: BoxDecoration(color: AppColors.dark2));
 
   Widget _meta(Clip clip) {
     // meta line: CATEGORY · DURATION · RATIO · @handle (mono, §3.2)
@@ -357,7 +356,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           width: double.infinity,
           child: FilledButton(
             onPressed: () => _openEditor(clip),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF0E9E6E), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.brand, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
             child: const Text('Use this template', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
           ),
         ),

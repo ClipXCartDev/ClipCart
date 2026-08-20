@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme.dart';
 import '../../services/creator_service.dart';
 import '../../widgets/primary_button.dart';
 
@@ -34,7 +35,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
     try {
       final key = await context.read<CreatorService>().uploadBaseClip(res.files.single.path!, res.files.single.name);
       setState(() => _baseKey = key);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded ✓')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
     } finally {
@@ -68,7 +69,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
         'base_clip_path': _baseKey,
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitted for review 🎬')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitted for review')));
         context.pop();
       }
     } catch (e) {
@@ -81,7 +82,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload clip', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Upload clip', style: TextStyle(fontWeight: FontWeight.w600))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -90,15 +91,16 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
             child: Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _baseKey != null ? const Color(0xFF12B76A) : Colors.grey.withOpacity(0.4)),
+                color: _baseKey != null ? AppColors.okBg : AppColors.surface,
+                borderRadius: BorderRadius.circular(R.card),
+                border: Border.all(color: _baseKey != null ? AppColors.ok : AppColors.line),
               ),
               child: _uploading
                   ? const Center(child: Padding(padding: EdgeInsets.all(6), child: CircularProgressIndicator()))
                   : Column(children: [
-                      Icon(_baseKey != null ? Icons.check_circle : Icons.upload_file, color: _baseKey != null ? const Color(0xFF12B76A) : const Color(0xFF0E9E6E), size: 26),
+                      Icon(_baseKey != null ? Icons.check_circle : Icons.upload_file, color: _baseKey != null ? AppColors.ok : AppColors.brand, size: 26),
                       const SizedBox(height: 8),
-                      Text(_baseKey != null ? 'Base clip uploaded ✓' : 'Tap to upload base clip (MP4)', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                      Text(_baseKey != null ? 'Base clip uploaded' : 'Tap to upload base clip (MP4)', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.mut, fontSize: 12)),
                     ]),
             ),
           ),
@@ -115,14 +117,14 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
           const SizedBox(height: 10),
           TextField(controller: _tags, decoration: const InputDecoration(labelText: 'Tags (comma separated)')),
           const SizedBox(height: 16),
-          const Text('Access', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Access', style: TextStyle(fontWeight: FontWeight.w600)),
           Row(children: [
             ChoiceChip(label: const Text('Free'), selected: _access == 'free', onSelected: (_) => setState(() => _access = 'free')),
             const SizedBox(width: 8),
             ChoiceChip(label: const Text('Pro'), selected: _access == 'pro', onSelected: (_) => setState(() => _access = 'pro')),
           ]),
           const SizedBox(height: 16),
-          const Text('Customizable layers', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Customizable layers', style: TextStyle(fontWeight: FontWeight.w600)),
           Wrap(
             spacing: 8,
             children: _allLayers.map((l) => FilterChip(

@@ -30,19 +30,9 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
   }
 
   Future<void> _requestPayout(double available) async {
-    final ctrl = TextEditingController(text: available.toStringAsFixed(2));
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Request payout'),
-        content: TextField(controller: ctrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount (USD)')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, double.tryParse(ctrl.text)), child: const Text('Request')),
-        ],
-      ),
+    final amount = await Navigator.of(context).push<double>(
+      MaterialPageRoute(builder: (_) => _PayoutScreen(available: available)),
     );
-    ctrl.dispose();
     if (amount == null) return;
     if (amount <= 0 || amount > available) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Enter an amount between \$0 and \$${available.toStringAsFixed(2)}')));
@@ -61,22 +51,23 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
 
   Widget _stat(String label, String value) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500)),
         ]),
       );
 
-  Color _statusColor(String? s) => switch (s) {
-        'approved' => const Color(0xFF12B76A),
-        'pending' => const Color(0xFFF79009),
-        'changes' || 'rejected' => AppColors.err,
-        _ => Colors.grey,
+  StatusPill _statusPill(String? s) => switch (s) {
+        'approved' => StatusPill.ok('APPROVED'),
+        'pending' => StatusPill.warn('PENDING'),
+        'changes' => StatusPill.warn('CHANGES'),
+        'rejected' => StatusPill.err('REJECTED'),
+        _ => StatusPill.warn((s ?? 'DRAFT').toUpperCase()),
       };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Creator studio', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Creator studio', style: TextStyle(fontWeight: FontWeight.w600))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/creator/upload');
@@ -97,17 +88,17 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return Container(
                     height: 176,
-                    decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.surface)),
                     child: const Center(child: CircularProgressIndicator(color: Colors.white)),
                   );
                 }
                 if (snap.hasError) {
                   return Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.15))),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(R.surface), border: Border.all(color: AppColors.line)),
                     child: Row(children: [
                       const Expanded(child: Text("Couldn't load your balance.", style: TextStyle(fontWeight: FontWeight.w600))),
-                      TextButton(onPressed: () => setState(_reload), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
+                      TextButton(onPressed: () => setState(_reload), child: const Text('Retry', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w600))),
                     ]),
                   );
                 }
@@ -115,13 +106,13 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 final available = (e?['available'] as num?)?.toDouble() ?? 0;
                 return Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.surface)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('AVAILABLE BALANCE', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 11, letterSpacing: 1)),
-                      const SizedBox(height: 2),
-                      Text('\$${available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w700)),
+                      Text('AVAILABLE BALANCE', style: const TextStyle(color: Colors.white70, fontFamily: kMono, fontWeight: FontWeight.w500, fontSize: 11, letterSpacing: 1)),
+                      const SizedBox(height: 4),
+                      Text('\$${available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w600, letterSpacing: -1)),
                       const SizedBox(height: 14),
                       Row(children: [
                         _stat('Earned', '\$${e?['earned'] ?? 0}'),
@@ -131,11 +122,12 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                       const SizedBox(height: 14),
                       SizedBox(
                         width: double.infinity,
+                        height: 48,
                         child: FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.accentInk, padding: const EdgeInsets.symmetric(vertical: 12)),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.sm))),
                           onPressed: available > 0 ? () => _requestPayout(available) : null,
                           icon: const Icon(Icons.payments_rounded, size: 18),
-                          label: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w800)),
+                          label: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ],
@@ -144,7 +136,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
               },
             ),
             const SizedBox(height: 20),
-            const Text('My uploads', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text('My uploads', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppColors.ink)),
             const SizedBox(height: 8),
             FutureBuilder<List<Clip>>(
               future: _uploads,
@@ -163,32 +155,28 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                   children: clips.map((c) => Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.withOpacity(0.15))),
+                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(R.card), border: Border.all(color: AppColors.line)),
                         child: Row(children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(9),
                             child: SizedBox(
                               width: 44, height: 56,
                               child: c.thumb != null
-                                  ? Image.network(c.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF241E28)))
-                                  : const DecoratedBox(decoration: BoxDecoration(color: AppColors.brand)),
+                                  ? Image.network(c.thumb!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const ColoredBox(color: AppColors.dark2))
+                                  : const DecoratedBox(decoration: BoxDecoration(color: AppColors.dark2)),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                              Text(c.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.ink)),
                               const SizedBox(height: 2),
-                              Text('${c.category ?? c.genre ?? ''} · ${c.downloads} downloads', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              Text('${c.category ?? c.genre ?? ''} · ${c.downloads} downloads', style: const TextStyle(color: AppColors.mut, fontSize: 12)),
                               if (c.reviewNote != null) Text('“${c.reviewNote}”', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.err, fontSize: 11, fontStyle: FontStyle.italic)),
                             ]),
                           ),
                           const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                            decoration: BoxDecoration(color: _statusColor(c.status).withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
-                            child: Text((c.status ?? '').toUpperCase(), style: TextStyle(color: _statusColor(c.status), fontSize: 9.5, fontWeight: FontWeight.w700)),
-                          ),
+                          _statusPill(c.status),
                         ]),
                       )).toList(),
                 );
@@ -196,6 +184,78 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Payout is a full screen, not a dialog (REBUILD §Step 12) — the amount is
+/// returned via Navigator.pop so the dashboard can submit and refresh.
+class _PayoutScreen extends StatefulWidget {
+  const _PayoutScreen({required this.available});
+  final double available;
+  @override
+  State<_PayoutScreen> createState() => _PayoutScreenState();
+}
+
+class _PayoutScreenState extends State<_PayoutScreen> {
+  late final TextEditingController _ctrl = TextEditingController(text: widget.available.toStringAsFixed(2));
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final amount = double.tryParse(_ctrl.text.trim());
+    if (amount == null || amount <= 0 || amount > widget.available) {
+      setState(() => _error = 'Enter an amount between \$0 and \$${widget.available.toStringAsFixed(2)}.');
+      return;
+    }
+    Navigator.of(context).pop(amount);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w600))),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.surface)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('AVAILABLE BALANCE', style: TextStyle(color: Colors.white70, fontFamily: kMono, fontWeight: FontWeight.w500, fontSize: 11, letterSpacing: 1)),
+              const SizedBox(height: 4),
+              Text('\$${widget.available.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w600, letterSpacing: -1)),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          const Text('Amount (USD)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.ink)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _ctrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) { if (_error != null) setState(() => _error = null); },
+            decoration: const InputDecoration(prefixText: '\$ ', hintText: '0.00'),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.errBg, borderRadius: BorderRadius.circular(R.card), border: Border.all(color: const Color(0xFFF3C7C7))),
+              child: Text(_error!, style: const TextStyle(fontSize: 13, color: AppColors.errText)),
+            ),
+          ],
+          const SizedBox(height: 12),
+          const Text('Payouts are sent in USDT to your saved address, usually within 3 business days.',
+              style: TextStyle(fontSize: 13, height: 1.45, color: AppColors.mut)),
+          const SizedBox(height: 20),
+          SizedBox(height: 48, child: FilledButton(onPressed: _submit, child: const Text('Request payout'))),
+        ],
       ),
     );
   }

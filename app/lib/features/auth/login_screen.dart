@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _password = TextEditingController();
   final _pwFocus = FocusNode();
   bool _loading = false;
+  String? _error;
 
   @override
   void initState() {
@@ -34,11 +35,48 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     final err = await context.read<AuthController>().login(_email.text.trim(), _password.text);
     if (!mounted) return;
-    setState(() => _loading = false);
-    if (err != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+    setState(() {
+      _loading = false;
+      _error = err;
+    });
+  }
+
+  /// Inline error card — never a snackbar. Distinguishes bad credentials from
+  /// a device-limit rejection so the message tells the user what to do next.
+  Widget _errorCard(String raw) {
+    final lower = raw.toLowerCase();
+    final isDeviceLimit = lower.contains('device') && lower.contains('limit');
+    final title = isDeviceLimit ? 'Device limit reached' : 'Those details didn\'t match';
+    final body = isDeviceLimit
+        ? 'This account is already signed in on the maximum number of devices. Remove one from Account → Devices, then try again.'
+        : 'Check your email and password and try again.';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.errBg,
+        borderRadius: BorderRadius.circular(R.card),
+        border: Border.all(color: const Color(0xFFF3C7C7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.errText),
+            const SizedBox(width: 8),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.errText))),
+          ]),
+          const SizedBox(height: 6),
+          Text(body, style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.errText)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -95,6 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
+                if (_error != null) _errorCard(_error!),
                 SizedBox(height: 54, child: PrimaryButton(label: 'Log in', loading: _loading, onPressed: _submit)),
               ],
             ),

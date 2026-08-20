@@ -4,45 +4,93 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ClipCart Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{--accent:#ff4d6d;--accent2:#ff8a3d;--ink:#e01a48;--bg:#f6f5f7;--surface:#fff;--border:#eae8ee;--text:#191521;--muted:#6f6a79;--ok:#12b76a;--warn:#c77700;--danger:#f04438;--grad:linear-gradient(135deg,#ff8a3d,#ff4d6d)}
+:root{
+--br:#684FC8;--br-hover:#553CB0;--brs:#EFEEFF;
+--bg:#FCFAF6;--sf:#FFFFFF;--ink:#221F19;--mut:#6F6B64;--ln:#E4E1DB;
+--dk:#15120F;--dk2:#27241F;--dk3:#38342D;
+--gd:#EBAA2D;--gold-bg:#FCF2DD;--gold-text:#7A560F;
+--ok:#258343;--ok-bg:#E6F4EA;--ok-text:#1B6334;
+--warn:#D88018;--warn-bg:#FDF0E0;--warn-text:#8F5410;
+--err:#C2272D;--err-bg:#FBE9E9;--err-text:#8E1D22;
+}
 *{box-sizing:border-box}
-body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text)}
+body{margin:0;font-family:'Instrument Sans',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
 button{font:inherit;cursor:pointer}
-.btn{border:0;border-radius:9px;padding:8px 14px;font-weight:700;font-size:13px;background:var(--grad);color:#fff}
-.btn.sec{background:var(--surface);color:var(--text);border:1px solid var(--border)}
-.btn.ok{background:var(--ok)}.btn.dan{background:var(--danger)}.btn.sm{padding:5px 10px;font-size:12px}
-.link{color:var(--ink);font-weight:700;cursor:pointer}
-input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:inherit;margin-bottom:10px;background:var(--surface);color:var(--text)}
+.btn{border:0;border-radius:12px;padding:12px 18px;min-height:44px;font-weight:600;font-size:13px;background:var(--br);color:#fff;line-height:1}
+.btn:hover{background:var(--br-hover)}
+.btn.sec{background:var(--sf);color:var(--ink);border:1px solid var(--ln)}
+.btn.sec:hover{background:var(--bg)}
+.btn.ok{background:var(--ok)}.btn.ok:hover{background:var(--ok-text)}
+.btn.err,.btn.dan{background:var(--sf);color:var(--err);border:1px solid var(--err)}
+.btn.err:hover,.btn.dan:hover{background:var(--err-bg)}
+.btn.warn{background:var(--warn)}.btn.warn:hover{background:var(--warn-text)}
+.btn.sm{padding:8px 12px;min-height:36px;font-size:12px;border-radius:12px}
+.link{color:var(--br);font-weight:600;cursor:pointer}
+input,select,textarea{width:100%;padding:12px;min-height:44px;border:1px solid var(--ln);border-radius:12px;font:inherit;margin-bottom:10px;background:var(--sf);color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--brs);border-color:var(--br)}
 /* login */
 #login{min-height:100vh;display:grid;place-items:center;padding:20px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;box-shadow:0 10px 30px rgba(30,20,40,.08)}
-.logo{width:44px;height:44px;border-radius:12px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900;margin:0 auto 12px}
-h1{font-size:20px;margin:0 0 4px;text-align:center}.sub{color:var(--muted);font-size:13px;text-align:center;margin-bottom:18px}
+.card{background:var(--sf);border:1px solid var(--ln);border-radius:16px;padding:26px}
+.logo{width:44px;height:44px;border-radius:12px;background:var(--br);display:grid;place-items:center;color:#fff;font-weight:600;margin:0 auto 12px}
+h1{font-size:20px;margin:0 0 4px;text-align:center}.sub{color:var(--mut);font-size:13px;text-align:center;margin-bottom:18px}
 /* app */
 #app{display:none;grid-template-columns:210px 1fr;min-height:100vh}
-.side{background:var(--surface);border-right:1px solid var(--border);padding:16px 12px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:800;padding:4px 8px 16px}
-.brand .lg{width:28px;height:28px;border-radius:8px;background:var(--grad);display:grid;place-items:center;color:#fff;font-weight:900;font-size:13px}
+.side{background:var(--sf);border-right:1px solid var(--ln);padding:16px 12px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;padding:4px 8px 16px}
+.brand .lg{width:28px;height:28px;border-radius:12px;background:var(--br);display:grid;place-items:center;color:#fff;font-weight:600;font-size:13px}
 .nav{display:flex;flex-direction:column;gap:2px}
-.nav a{padding:9px 12px;border-radius:9px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer}
-.nav a.on{background:#ffe9ec;color:var(--ink)}
-.side .out{margin-top:18px;color:var(--danger);font-size:13px;font-weight:700;cursor:pointer;padding:9px 12px}
+.nav a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer}
+.nav a:hover{background:var(--bg)}
+.nav a.on{background:var(--brs);color:var(--ink)}
+.nav-badge{display:none;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--warn-bg);color:var(--warn-text);font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500}
+.side .out{margin-top:18px;color:var(--err);font-size:13px;font-weight:600;cursor:pointer;padding:10px 12px}
 .main{padding:22px 26px;overflow:auto}
-.main h2{margin:0 0 14px;font-size:20px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px}
-.stat .v{font-size:24px;font-weight:800}.stat .l{color:var(--muted);font-size:12px}
-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:10px;border-bottom:1px solid var(--border)}
-td{padding:10px;border-bottom:1px solid var(--border);font-size:13px}
+.main h2{margin:0 0 14px;font-size:20px;font-weight:600}
+.sec-h{margin:22px 0 12px;font-size:14px;font-weight:600}
+/* banner */
+.banner{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--warn-bg);border:1px solid var(--warn);color:var(--warn-text);border-radius:14px;padding:14px 16px;margin-bottom:18px;font-weight:600;font-size:13.5px}
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
+.stat{background:var(--sf);border:1px solid var(--ln);border-radius:14px;padding:16px}
+.stat .l{color:var(--mut);font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em}
+.stat .v{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;margin-top:6px}
+/* table pattern */
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--sf);border:1px solid var(--ln);border-radius:14px;overflow:hidden}
+th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--mut);background:var(--bg);padding:11px 12px;border-bottom:1px solid var(--ln)}
+td{padding:13px 12px;border-bottom:1px solid var(--ln);font-size:13.5px}
 tr:last-child td{border-bottom:0}
-.pill{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase}
-.p-ok{background:#e7f7ef;color:var(--ok)}.p-wait{background:#fff3e3;color:var(--warn)}.p-no{background:#fde7e5;color:var(--danger)}
-.err{color:var(--danger);font-size:13px;min-height:18px}
+tbody tr.sel td{background:var(--brs)}
+tbody tr:hover td{background:var(--bg)}
+tbody tr.sel:hover td{background:var(--brs)}
+/* pills */
+.pill{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:500;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.pill.ok{background:var(--ok-bg);color:var(--ok-text)}
+.pill.warn{background:var(--warn-bg);color:var(--warn-text)}
+.pill.err{background:var(--err-bg);color:var(--err-text)}
+.pill.gold{background:var(--gold-bg);color:var(--gold-text)}
+.pill.neutral{background:var(--ln);color:var(--mut)}
+.err{color:var(--err);font-size:13px;min-height:18px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.toggle{display:inline-block;width:40px;height:23px;border-radius:99px;background:var(--border);position:relative;cursor:pointer;vertical-align:middle}
-.toggle.on{background:var(--accent)}
+/* review pane */
+.review{display:flex;gap:18px;margin-bottom:18px;align-items:flex-start}
+.rev-preview{flex:0 0 190px;width:190px;aspect-ratio:9/16;border-radius:14px;background:var(--dk);overflow:hidden;display:grid;place-items:center}
+.rev-preview img{width:100%;height:100%;object-fit:cover}
+.rev-body{flex:1;min-width:0}
+.rev-file{font-size:11px;color:var(--mut);margin-bottom:8px;word-break:break-all}
+.rev-title{font-size:16px;font-weight:600;margin-bottom:4px}
+.rev-meta{font-size:11px;color:var(--mut);margin-bottom:12px}
+.rev-layers{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.rev-label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}
+.rev-reason{min-height:70px;resize:vertical}
+.rev-actions{margin-top:4px}
+/* toggle */
+.toggle{display:inline-block;width:40px;height:23px;border-radius:999px;background:var(--ln);position:relative;cursor:pointer;vertical-align:middle}
+.toggle.on{background:var(--br)}
 .toggle i{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:.15s}
 .toggle.on i{left:19px}
 </style>
@@ -78,18 +126,34 @@ const DEFAULT_API = (new URLSearchParams(location.search).get('api'))
   || (location.protocol.indexOf('http')===0 ? location.origin+'/api/v1' : 'http://localhost:8000/api/v1');
 
 function h(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// Always resolve an API error to a readable string — FastAPI 422 returns detail as
+// an array/object, which would otherwise reach the UI as "[object Object]".
+function errMsg(d){
+  let m=d&&d.detail; if(m==null)return '';
+  if(typeof m==='string')return m;
+  if(Array.isArray(m))return m.map(x=>x&&(x.msg||x.message)||'').filter(Boolean).join(', ')||'Please check the fields and try again.';
+  if(typeof m==='object')return m.message||m.msg||'Something went wrong.';
+  return String(m);
+}
 async function api(path,method='GET',body){
   const r=await fetch(API+path,{method,headers:{'Content-Type':'application/json',...(TOKEN?{'Authorization':'Bearer '+TOKEN}:{})},body:body?JSON.stringify(body):undefined});
-  if(!r.ok){let d;try{d=await r.json()}catch(e){}throw new Error((d&&(d.detail?.message||d.detail))||('HTTP '+r.status));}
+  if(!r.ok){let d;try{d=await r.json()}catch(e){}throw new Error(errMsg(d)||('HTTP '+r.status));}
   return r.status===204?null:r.json();
 }
 
+// Stable per-browser device id — the backend requires a device on login (max-N
+// device binding); reusing one id keeps admins from filling their device slots.
+function adminDevice(){
+  let id=localStorage.getItem('cc_admin_did');
+  if(!id){id='web-admin-'+Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('cc_admin_did',id);}
+  return {device_id:id, os:'web', app_version:'admin'};
+}
 async function doLogin(){
   API=DEFAULT_API.replace(/\/$/,'');
   const email=document.getElementById('email').value, password=document.getElementById('pass').value;
   const err=document.getElementById('loginErr'); err.textContent='';
   try{
-    const res=await api('/auth/login','POST',{email,password});
+    const res=await api('/auth/login','POST',{email,password,device:adminDevice()});
     TOKEN=res.tokens.access_token;
     const me=await api('/auth/me');
     if(me.role!=='admin'){TOKEN='';err.textContent='Not an admin account.';return;}
@@ -101,9 +165,10 @@ function logout(){TOKEN='';localStorage.removeItem('cc_admin');document.getEleme
 function enter(){
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='grid';
-  document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<a id="nav-${k}" onclick="go('${k}')">${l}</a>`).join('');
+  document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<a id="nav-${k}" onclick="go('${k}')"><span>${l}</span>${k==='approvals'?'<span class="nav-badge" id="apCount"></span>':''}</a>`).join('');
   go('dashboard');
 }
+function setApprovalsBadge(n){const el=document.getElementById('apCount');if(!el)return;if(n>0){el.textContent=n;el.style.display='inline-flex';}else{el.textContent='';el.style.display='none';}}
 function go(k){
   document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));
   document.getElementById('nav-'+k).classList.add('on');
@@ -112,39 +177,99 @@ function go(k){
 const main=html=>document.getElementById('main').innerHTML=html;
 
 async function vDash(){
-  main('<h2>Overview</h2><div id="s">Loading…</div>');
+  main('<h2>Overview</h2><div id="banner"></div><div id="s">Loading…</div><h3 class="sec-h">Most exported</h3><div id="top">Loading…</div>');
   try{const s=await api('/admin/stats');
+    const n=s.pending_approvals||0;
+    // oldest pending age (days) from the review queue, best-effort
+    let days=null;
+    try{const pend=await api('/admin/clips?status_filter=pending');
+      setApprovalsBadge(pend.length);
+      if(pend.length){const times=pend.map(c=>new Date(c.created_at||c.submitted_at||Date.now()).getTime());
+        days=Math.max(0,Math.floor((Date.now()-Math.min(...times))/86400000));}
+    }catch(e){setApprovalsBadge(n);}
+    document.getElementById('banner').innerHTML = n
+      ? `<div class="banner"><div>${n} clip${n===1?'':'s'} waiting for review${days!=null?` · oldest submitted ${days} day${days===1?'':'s'} ago`:''}</div><button class="btn warn" onclick="go('approvals')">Open queue</button></div>`
+      : '';
     document.getElementById('s').innerHTML='<div class="stats">'+[
-      ['MRR-eligible',s.active_subscriptions,'Active subscriptions'],
-      ['Users',s.users,'Total users'],
-      ['Approvals',s.pending_approvals,'Pending review'],
-      ['Payouts',s.pending_payouts,'Pending requests'],
-      ['Live',s.approved_clips,'Approved clips'],
-    ].map(([_,v,l])=>`<div class="stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('')+'</div>';
-  }catch(e){document.getElementById('s').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+      ['Active subscriptions',s.active_subscriptions],
+      ['Total users',s.users],
+      ['Pending payouts',s.pending_payouts],
+      ['Approved clips',s.approved_clips],
+    ].map(([l,v])=>`<div class="stat"><div class="l">${l}</div><div class="v">${v==null?'—':v}</div></div>`).join('')+'</div>';
+    // most-exported table (best-effort; falls back to a clean empty state)
+    try{const top=await api('/admin/clips?sort=downloads&limit=5');
+      const rows=(top||[]).slice(0,5);
+      document.getElementById('top').innerHTML=rows.length
+        ? table(['Clip','Status','Exports'],rows.map(c=>[h(c.title),statusPill(c.status),h(c.downloads??0)]))
+        : '<p style="color:var(--mut)">No exports yet.</p>';
+    }catch(e){document.getElementById('top').innerHTML='<p style="color:var(--mut)">No exports yet.</p>';}
+  }catch(e){document.getElementById('s').innerHTML='<div class="err">'+h(e.message)+'</div>';document.getElementById('top').innerHTML='';}
 }
 
-function statusPill(s){const c=s==='approved'?'p-ok':(s==='pending'?'p-wait':'p-no');return `<span class="pill ${c}">${h(s)}</span>`;}
+function statusPill(s){const x=(s||'').toLowerCase();let c='neutral';
+  if(x==='approved'||x==='active'||x==='paid'||x==='completed')c='ok';
+  else if(x==='pending'||x==='changes'||x==='request-changes'||x==='processing')c='warn';
+  else if(x==='rejected'||x==='failed'||x==='error')c='err';
+  return `<span class="pill ${c}">${h(s)}</span>`;}
+function accessPill(a){return (a||'').toLowerCase()==='pro'?'<span class="pill gold">Pro</span>':`<span class="pill neutral">${h(a||'Free')}</span>`;}
 
+let APPQ=[], APPSEL=0;
 async function vApprovals(){
-  main('<h2>Approvals</h2><div id="t">Loading…</div>');
-  try{const rows=await api('/admin/clips?status_filter=pending');
-    document.getElementById('t').innerHTML=rows.length?table(['Clip','Editor','Category','Actions'],rows.map(c=>[
-      h(c.title),h(c.editor_name),h(c.category||c.genre||'-'),
-      `<div class="row"><button class="btn ok sm" onclick="act('${c.id}','approve')">Approve</button>
-       <button class="btn sec sm" onclick="actNote('${c.id}','request-changes')">Changes</button>
-       <button class="btn dan sm" onclick="actNote('${c.id}','reject')">Reject</button></div>`
-    ])):'<p style="color:var(--muted)">No pending clips 🎉</p>';
-  }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+  main('<h2>Approvals</h2><div id="rev">Loading…</div><div id="t"></div>');
+  try{APPQ=await api('/admin/clips?status_filter=pending');APPSEL=0;drawApprovals();}
+  catch(e){document.getElementById('rev').innerHTML='<div class="err">'+h(e.message)+'</div>';}
 }
-async function act(id,a){try{await api(`/admin/clips/${id}/${a}`,'POST',{});vApprovals();}catch(e){alert(e.message);}}
-async function actNote(id,a){const note=prompt('Note for the editor:');if(note===null)return;try{await api(`/admin/clips/${id}/${a}`,'POST',{note});vApprovals();}catch(e){alert(e.message);}}
+function drawApprovals(){
+  const rev=document.getElementById('rev'), t=document.getElementById('t');
+  setApprovalsBadge(APPQ.length);
+  if(!APPQ.length){rev.innerHTML='';t.innerHTML='<p style="color:var(--mut)">No pending clips.</p>';return;}
+  if(APPSEL>=APPQ.length)APPSEL=0;
+  rev.innerHTML=reviewPane(APPQ[APPSEL]);
+  t.innerHTML=table(['Clip','Editor','Category','Submitted'],
+    APPQ.map(c=>[h(c.title),h(c.editor_name),h(c.category||c.genre||'-'),h((c.created_at||c.submitted_at||'').split('T')[0]||'-')]),
+    APPQ.map((c,i)=>({attr:`onclick="selectClip(${i})" style="cursor:pointer"`,sel:i===APPSEL})));
+}
+function selectClip(i){APPSEL=i;drawApprovals();}
+function reviewPane(c){
+  const fileLine=h(c.source_file||c.filename||c.file||c.video_url||('clip-'+c.id));
+  const layers=Array.isArray(c.editable_layers)&&c.editable_layers.length?c.editable_layers:null;
+  const layerPills=layers?layers.map(l=>`<span class="pill neutral">${h(l)}</span>`).join(''):'<span style="color:var(--mut);font-size:12px">No editable layers listed</span>';
+  const thumb=c.thumbnail_url||c.thumb||c.poster||c.preview_url;
+  const meta=[h(c.editor_name),h(c.category||c.genre||'-')].concat(c.duration?[h(c.duration)+'s']:[]).join(' · ');
+  return `<div class="card review">
+    <div class="rev-preview">${thumb?`<img src="${h(thumb)}" alt="">`:''}</div>
+    <div class="rev-body">
+      <div class="rev-file mono">${fileLine}</div>
+      <div class="rev-title">${h(c.title)}</div>
+      <div class="rev-meta mono">${meta}</div>
+      <div class="rev-layers">${layerPills}</div>
+      <label class="rev-label" for="revReason">Reason for the creator</label>
+      <textarea id="revReason" class="rev-reason" placeholder="Explain what needs to change — the creator sees this. Required to reject or request changes."></textarea>
+      <div class="err" id="revHint"></div>
+      <div class="row rev-actions">
+        <button class="btn ok" onclick="reviewApprove()">Approve</button>
+        <button class="btn sec" onclick="reviewAct('request-changes')">Request changes</button>
+        <button class="btn err" onclick="reviewAct('reject')">Reject</button>
+        <button class="btn sec" onclick="reviewSkip()">Skip</button>
+      </div>
+    </div>
+  </div>`;
+}
+function reviewReason(){const el=document.getElementById('revReason');return el?(el.value||'').trim():'';}
+async function reviewApprove(){const c=APPQ[APPSEL];if(!c)return;const reason=reviewReason();
+  try{await api(`/admin/clips/${c.id}/approve`,'POST',reason?{note:reason}:{});vApprovals();}
+  catch(e){document.getElementById('revHint').textContent=e.message;}}
+async function reviewAct(a){const c=APPQ[APPSEL];if(!c)return;const reason=reviewReason();const hint=document.getElementById('revHint');
+  if(!reason){hint.textContent='A written reason is required — this is what the creator sees.';return;}
+  try{await api(`/admin/clips/${c.id}/${a}`,'POST',{note:reason});vApprovals();}
+  catch(e){hint.textContent=e.message;}}
+function reviewSkip(){if(!APPQ.length)return;APPSEL=(APPSEL+1)%APPQ.length;drawApprovals();}
 
 async function vClips(){
   main('<h2>Clips</h2><div id="t">Loading…</div>');
   try{const rows=await api('/admin/clips');
     document.getElementById('t').innerHTML=table(['Clip','Status','Access','Downloads','Featured'],rows.map(c=>[
-      h(c.title),statusPill(c.status),h(c.access),c.downloads,
+      h(c.title),statusPill(c.status),accessPill(c.access),c.downloads,
       `<span class="toggle ${c.is_featured?'on':''}" onclick="feature('${c.id}')"><i></i></span>`
     ]));
   }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
@@ -156,7 +281,7 @@ async function vPlans(){
    <div class="card" style="margin-bottom:16px"><div class="row">
      <input id="pn" placeholder="Name" style="width:140px">
      <input id="pp" placeholder="Price USD" type="number" style="width:110px">
-     <input id="pl" placeholder="Export limit (blank=∞)" type="number" style="width:160px">
+     <input id="pl" placeholder="Export limit (blank=unlimited)" type="number" style="width:170px">
      <input id="pq" placeholder="Quality" value="1080p" style="width:100px">
      <input id="pd" placeholder="Devices" type="number" value="2" style="width:90px">
      <button class="btn" onclick="createPlan()">Add plan</button>
@@ -164,7 +289,8 @@ async function vPlans(){
    <div id="t">Loading…</div>`);
   try{const rows=await api('/admin/plans');
     document.getElementById('t').innerHTML=table(['Plan','Price','Exports','Quality','Devices','Active'],rows.map(p=>[
-      h(p.name),'$'+p.price_usd,(p.export_limit??'∞'),h(p.quality),p.max_devices,p.is_active?'✓':'—'
+      h(p.name),'$'+p.price_usd,(p.export_limit??'Unlimited'),h(p.quality),p.max_devices,
+      p.is_active?'<span class="pill ok">Active</span>':'<span class="pill neutral">Inactive</span>'
     ]));
   }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
 }
@@ -188,14 +314,14 @@ async function payoutNote(id){const note=prompt('Reason:');if(note===null)return
 // ---- Support chat ----
 let SUP_THREAD=null;
 async function vSupport(){
-  main('<h2>Support</h2><div class="row" style="gap:16px;align-items:flex-start"><div id="threads" style="flex:0 0 300px">Loading…</div><div id="chat" style="flex:1;min-width:0"><div style="color:#888;padding:24px">Select a conversation.</div></div></div>');
+  main('<h2>Support</h2><div class="row" style="gap:16px;align-items:flex-start"><div id="threads" style="flex:0 0 300px">Loading…</div><div id="chat" style="flex:1;min-width:0"><div style="color:var(--mut);padding:24px">Select a conversation.</div></div></div>');
   try{const rows=await api('/support/admin/threads');
-    if(!rows.length){document.getElementById('threads').innerHTML='<div style="color:#888">No open conversations.</div>';return;}
+    if(!rows.length){document.getElementById('threads').innerHTML='<div style="color:var(--mut)">No open conversations.</div>';return;}
     document.getElementById('threads').innerHTML=rows.map(t=>
-      `<div class="sup-th" onclick="openThread('${t.id}')" style="padding:12px;border:1px solid #eee;border-radius:12px;margin-bottom:8px;cursor:pointer">
-        <div style="font-weight:700">${h(t.user_name)} ${t.unread_for_agent?`<span class="pill p-wait">${t.unread_for_agent}</span>`:''}</div>
-        <div style="color:#888;font-size:12px">${h(t.user_email)}</div>
-        <div style="color:#555;font-size:12px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(t.last_message||'')}</div>
+      `<div class="sup-th" onclick="openThread('${t.id}')" style="padding:12px;border:1px solid var(--ln);border-radius:14px;margin-bottom:8px;cursor:pointer">
+        <div style="font-weight:600">${h(t.user_name)} ${t.unread_for_agent?`<span class="pill warn">${t.unread_for_agent}</span>`:''}</div>
+        <div style="color:var(--mut);font-size:12px">${h(t.user_email)}</div>
+        <div style="color:var(--mut);font-size:12px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${h(t.last_message||'')}</div>
       </div>`).join('');
   }catch(e){document.getElementById('threads').innerHTML='<div class="err">'+h(e.message)+'</div>';}
 }
@@ -206,10 +332,10 @@ async function openThread(id){
     const msgs=t.messages.map(m=>{
       const mine=m.sender==='support';
       return `<div style="display:flex;justify-content:${mine?'flex-end':'flex-start'};margin:6px 0">
-        <div style="max-width:70%;padding:9px 13px;border-radius:14px;background:${mine?'#FF4D6D':'#f2f2f4'};color:${mine?'#fff':'#111'}">${h(m.body)}</div>
+        <div style="max-width:70%;padding:9px 13px;border-radius:14px;background:${mine?'var(--br)':'var(--brs)'};color:${mine?'#fff':'var(--ink)'}">${h(m.body)}</div>
       </div>`;}).join('');
     document.getElementById('chat').innerHTML=
-      `<div style="border:1px solid #eee;border-radius:14px;padding:14px;max-height:420px;overflow:auto" id="msgs">${msgs||'<div style=color:#888>No messages yet.</div>'}</div>
+      `<div style="border:1px solid var(--ln);border-radius:14px;padding:14px;max-height:420px;overflow:auto" id="msgs">${msgs||'<div style="color:var(--mut)">No messages yet.</div>'}</div>
        <div class="row" style="margin-top:10px">
          <input id="sup-reply" placeholder="Type a reply…" style="flex:1" onkeydown="if(event.key==='Enter')sendReply()">
          <button class="btn ok" onclick="sendReply()">Send</button>
@@ -228,14 +354,14 @@ async function vUsers(){
   main('<h2>Users</h2><div id="t">Loading…</div>');
   try{const rows=await api('/admin/users');
     document.getElementById('t').innerHTML=table(['Name','Email','Role','Joined'],rows.map(u=>[
-      h(u.name),h(u.email),`<span class="pill ${u.role==='admin'?'p-no':(u.role==='editor'?'p-wait':'p-ok')}">${h(u.role)}</span>`,h((u.created_at||'').split('T')[0])
+      h(u.name),h(u.email),`<span class="pill ${u.role==='admin'?'ok':(u.role==='editor'?'gold':'neutral')}">${h(u.role)}</span>`,h((u.created_at||'').split('T')[0])
     ]));
   }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
 }
 
-function table(cols,rows){
+function table(cols,rows,meta){
   return '<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>'+
-    rows.map(r=>'<tr>'+r.map(c=>`<td>${c}</td>`).join('')+'</tr>').join('')+'</tbody></table>';
+    rows.map((r,i)=>{const m=(meta&&meta[i])||{};return `<tr class="${m.sel?'sel':''}" ${m.attr||''}>`+r.map(c=>`<td>${c}</td>`).join('')+'</tr>';}).join('')+'</tbody></table>';
 }
 
 // restore session if present

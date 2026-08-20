@@ -1014,7 +1014,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           final res = await FilePicker.platform.pickFiles(type: FileType.audio);
                           if (res != null && res.files.single.path != null) { _mutate(() => p.musicPath = res.files.single.path); setSheet(() {}); }
                         },
-                        child: const Text('Replace', style: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.w600, fontSize: 13)),
+                        child: const Text('Replace', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w600, fontSize: 13)),
                       ),
                     ]),
                   ),
@@ -2523,7 +2523,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       label: s.text.isEmpty ? 'Text' : s.text,
                       icon: Icons.title_rounded,
                       selected: identical(_selected, s),
-                      gradient: const LinearGradient(colors: [Color(0xFF12B886), Color(0xFF0E9E6E)]),
+                      color: AppColors.brand,
                       onTap: () => setState(() => _selected = s),
                       onDrag: (dx) => setState(() {
                         final len = s.end - s.start;
