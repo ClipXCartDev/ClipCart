@@ -263,7 +263,6 @@ class _EditorScreenState extends State<EditorScreen> {
     return p.subtitles.isNotEmpty ||
         p.stickers.isNotEmpty ||
         p.logoPath != null ||
-        p.musicPath != null ||
         p.trimStart > 0.01 ||
         (p.trimEnd != null && p.trimEnd! < p.duration - 0.01) ||
         !p.aspect.isOriginal ||
@@ -576,6 +575,16 @@ class _EditorScreenState extends State<EditorScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: _NumField(label: 'Scale', value: s.scale, min: 0.4, max: 4.0, decimals: 2, onChanged: (v) { snap(); setSheet(() { s.scale = v; setState(() {}); }); })),
                 ]),
+                const SizedBox(height: 14),
+                // Timing — the text appears only between Start and End (seconds).
+                Row(children: [
+                  Expanded(child: _NumField(label: 'Start (s)', value: s.start, min: 0, max: (_duration <= 0 ? 9999 : _duration), decimals: 1, onChanged: (v) { snap(); setSheet(() { s.start = v.clamp(0.0, s.end - 0.2); setState(() {}); }); })),
+                  const SizedBox(width: 10),
+                  Expanded(child: _NumField(label: 'End (s)', value: s.end, min: 0, max: (_duration <= 0 ? 9999 : _duration), decimals: 1, onChanged: (v) { snap(); setSheet(() { s.end = v.clamp(s.start + 0.2, _duration <= 0 ? 9999 : _duration); setState(() {}); }); })),
+                  const Spacer(flex: 2),
+                ]),
+                const SizedBox(height: 4),
+                Align(alignment: Alignment.centerLeft, child: Text('Text shows from ${s.start.toStringAsFixed(1)}s to ${s.end.toStringAsFixed(1)}s', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'IBMPlexMono'))),
                 const SizedBox(height: 12),
                 SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
               ]),
@@ -927,6 +936,19 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Headline', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF6D45C9, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.typewriter},
     {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
     {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFF7E57DE, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
+    {'name': 'Clean', 'font': 'Inter', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.none},
+    {'name': 'Boxed', 'font': 'Montserrat', 'color': 0xFF000000, 'bg': true, 'bgc': 0xFFFFFFFF, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
+    {'name': 'Fire', 'font': 'Anton', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFFC2272D, 'anim': OverlayAnim.zoomIn},
+    {'name': 'Mint', 'font': 'Poppins', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF12B76A, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideUp},
+    {'name': 'Ocean', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF2D7FF9, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideDown},
+    {'name': 'Glow', 'font': 'Bebas Neue', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF6D45C9, 'anim': OverlayAnim.pulse},
+    {'name': 'Comic', 'font': 'Bungee', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.bounce},
+    {'name': 'Script', 'font': 'Pacifico', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
+    {'name': 'Serif', 'font': 'Playfair Display', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
+    {'name': 'Sport', 'font': 'Passion One', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
+    {'name': 'Coral', 'font': 'Anton', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFFFF4D6D, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
+    {'name': 'Night', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xE6000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
+    {'name': 'Gold', 'font': 'Playfair Display', 'color': 0xFFD89A3C, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideUp},
   ];
 
   // ---------- Music (§4.0 feedback 6 — import from device, mix + start offset) ----------
@@ -1020,6 +1042,43 @@ class _EditorScreenState extends State<EditorScreen> {
                 SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
               ]),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Logo Adjust — exact X / Y (%) + Scale + Rotation numeric boxes.
+  Future<void> _openLogoAdjust() async {
+    final p = _project!;
+    var snapped = false;
+    void snap() { if (!snapped) { _snapshot(); snapped = true; } }
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _kPanel,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Logo position & size', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const SizedBox(height: 14),
+              Row(children: [
+                Expanded(child: _NumField(label: 'X %', value: p.logoDx * 100, min: 0, max: 100, onChanged: (v) { snap(); setSheet(() { p.logoDx = (v / 100).clamp(0.0, 1.0); setState(() {}); }); })),
+                const SizedBox(width: 10),
+                Expanded(child: _NumField(label: 'Y %', value: p.logoDy * 100, min: 0, max: 100, onChanged: (v) { snap(); setSheet(() { p.logoDy = (v / 100).clamp(0.0, 1.0); setState(() {}); }); })),
+                const SizedBox(width: 10),
+                Expanded(child: _NumField(label: 'Scale', value: p.logoScale, min: 0.2, max: 4.0, decimals: 2, onChanged: (v) { snap(); setSheet(() { p.logoScale = v; setState(() {}); }); })),
+                const SizedBox(width: 10),
+                Expanded(child: _NumField(label: 'Angle°', value: p.logoRotation * 180 / math.pi, min: -180, max: 180, onChanged: (v) { snap(); setSheet(() { p.logoRotation = v * math.pi / 180; setState(() {}); }); })),
+              ]),
+              const SizedBox(height: 8),
+              const Text('Or just drag the logo on the canvas.', style: TextStyle(color: Colors.white38, fontSize: 12)),
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+            ]),
           ),
         ),
       ),
@@ -1898,19 +1957,15 @@ class _EditorScreenState extends State<EditorScreen> {
           if (_typing)
             _inlineTextEditor()
           else
-            // Fixed-height control deck so the tools never get squeezed/truncated
-            // by a tall canvas. Playbar + timeline + one scrollable tool row.
-            Container(
-              color: _kPanel,
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _playbar(),
-                  _timeline(),
-                  _toolbar(),
-                ],
-              ),
+            // Compact control deck — playbar + timeline + the property panel. The
+            // panel handles its own bottom (gesture) inset, so no extra padding here.
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _playbar(),
+                _timeline(),
+                _toolbar(),
+              ],
             ),
         ],
       ),
@@ -2706,6 +2761,7 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     } else if (_selected == 'logo') {
       tools.addAll([
+        _tool(Icons.tune_rounded, 'Adjust', _openLogoAdjust),
         _tool(Icons.rotate_left, 'Left', () => _mutate(() => _project!.logoRotation -= math.pi / 12)),
         _tool(Icons.rotate_right, 'Right', () => _mutate(() => _project!.logoRotation += math.pi / 12)),
         _tool(Icons.refresh, 'Reset', () => _mutate(() { _project!.logoRotation = 0; _project!.logoScale = 1; })),
@@ -2739,37 +2795,37 @@ class _EditorScreenState extends State<EditorScreen> {
         color: Color(0xFF39352E),
         border: Border(top: BorderSide(color: Color(0xFF4B463E))),
       ),
-      padding: EdgeInsets.fromLTRB(14, 12, 14, 12 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(12, 9, 12, 8 + MediaQuery.of(context).viewPadding.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // panel header: title + Done (dimmed in project context)
           Row(children: [
-            Text(hasSel ? '$selLabel layer' : 'Project tools', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+            Text(hasSel ? '$selLabel layer' : 'Project tools', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
             const Spacer(),
             GestureDetector(
               onTap: hasSel ? () => setState(() => _selected = null) : null,
               child: Text('Done', style: TextStyle(color: hasSel ? _kAccent : Colors.white24, fontWeight: FontWeight.w600, fontSize: 13)),
             ),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           if (!hasSel)
-            // PROJECT tools — exact 8-tile 4-column grid
+            // PROJECT tools — 8-tile 4-column grid, compact (short tiles, no scroll)
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 4,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 1.05,
+              mainAxisSpacing: 7,
+              crossAxisSpacing: 7,
+              childAspectRatio: 1.55,
               children: [
                 _projTile(Icons.title_rounded, 'Text', _addSubtitle),
                 _projTile(Icons.image_outlined, 'Logo', _pickLogo, onLongPress: _openBrandKit),
-                _projTile(Icons.music_note_rounded, 'Music', _openMusicSheet, on: _project!.musicPath != null),
                 _projTile(Icons.crop_rounded, 'Ratio & trim', _pickAspect),
                 _projTile(Icons.emoji_emotions_outlined, 'Stickers', _openEmojiPicker),
                 _projTile(Icons.alternate_email_rounded, 'Handle', _addUsername),
+                _projTile(Icons.campaign_rounded, 'CTA', _addCta),
                 _projTile(Icons.movie_filter_rounded, 'Outro', _addEndingScreen),
                 _projTile(Icons.layers_rounded, 'Layers', _openLayers),
               ],
@@ -2795,9 +2851,9 @@ class _EditorScreenState extends State<EditorScreen> {
             border: Border.all(color: on ? _kAccent : const Color(0xFF4B463E)),
           ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: Colors.white, size: 19),
-            const SizedBox(height: 6),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11)),
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(height: 4),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5)),
           ]),
         ),
       );
@@ -2949,22 +3005,22 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _tool(IconData icon, String label, VoidCallback onTap, {bool danger = false, bool active = false}) {
     final c = danger ? const Color(0xFFF04438) : Colors.white;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 7),
       child: InkWell(
         onTap: onTap,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 44, height: 44,
+            width: 40, height: 40,
             decoration: BoxDecoration(
               color: active ? _kAccent : _kChip,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(11),
               border: active ? Border.all(color: _kAccent, width: 1) : null,
             ),
-            child: Icon(icon, color: c, size: 22),
+            child: Icon(icon, color: c, size: 20),
           ),
           if (label.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(label, style: TextStyle(color: c.withOpacity(0.9), fontSize: 10.5, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(color: c.withOpacity(0.9), fontSize: 10, fontWeight: FontWeight.w600)),
           ],
         ]),
       ),

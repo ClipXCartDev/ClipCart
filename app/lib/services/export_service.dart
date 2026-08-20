@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:ffmpeg_kit_flutter_new/statistics.dart';
 import 'package:gal/gal.dart';
@@ -120,15 +119,6 @@ class ExportService {
       parts.addAll(['-i', st.path]);
       stickerIdx.add(idx++);
     }
-    // optional music input (seek into the track with -ss before -i)
-    final hasMusic = p.musicPath != null && File(p.musicPath!).existsSync();
-    int? musicIdx;
-    if (hasMusic) {
-      if (p.musicStart > 0.01) parts.addAll(['-ss', _f(p.musicStart, 3)]);
-      parts.addAll(['-i', p.musicPath!]);
-      musicIdx = idx++;
-    }
-
     // Overlay list sorted by z (ascending → highest z composited last = on top).
     final ovs = <Map<String, dynamic>>[
       if (hasLogo) {'z': p.logoZ, 'kind': 'logo', 'ii': logoIdx},
@@ -204,28 +194,8 @@ class ExportService {
     fc.write("[$cur]scale=w='if(gt(iw\\,ih)\\,-2\\,min($shortEdge\\,iw))':"
         "h='if(gt(iw\\,ih)\\,min($shortEdge\\,ih)\\,-2)':flags=bicubic[vout]");
 
-    // ---- audio: original clip audio, optionally mixed under an imported track ----
-    final dur = p.outDuration;
-    String audioMap = '0:a?'; // default: passthrough original (silent if none)
-    if (hasMusic) {
-      final clipHasAudio = await _hasAudio(p.baseClipPath);
-      final fadeSt = (dur - 0.8).clamp(0.0, dur);
-      final fade = p.musicFadeOut ? ",afade=t=out:st=${_f(fadeSt, 3)}:d=0.8" : '';
-      // Music trimmed to clip length, level set, optional end fade-out.
-      final musicChain = "[$musicIdx:a]atrim=0:${_f(dur, 3)},asetpts=PTS-STARTPTS,"
-          "volume=${_f(p.musicVolume, 2)},aresample=44100$fade";
-      if (clipHasAudio) {
-        // Duck the original clip audio under the music. duration=longest so a short
-        // original can't truncate the mix; -t below caps both to the clip length.
-        fc.write(";[0:a]volume=${_f(p.originalVolume, 2)},aresample=44100[oa];");
-        fc.write("$musicChain[ma];");
-        fc.write("[oa][ma]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[aout]");
-      } else {
-        // Silent clip → never reference [0:a] (would abort the graph). Music alone.
-        fc.write(";$musicChain[aout]");
-      }
-      audioMap = '[aout]';
-    }
+    // ---- audio: the clip's own audio only (music feature removed per client) ----
+    const audioMap = '0:a?'; // passthrough original (silent if the clip has none)
 
     parts.addAll(['-filter_complex', fc.toString(), '-map', '[vout]', '-map', audioMap]);
     // Cap to the intended clip length.
@@ -340,16 +310,4 @@ class ExportService {
 
   /// ARGB int → FFmpeg colour literal `0xRRGGBB` (alpha dropped for pad fill).
   String _ffColor(int argb) => '0x${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
-
-  /// True if the clip has an audio stream — so a silent clip never wires a
-  /// non-existent [0:a] into the music mix. Non-fatal (defaults true).
-  Future<bool> _hasAudio(String path) async {
-    try {
-      final session = await FFprobeKit.getMediaInformation(path);
-      final streams = session.getMediaInformation()?.getStreams() ?? [];
-      return streams.any((s) => s.getType() == 'audio');
-    } catch (_) {
-      return true;
-    }
-  }
 }
