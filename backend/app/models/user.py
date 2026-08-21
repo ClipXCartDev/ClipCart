@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
@@ -38,6 +39,10 @@ class User(Base):
     google_sub: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
     role: Mapped[Role] = mapped_column(Enum(Role), default=Role.customer, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # optional self-profile fields (editable by the user; email is NOT editable)
+    age: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    gender: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)
+    nationality: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     devices: Mapped[list["Device"]] = relationship(

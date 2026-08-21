@@ -175,10 +175,10 @@ class _SearchScreenState extends State<SearchScreen> {
           _filterButton(),
         ]),
       ),
-      // category chips
+      // category chips — compact, text-centered (no dead space under the label)
       if (_cats.isNotEmpty)
         SizedBox(
-          height: 46,
+          height: 34,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),

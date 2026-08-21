@@ -40,6 +40,14 @@ class ChangePasswordIn(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class ProfileUpdateIn(BaseModel):
+    """Self-editable profile fields. Email/role are intentionally NOT here."""
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    age: int | None = Field(default=None, ge=1, le=120)
+    gender: str | None = Field(default=None, max_length=24)
+    nationality: str | None = Field(default=None, max_length=64)
+
+
 class TokenOut(BaseModel):
     access_token: str
     refresh_token: str
@@ -53,6 +61,9 @@ class UserOut(BaseModel):
     email: EmailStr
     role: str
     is_active: bool
+    age: int | None = None
+    gender: str | None = None
+    nationality: str | None = None
     created_at: datetime
 
 

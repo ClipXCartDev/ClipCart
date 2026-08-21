@@ -32,6 +32,19 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Update self-profile fields; refreshes [user] on success. Returns an error string or null.
+  Future<String?> updateProfile({String? name, int? age, String? gender, String? nationality}) async {
+    try {
+      user = await auth.updateProfile(name: name, age: age, gender: gender, nationality: nationality);
+      notifyListeners();
+      return null;
+    } on DioException catch (e) {
+      return _message(e);
+    } catch (_) {
+      return 'Could not save your profile';
+    }
+  }
+
   Future<String?> login(String email, String password) =>
       _run(() => auth.login(email, password));
 

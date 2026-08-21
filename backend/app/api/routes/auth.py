@@ -18,6 +18,7 @@ from app.schemas.auth import (
     DeviceOut,
     GoogleIn,
     LoginIn,
+    ProfileUpdateIn,
     RefreshIn,
     RegisterIn,
     TokenOut,
@@ -147,6 +148,27 @@ def refresh(body: RefreshIn, db: Session = Depends(get_db)) -> TokenOut:
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)) -> UserOut:
+    return UserOut.model_validate(user)
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    body: ProfileUpdateIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserOut:
+    """Update self-profile fields. Email and role are never editable here."""
+    data = body.model_dump(exclude_unset=True)
+    if "name" in data and data["name"] is not None:
+        user.name = data["name"].strip()
+    for field in ("age", "gender", "nationality"):
+        if field in data:
+            value = data[field]
+            if isinstance(value, str):
+                value = value.strip() or None
+            setattr(user, field, value)
+    db.commit()
+    db.refresh(user)
     return UserOut.model_validate(user)
 
 

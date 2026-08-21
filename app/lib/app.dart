@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'features/auth/devices_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
+import 'features/auth/profile_edit_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/auth/register_screen.dart';
@@ -102,6 +103,7 @@ class _ClipCartAppState extends State<ClipCartApp> {
         ),
         GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansScreen())),
         GoRoute(path: '/devices', pageBuilder: (c, s) => _fadeScalePage(s, const DevicesScreen())),
+        GoRoute(path: '/profile', pageBuilder: (c, s) => _fadeScalePage(s, const ProfileEditScreen())),
         GoRoute(path: '/support', pageBuilder: (c, s) => _fadeScalePage(s, const SupportScreen())),
         GoRoute(path: '/states', pageBuilder: (c, s) => _fadeScalePage(s, const StatesScreen())),
         GoRoute(path: '/notifications', pageBuilder: (c, s) => _fadeScalePage(s, const NotificationsScreen())),

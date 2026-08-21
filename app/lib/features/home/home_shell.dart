@@ -175,7 +175,7 @@ class _AccountTabState extends State<_AccountTab> {
                 Text(user?.email ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: T.bodySmall),
               ]),
             ),
-            TextButton(onPressed: () {}, child: const Text('Edit', style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brand))),
+            TextButton(onPressed: () => context.push('/profile'), child: const Text('Edit', style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brand))),
           ]),
         ),
         const SizedBox(height: 11),

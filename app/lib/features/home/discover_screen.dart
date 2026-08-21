@@ -8,7 +8,6 @@ import '../../core/theme.dart';
 import '../../models/clip.dart';
 import '../../services/billing_service.dart';
 import '../../services/catalog_service.dart';
-import '../../state/auth_controller.dart';
 import '../../widgets/skeleton_grid.dart';
 import 'home_shell.dart';
 
@@ -127,7 +126,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         padding: EdgeInsets.only(bottom: 24 + MediaQuery.of(context).viewPadding.bottom),
         children: [
           _header(),
-          _subBanner(),
+          const SizedBox(height: 4),
           if (_featured.isNotEmpty) _rail('Newly released', _featured, null),
           for (final row in _rows)
             _rail(row.name, row.clips, () { exploreCategory.value = row.slug; homeTab.value = 1; }),
@@ -137,51 +136,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  // ── header (h52) — wordmark · bell · avatar ────────────────────────────────
+  // ── header (h56) — wordmark · subscribe pill · compact bell ────────────────
+  // Profile is reached only from the bottom Account tab (removed the duplicate
+  // top-right avatar). The subscription CTA lives inline in the header now
+  // (replaces the old full-width banner) — a gold "Subscribe" pill, or a green
+  // "Pro" state when active.
   Widget _header() {
-    final user = context.watch<AuthController>().user;
-    final initial = (user?.name.isNotEmpty == true) ? user!.name[0].toUpperCase() : '?';
-    const hasNotifications = true; // no unread feed yet — show the dot by default
     return SizedBox(
-      height: 52,
+      height: 56,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.fromLTRB(20, 0, 14, 0),
         child: Row(children: [
-          const Expanded(
-            child: Text('ClipCart',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: kSans, fontSize: 21, height: 1.0, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink)),
-          ),
-          // bell
+          const Text('ClipCart',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: kSans, fontSize: 21, height: 1.0, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink)),
+          const Spacer(),
+          _subPill(),
+          const SizedBox(width: 4),
+          // compact notification bell (no heavy circle chrome)
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () => context.push('/notifications'),
             child: SizedBox(
               width: 40, height: 40,
-              child: Stack(children: [
-                Container(
-                  width: 40, height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: AppColors.surfaceHover2, shape: BoxShape.circle, border: Border.all(color: AppColors.line)),
-                  child: const Icon(Icons.notifications_none_rounded, size: 20, color: AppColors.ink),
+              child: Stack(alignment: Alignment.center, children: [
+                const Icon(Icons.notifications_none_rounded, size: 23, color: AppColors.ink),
+                Positioned(
+                  right: 9, top: 9,
+                  child: Container(width: 7, height: 7, decoration: BoxDecoration(color: AppColors.brand, shape: BoxShape.circle, border: Border.all(color: AppColors.bg, width: 1.5))),
                 ),
-                if (hasNotifications)
-                  Positioned(
-                    right: 8, top: 8,
-                    child: Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.brand, shape: BoxShape.circle, border: Border.all(color: AppColors.bg, width: 1.5))),
-                  ),
               ]),
-            ),
-          ),
-          const SizedBox(width: 10),
-          // avatar → Account tab
-          GestureDetector(
-            onTap: () => homeTab.value = 4,
-            child: Container(
-              width: 40, height: 40,
-              alignment: Alignment.center,
-              decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
-              child: Text(initial, style: const TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
             ),
           ),
         ]),
@@ -189,63 +174,38 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  // ── subscription banner — dark when no plan, green when active ─────────────
-  Widget _subBanner() {
+  // Compact subscribe / Pro pill for the header — gold (premium contrast on
+  // paper) when there's no plan, green when active.
+  Widget _subPill() {
     final active = _hasPlan;
     final expiresRaw = _sub?['expires_at'] ?? _sub?['current_period_end'] ?? _sub?['end_at'];
     DateTime? expires;
     if (expiresRaw is String) expires = DateTime.tryParse(expiresRaw);
     final daysLeft = expires?.difference(DateTime.now()).inDays;
-    final credits = _sub?['edit_credits'] ?? _sub?['credits_left'] ?? _sub?['exports_left'];
 
-    final Color bg = active ? AppColors.okBg : AppColors.ink;
-    final Color titleColor = active ? AppColors.okText : Colors.white;
-    final Color subColor = active ? AppColors.okText.withValues(alpha: .78) : Colors.white70;
-    final Color tileBg = active ? AppColors.okIcon.withValues(alpha: .16) : Colors.white.withValues(alpha: .10);
-    final Color tileIcon = active ? AppColors.okIcon : Colors.white;
-    final IconData tileGlyph = active ? Icons.verified_outlined : Icons.lock_outline_rounded;
+    final Color bg = active ? AppColors.okBg : AppColors.goldAccent;
+    final Color fg = active ? AppColors.okText : const Color(0xFF3B2A05);
+    final IconData icon = active ? Icons.verified_rounded : Icons.bolt_rounded;
+    final String label = active
+        ? (daysLeft != null && daysLeft > 0 ? 'Pro · ${daysLeft}d' : 'Pro')
+        : 'Subscribe';
 
-    final String title = active
-        ? (daysLeft != null && daysLeft > 0 ? 'Pro active · $daysLeft days' : 'Pro active')
-        : 'Subscribe to edit and export';
-    final String subtitle = active
-        ? (credits != null ? '$credits edit credits left' : 'Edit credits available')
-        : 'Plans from 4 USDT';
-    final String cta = active ? 'Renew' : 'View plans';
-    final Color pillBg = active ? AppColors.okText : AppColors.brand;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
-      child: GestureDetector(
-        onTap: () => context.push('/plans'),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(R.media)),
-          child: Row(children: [
-            Container(
-              width: 36, height: 36,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(color: tileBg, borderRadius: BorderRadius.circular(R.tile)),
-              child: Icon(tileGlyph, size: 18, color: tileIcon),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: kSans, fontSize: 14, height: 1.2, fontWeight: FontWeight.w600, color: titleColor)),
-                const SizedBox(height: 3),
-                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: kSans, fontSize: 12, height: 1.25, fontWeight: FontWeight.w400, color: subColor)),
-              ]),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              height: 32,
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(color: pillBg, borderRadius: BorderRadius.circular(R.pill)),
-              child: Text(cta, style: const TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white)),
-            ),
-          ]),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => context.push('/plans'),
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(R.pill),
+          boxShadow: active ? null : [BoxShadow(color: AppColors.goldAccent.withValues(alpha: 0.38), blurRadius: 11, offset: const Offset(0, 3))],
         ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: fg),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontFamily: kSans, fontSize: 13, height: 1.0, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: fg)),
+        ]),
       ),
     );
   }
@@ -256,15 +216,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
         child: Row(children: [
-          Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.section)),
-          const SizedBox(width: 8),
-          Padding(padding: const EdgeInsets.only(bottom: 1), child: Text('${clips.length}', style: T.dataMuted)),
-          const Spacer(),
-          GestureDetector(
-            onTap: onSeeAll,
-            behavior: HitTestBehavior.opaque,
-            child: const Text('See all', style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brand)),
-          ),
+          Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.section)),
+          if (onSeeAll != null)
+            GestureDetector(
+              onTap: onSeeAll,
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.only(left: 12),
+                child: Text('See all', style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand)),
+              ),
+            ),
         ]),
       ),
       SizedBox(

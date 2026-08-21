@@ -102,6 +102,17 @@ class AuthService {
     return AppUser.fromJson(r.data as Map<String, dynamic>);
   }
 
+  /// Update self-profile fields (name/age/gender/nationality). Email is not editable.
+  Future<AppUser> updateProfile({String? name, int? age, String? gender, String? nationality}) async {
+    final r = await api.dio.patch('/auth/me', data: {
+      if (name != null) 'name': name,
+      'age': age,
+      'gender': gender,
+      'nationality': nationality,
+    });
+    return AppUser.fromJson(r.data as Map<String, dynamic>);
+  }
+
   /// Devices bound to the account (max-2 anti-piracy control).
   Future<List<Map<String, dynamic>>> devices() async {
     final r = await api.dio.get('/auth/devices');
