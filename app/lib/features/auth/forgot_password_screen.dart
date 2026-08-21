@@ -1,188 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
 
-/// §03 Forgot password — UI-only reset flow: email → 6-digit code → new password.
-/// No backend is wired here; the affordances simply pop or update local state.
-class ForgotPasswordScreen extends StatefulWidget {
+/// §03 Reset password. There is no email service wired (lean, crypto-only infra),
+/// so a self-service email code isn't sent — password resets are verified by
+/// support. This screen gives a real, working path (contact support from the
+/// registered email) instead of a dead-end OTP form.
+class ForgotPasswordScreen extends StatelessWidget {
   const ForgotPasswordScreen({super.key});
-  @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
-}
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  final _code = List.generate(6, (_) => TextEditingController());
-  final _codeFocus = List.generate(6, (_) => FocusNode());
-  bool _obscure = true;
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    for (final c in _code) {
-      c.dispose();
-    }
-    for (final f in _codeFocus) {
-      f.dispose();
-    }
-    super.dispose();
-  }
-
-  void _onCodeChanged(int i, String v) {
-    if (v.isNotEmpty && i < 5) {
-      _codeFocus[i + 1].requestFocus();
-    } else if (v.isEmpty && i > 0) {
-      _codeFocus[i - 1].requestFocus();
-    }
-    setState(() {});
-  }
+  static const _supportEmail = 'support@clipcart.app';
 
   @override
   Widget build(BuildContext context) {
+    void copyEmail() {
+      Clipboard.setData(const ClipboardData(text: _supportEmail));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support email copied')));
+    }
+
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Column(children: [
-          SizedBox(
-            height: H.nav,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 20, 8),
             child: Row(children: [
-              Material(
-                color: Colors.transparent,
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () => Navigator.of(context).maybePop(),
-                  child: const SizedBox(width: 44, height: 44, child: Icon(Icons.arrow_back_rounded, size: 22, color: AppColors.ink)),
-                ),
-              ),
-              const SizedBox(width: 2),
+              CircleIconBtn(Icons.arrow_back_rounded, onTap: () => Navigator.of(context).maybePop()),
+              const SizedBox(width: 12),
               const Text('Reset password', style: T.pageTitle),
             ]),
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
               children: [
                 Container(
-                  width: 46, height: 46, alignment: Alignment.center,
+                  width: 52, height: 52, alignment: Alignment.center,
                   decoration: BoxDecoration(color: AppColors.brandTint, borderRadius: BorderRadius.circular(R.inner)),
-                  child: const Icon(Icons.mail_outline_rounded, size: 24, color: AppColors.brand),
+                  child: const Icon(Icons.lock_reset_rounded, size: 26, color: AppColors.brand),
                 ),
                 const SizedBox(height: 20),
-                const Text('Get a reset code',
-                    style: TextStyle(fontFamily: kSans, fontSize: 24, height: 1.1, fontWeight: FontWeight.w600, letterSpacing: -0.8, color: AppColors.ink)),
-                const SizedBox(height: 10),
-                const Text("Enter the email on your account. We'll send a 6-digit code that's valid for 10 minutes.",
-                    style: T.body),
-                const SizedBox(height: 4),
-
-                // email field
-                const FieldLabel('Email'),
-                SizedBox(
-                  height: H.field,
-                  child: TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.ink),
-                    decoration: const InputDecoration(hintText: 'you@example.com'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                PrimaryBtn('Send code', onTap: () {}),
-
-                // code entry
-                const FieldLabel('Enter code'),
-                Row(children: [
-                  for (var i = 0; i < 6; i++) ...[
-                    Expanded(child: _otpBox(i)),
-                    if (i < 5) const SizedBox(width: 10),
-                  ],
-                ]),
+                const Text('Reset your password',
+                    style: TextStyle(fontFamily: kSans, fontSize: 24, height: 1.15, fontWeight: FontWeight.w600, letterSpacing: -0.8, color: AppColors.ink)),
                 const SizedBox(height: 12),
-                Row(children: [
-                  const Text('Code expires in 09:42', style: T.bodySmall),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: () {},
-                    child: const Text('Resend', style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand)),
-                  ),
-                ]),
-
-                const SizedBox(height: 20),
-                Container(height: 1, color: AppColors.line),
-                const SizedBox(height: 4),
-
-                // new password
-                const FieldLabel('New password'),
-                SizedBox(
-                  height: H.field,
-                  child: TextField(
-                    controller: _password,
-                    obscureText: _obscure,
-                    style: const TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.ink),
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      suffixIcon: TextButton(
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                        child: Text(_obscure ? 'Show' : 'Hide', style: const TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand)),
-                      ),
-                    ),
-                  ),
+                const Text(
+                  'For your security we verify resets manually. Email us from the address on your account and we’ll reset your password — usually within 6 working hours.',
+                  style: TextStyle(fontFamily: kSans, fontSize: 14.5, height: 1.55, color: AppColors.inkMuted),
                 ),
-                const SizedBox(height: 9),
-                const Text('At least 10 characters with one number.', style: T.bodySmall),
+                const SizedBox(height: 22),
+                // support email card
+                DesignCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(children: [
+                    Container(
+                      width: 42, height: 42, alignment: Alignment.center,
+                      decoration: BoxDecoration(color: AppColors.surfaceHover2, borderRadius: BorderRadius.circular(R.tile)),
+                      child: const Icon(Icons.mail_outline_rounded, size: 20, color: AppColors.ink),
+                    ),
+                    const SizedBox(width: 13),
+                    const Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text('Email support', style: TextStyle(fontFamily: kSans, fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                        SizedBox(height: 4),
+                        Text(_supportEmail, style: TextStyle(fontFamily: kMono, fontSize: 12.5, color: AppColors.inkMuted)),
+                      ]),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 18),
+                const InfoPanel('Send the email from your registered address and mention your account name so we can find you faster.'),
               ],
             ),
           ),
-          _footer(children: [
-            PrimaryBtn('Save new password', onTap: () => Navigator.of(context).maybePop()),
-          ]),
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+            decoration: const BoxDecoration(color: AppColors.bg, border: Border(top: BorderSide(color: AppColors.line))),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              PrimaryBtn('Copy support email', icon: Icons.copy_rounded, onTap: copyEmail),
+            ]),
+          ),
         ]),
       ),
     );
   }
-
-  Widget _otpBox(int i) {
-    final filled = _code[i].text.isNotEmpty;
-    return SizedBox(
-      height: 52,
-      child: TextField(
-        controller: _code[i],
-        focusNode: _codeFocus[i],
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        maxLength: 1,
-        onChanged: (v) => _onCodeChanged(i, v),
-        style: const TextStyle(fontFamily: kMono, fontSize: 19, fontWeight: FontWeight.w600, color: AppColors.ink),
-        decoration: InputDecoration(
-          counterText: '',
-          hintText: filled ? null : '·',
-          hintStyle: const TextStyle(fontFamily: kMono, fontSize: 19, color: AppColors.inkGhost),
-          contentPadding: EdgeInsets.zero,
-          filled: true,
-          fillColor: AppColors.surface,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(R.inner),
-            borderSide: BorderSide(color: filled ? AppColors.brand : AppColors.line, width: filled ? 1.5 : 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(R.inner),
-            borderSide: const BorderSide(color: AppColors.brand, width: 1.5),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _footer({required List<Widget> children}) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
-        decoration: const BoxDecoration(
-          color: AppColors.bg,
-          border: Border(top: BorderSide(color: AppColors.line)),
-        ),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
-      );
 }

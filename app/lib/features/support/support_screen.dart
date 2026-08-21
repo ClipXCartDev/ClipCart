@@ -37,33 +37,28 @@ class _SupportScreenState extends State<SupportScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
               children: [
-                // ── dark CTA card ──────────────────────────────────────────
+                // ── dark CTA card → live chat ──────────────────────────────
                 _QueryCta(onTap: _openQuery),
 
-                // ── your requests ──────────────────────────────────────────
-                const FieldLabel('Your requests'),
-                ListCard(children: [
-                  _TicketRow(
-                    subject: 'Export freezes at 90% on long clips',
-                    ref: 'CC-4821 · 20 Aug',
-                    pill: const StatusPill('Open', AppColors.brandTint, AppColors.brandInk),
-                    onTap: _openQuery,
-                  ),
-                  _TicketRow(
-                    subject: 'Payment went through but plan not active',
-                    ref: 'CC-4790 · 14 Aug',
-                    pill: StatusPill.ok('Answered'),
-                    onTap: _openQuery,
-                  ),
-                ]),
-
-                // ── FAQ ────────────────────────────────────────────────────
+                // ── FAQ (expandable, real answers) ─────────────────────────
                 const FieldLabel('FAQ'),
-                ListCard(children: [
-                  ListRowTile(label: 'Why does my export have no sound?', onTap: _openQuery),
-                  ListRowTile(label: 'How do edit credits work?', onTap: _openQuery),
-                  ListRowTile(label: 'Can I use clips commercially?', onTap: _openQuery),
-                  ListRowTile(label: 'How do I change my plan?', onTap: _openQuery),
+                ListCard(children: const [
+                  _FaqItem(
+                    q: 'Why does my export have no sound?',
+                    a: 'Some source clips arrive without an audio track. Add music from the editor’s Music tool, or check the clip’s original volume isn’t turned down.',
+                  ),
+                  _FaqItem(
+                    q: 'How do edit credits work?',
+                    a: 'One credit is used the moment you open a clip in the editor. You can keep editing that clip as long as you like — a different clip uses another credit.',
+                  ),
+                  _FaqItem(
+                    q: 'Can I use clips commercially?',
+                    a: 'Clips are licensed for personal and social use. For commercial or paid promotions, message support first.',
+                  ),
+                  _FaqItem(
+                    q: 'How do I change my plan?',
+                    a: 'Go to Account → Plans & subscription. A new plan starts the day you pay and runs 30 calendar days.',
+                  ),
                 ]),
 
                 // ── contact ────────────────────────────────────────────────
@@ -98,7 +93,6 @@ class _SupportScreenState extends State<SupportScreen> {
                   ListRowTile(
                     icon: Icons.lock_outline_rounded,
                     label: 'Change password',
-                    value: '4 months ago',
                     onTap: _openChangePassword,
                   ),
                 ]),
@@ -159,15 +153,15 @@ class _QueryCta extends StatelessWidget {
                 height: 44,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.inner)),
-                child: const Icon(Icons.confirmation_number_outlined, color: Colors.white, size: 22),
+                child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 13),
               const Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text('Send a query to support',
+                  Text('Chat with support',
                       style: TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.inkDark)),
                   SizedBox(height: 4),
-                  Text('Typical reply within 6 working hours',
+                  Text('A real person replies here · within 6 working hours',
                       style: TextStyle(fontFamily: kSans, fontSize: 11.5, color: AppColors.mutDark)),
                 ]),
               ),
@@ -179,32 +173,47 @@ class _QueryCta extends StatelessWidget {
       );
 }
 
-// ── ticket row ───────────────────────────────────────────────────────────────
+// ── FAQ item (tap to expand the answer) ──────────────────────────────────────
 
-class _TicketRow extends StatelessWidget {
-  const _TicketRow({required this.subject, required this.ref, required this.pill, this.onTap});
-  final String subject, ref;
-  final Widget pill;
-  final VoidCallback? onTap;
+class _FaqItem extends StatefulWidget {
+  const _FaqItem({required this.q, required this.a});
+  final String q, a;
+  @override
+  State<_FaqItem> createState() => _FaqItemState();
+}
 
+class _FaqItemState extends State<_FaqItem> {
+  bool _open = false;
   @override
   Widget build(BuildContext context) => Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: () => setState(() => _open = !_open),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(subject,
-                      style: const TextStyle(fontFamily: kSans, fontSize: 13.5, height: 1.35, fontWeight: FontWeight.w500, color: AppColors.ink)),
-                  const SizedBox(height: 6),
-                  Text(ref, style: T.dataMuted),
-                ]),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(
+                  child: Text(widget.q,
+                      style: const TextStyle(fontFamily: kSans, fontSize: 14, height: 1.35, fontWeight: FontWeight.w500, color: AppColors.ink)),
+                ),
+                const SizedBox(width: 12),
+                AnimatedRotation(
+                  turns: _open ? 0.25 : 0,
+                  duration: const Duration(milliseconds: 160),
+                  child: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.chevron),
+                ),
+              ]),
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 160),
+                crossFadeState: _open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                firstChild: const SizedBox(width: double.infinity),
+                secondChild: Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 8),
+                  child: Text(widget.a,
+                      style: const TextStyle(fontFamily: kSans, fontSize: 13, height: 1.5, color: AppColors.inkMuted)),
+                ),
               ),
-              const SizedBox(width: 12),
-              pill,
             ]),
           ),
         ),

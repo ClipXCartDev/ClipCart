@@ -41,6 +41,10 @@ class AuthService {
     return {'device_id': id, 'os': os};
   }
 
+  /// The device_id the backend has bound for THIS device (to mark/guard the
+  /// current device in the devices list).
+  Future<String> currentDeviceId() async => (await _device())['device_id'] as String;
+
   String _osName() {
     try {
       return Platform.operatingSystem;

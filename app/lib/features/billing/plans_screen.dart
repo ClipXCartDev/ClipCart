@@ -304,7 +304,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _payData = '';
   String _address = '';
   double _amount = 0;
-  Duration _left = const Duration(minutes: 15);
+  // countdown lives in a ValueNotifier so per-second ticks refresh ONLY the
+  // timer text — not the whole waiting tree (which re-encoded the QR each tick).
+  final ValueNotifier<Duration> _leftVN = ValueNotifier(const Duration(minutes: 15));
   Timer? _tick, _poll;
   bool _agree = false;
 
@@ -318,10 +320,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void dispose() {
     _tick?.cancel();
     _poll?.cancel();
+    _leftVN.dispose();
     super.dispose();
   }
 
   Future<void> _start() async {
+    _tick?.cancel(); // never leave a previous countdown/poll running
+    _poll?.cancel();
     setState(() => _state = _PayState.starting);
     try {
       final order = await context.read<BillingService>().checkout(widget.plan.id);
@@ -330,19 +335,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _payData = (order['qr_content']?.toString().isNotEmpty ?? false) ? order['qr_content'].toString() : (order['checkout_url']?.toString() ?? '');
       _address = order['address']?.toString() ?? _payData;
       _amount = (order['amount'] as num?)?.toDouble() ?? widget.plan.priceUsd;
-      setState(() {
-        _state = _PayState.waiting;
-        _left = const Duration(minutes: 15);
-      });
+      _leftVN.value = const Duration(minutes: 15);
+      setState(() => _state = _PayState.waiting);
       _tick = Timer.periodic(const Duration(seconds: 1), (_) {
         if (!mounted) return;
-        final next = _left - const Duration(seconds: 1);
-        if (next.isNegative || next.inSeconds == 0) {
-          setState(() { _left = Duration.zero; _state = _PayState.expired; });
+        final next = _leftVN.value - const Duration(seconds: 1);
+        if (next.isNegative) {
+          _leftVN.value = Duration.zero;
+          setState(() => _state = _PayState.expired); // 0:00 was shown last tick
           _tick?.cancel();
           _poll?.cancel();
         } else {
-          setState(() => _left = next);
+          _leftVN.value = next; // no setState → QR/order card don't rebuild
         }
       });
       // Poll the server (the ONLY authority on payment state) for confirmation.
@@ -362,10 +366,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  String get _timer {
-    final m = _left.inMinutes, s = _left.inSeconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
+  static String _fmt(Duration d) => '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
   double get _shownAmount => _amount == 0 ? widget.plan.priceUsd : _amount;
 
@@ -407,7 +408,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.warnIcon, shape: BoxShape.circle)),
                 const SizedBox(width: 10),
                 const Expanded(child: Text('Waiting for confirmation', style: TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.warnText))),
-                Text('Expires in $_timer', style: const TextStyle(fontFamily: kMono, fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.warnText)),
+                ValueListenableBuilder<Duration>(
+                  valueListenable: _leftVN,
+                  builder: (_, d, __) => Text('Expires in ${_fmt(d)}', style: const TextStyle(fontFamily: kMono, fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.warnText)),
+                ),
               ]),
             ),
             const SizedBox(height: 16),

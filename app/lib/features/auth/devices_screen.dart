@@ -19,11 +19,15 @@ class DevicesScreen extends StatefulWidget {
 class _DevicesScreenState extends State<DevicesScreen> {
   late Future<List<Map<String, dynamic>>> _future;
   String? _removingId;
+  String? _thisId; // the current device's device_id — never removable from here
 
   @override
   void initState() {
     super.initState();
     _load();
+    context.read<AuthController>().auth.currentDeviceId().then((id) {
+      if (mounted) setState(() => _thisId = id);
+    }).catchError((_) {});
   }
 
   void _load() {
@@ -122,6 +126,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                 final d = devices[i];
                 final id = d['id']?.toString();
                 final removing = _removingId != null && _removingId == id;
+                final isCurrent = _thisId != null && d['device_id']?.toString() == _thisId;
                 return Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
@@ -131,17 +136,18 @@ class _DevicesScreenState extends State<DevicesScreen> {
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     leading: const Icon(Icons.phone_android_rounded, color: _kAccent),
-                    title: Text(_deviceName(d), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    title: Text(isCurrent ? '${_deviceName(d)} · This device' : _deviceName(d), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                     subtitle: Text(_lastSeen(d), style: const TextStyle(color: Colors.grey, fontSize: 12.5)),
-                    trailing: removing
-                        ? const SizedBox(
-                            width: 22, height: 22,
-                            child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5),
-                          )
-                        : TextButton(
-                            onPressed: _removingId != null ? null : () => _remove(d),
-                            child: const Text('Remove', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800)),
-                          ),
+                    // You can't sign yourself out from the device list — remove it
+                    // from the OTHER device instead. Prevents an accidental self-deauth.
+                    trailing: isCurrent
+                        ? const Text('In use', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12.5))
+                        : removing
+                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5))
+                            : TextButton(
+                                onPressed: _removingId != null ? null : () => _remove(d),
+                                child: const Text('Remove', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800)),
+                              ),
                   ),
                 );
               },
