@@ -164,8 +164,8 @@ class _AccountTabState extends State<_AccountTab> {
           child: Row(children: [
             Container(
               width: 52, height: 52, alignment: Alignment.center,
-              decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
-              child: Text(initial, style: const TextStyle(fontFamily: kSans, fontSize: 17, fontWeight: FontWeight.w600, color: Colors.white)),
+              decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
+              child: Text(initial, style: const TextStyle(fontFamily: kSans, fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
             const SizedBox(width: 13),
             Expanded(
@@ -175,7 +175,6 @@ class _AccountTabState extends State<_AccountTab> {
                 Text(user?.email ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: T.bodySmall),
               ]),
             ),
-            TextButton(onPressed: () => context.push('/profile'), child: const Text('Edit', style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.brand))),
           ]),
         ),
         const SizedBox(height: 11),
@@ -202,8 +201,6 @@ class _AccountTabState extends State<_AccountTab> {
           ListRowTile(label: 'Notifications', value: 'On', onTap: () => context.push('/notifications')),
           ListRowTile(label: 'Plans & subscription', onTap: () => context.push('/plans')),
           if (user?.isEditor == true) ListRowTile(label: 'Creator studio', onTap: () => context.push('/creator')),
-          ListRowTile(label: 'Appearance', value: 'Light', onTap: () {}),
-          ListRowTile(label: 'Empty & offline states', onTap: () => context.push('/states')),
           ListRowTile(label: 'Log out', danger: true, chevron: false, onTap: () => context.read<AuthController>().logout()),
         ]),
         const SizedBox(height: 20),
@@ -239,7 +236,15 @@ class _PlanCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.large)),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6B54C9), Color(0xFF4A38A6)],
+        ),
+        borderRadius: BorderRadius.circular(R.large),
+        boxShadow: [BoxShadow(color: AppColors.brand.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(

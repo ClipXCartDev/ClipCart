@@ -6,9 +6,11 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/runtime_config.dart';
 import '../../core/theme.dart' show AppColors;
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
@@ -150,6 +152,11 @@ class _EditorScreenState extends State<EditorScreen> {
         try {
           final path = await cs.editClipFile(widget.clip!.id, fresh: attempt > 0);
           await _load(path);
+          // Load creator-authored overlays (subtitles/logo/text) over the raw
+          // video — rendered, not burned. The customer edits these; export burns.
+          if (widget.clip!.overlays != null) {
+            await _applyCreatorOverlays(widget.clip!.overlays!);
+          }
           _error = null;
           break;
         } catch (_) {
@@ -211,6 +218,37 @@ class _EditorScreenState extends State<EditorScreen> {
       _undo.clear();
       _redo.clear();
     });
+  }
+
+  /// Apply creator-authored overlays (snapshot-format JSON) onto the freshly
+  /// loaded blank project. Subtitles/stickers are pure data; a `logoUrl` is
+  /// downloaded to a local file first so the logo can render.
+  Future<void> _applyCreatorOverlays(Map<String, dynamic> overlays) async {
+    final p = _project;
+    if (p == null) return;
+    final data = Map<String, dynamic>.from(overlays);
+    final logoUrl = (data['logoUrl'] ?? data['logo_url']) as String?;
+    if (logoUrl != null && logoUrl.isNotEmpty && (data['logoPath'] == null)) {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = '${dir.path}/creatorlogo_${logoUrl.hashCode}.png';
+        if (!File(file).existsSync()) {
+          await Dio().download(RuntimeConfig.absolute(logoUrl), file);
+        }
+        data['logoPath'] = file;
+      } catch (_) {/* logo download failed — keep other overlays */}
+    }
+    // restore() non-null-asserts a few keys; supply safe defaults for any the
+    // creator payload omits (mirrors EditorProject.fromProjectJson).
+    final merged = <String, dynamic>{
+      'trimStart': 0.0, 'logoDx': 0.85, 'logoDy': 0.10, 'logoScale': 1.0,
+      'logoRotation': 0.0, 'aspect': 0, 'subs': <dynamic>[],
+      ...data,
+    };
+    try {
+      p.restore(merged);
+      if (mounted) setState(() { _undo.clear(); _redo.clear(); });
+    } catch (_) {/* malformed overlays — leave the canvas blank */}
   }
 
   bool _endHandled = false;
@@ -3011,13 +3049,17 @@ class _EditorScreenState extends State<EditorScreen> {
       const SizedBox(height: 8),
       _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
       const SizedBox(height: 11),
+      // toggles on their own row (equal-height buttons align cleanly)
       Row(children: [
         Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? brand : tile, s.shadow ? brand : line, s.shadow ? Colors.white : AppColors.ink, () => _mutate(() => s.shadow = !s.shadow))),
-        const SizedBox(width: 7),
+        const SizedBox(width: 8),
         Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? brand : tile, s.bgEnabled ? brand : line, s.bgEnabled ? Colors.white : AppColors.ink, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
-        const SizedBox(width: 7),
+      ]),
+      const SizedBox(height: 8),
+      // labelled X/Y position fields on their own row → X and Y align
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: _NumFieldLight(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dx = (v / 100).clamp(0.0, 1.0)))),
-        const SizedBox(width: 7),
+        const SizedBox(width: 8),
         Expanded(child: _NumFieldLight(label: 'Y %', value: s.dy * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dy = (v / 100).clamp(0.0, 1.0)))),
       ]),
     ]);

@@ -71,6 +71,7 @@ def create_clip(body: ClipCreate, user: User = Depends(editor_or_admin), db: Ses
         language=body.language,
         tags=body.tags,
         layers=body.layers,
+        overlays=body.overlays,
         duration_sec=body.duration_sec,
         resolution=body.resolution,
         aspect_ratio=body.aspect_ratio,

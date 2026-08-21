@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'features/auth/devices_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
-import 'features/auth/profile_edit_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/onboarding_screen.dart';
 import 'features/auth/register_screen.dart';
@@ -17,7 +16,6 @@ import 'features/editor/editor_screen.dart';
 import 'features/home/home_shell.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/player/clip_player_screen.dart';
-import 'features/support/states_screen.dart';
 import 'features/support/support_screen.dart';
 import 'models/clip.dart';
 import 'services/project_store.dart';
@@ -103,9 +101,7 @@ class _ClipCartAppState extends State<ClipCartApp> {
         ),
         GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansScreen())),
         GoRoute(path: '/devices', pageBuilder: (c, s) => _fadeScalePage(s, const DevicesScreen())),
-        GoRoute(path: '/profile', pageBuilder: (c, s) => _fadeScalePage(s, const ProfileEditScreen())),
         GoRoute(path: '/support', pageBuilder: (c, s) => _fadeScalePage(s, const SupportScreen())),
-        GoRoute(path: '/states', pageBuilder: (c, s) => _fadeScalePage(s, const StatesScreen())),
         GoRoute(path: '/notifications', pageBuilder: (c, s) => _fadeScalePage(s, const NotificationsScreen())),
         GoRoute(path: '/creator', pageBuilder: (c, s) => _fadeScalePage(s, const CreatorDashboard())),
         GoRoute(path: '/creator/upload', pageBuilder: (c, s) => _fadeScalePage(s, const UploadClipScreen())),

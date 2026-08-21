@@ -15,6 +15,7 @@ class Clip {
     this.status,
     this.reviewNote,
     this.thumb,
+    this.overlays,
   });
 
   final String id;
@@ -32,6 +33,9 @@ class Clip {
   final String? status; // pending | approved | rejected | changes (creator view)
   final String? reviewNote;
   final String? thumb; // presigned poster-frame URL
+  /// Creator-authored overlays (snapshot-format: subs/logo/etc), rendered over
+  /// the raw video in the editor and burned only on export. Null = blank canvas.
+  final Map<String, dynamic>? overlays;
 
   bool get isPro => access == 'pro';
 
@@ -56,5 +60,6 @@ class Clip {
         status: j['status'] as String?,
         reviewNote: j['review_note'] as String?,
         thumb: j['thumb'] as String?,
+        overlays: j['overlays'] == null ? null : Map<String, dynamic>.from(j['overlays'] as Map),
       );
 }

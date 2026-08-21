@@ -29,6 +29,7 @@ class ClipOut(BaseModel):
     language: str
     tags: list = []
     layers: list = []
+    overlays: dict | None = None
     duration_sec: int | None = None
     resolution: str
     aspect_ratio: str
@@ -57,6 +58,7 @@ class ClipCreate(BaseModel):
     language: str = "English"
     tags: list[str] = []
     layers: list[str] = []
+    overlays: dict | None = None
     duration_sec: int | None = None
     resolution: str = "1080p"
     aspect_ratio: str = "9:16"

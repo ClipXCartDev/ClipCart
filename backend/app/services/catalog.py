@@ -56,6 +56,7 @@ def clip_to_out(clip: Clip) -> ClipOut:
         language=clip.language,
         tags=clip.tags or [],
         layers=clip.layers or [],
+        overlays=clip.overlays,
         duration_sec=clip.duration_sec,
         resolution=clip.resolution,
         aspect_ratio=clip.aspect_ratio,

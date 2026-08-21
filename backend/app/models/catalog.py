@@ -67,6 +67,10 @@ class Clip(Base):
 
     # customizable layers the customer may edit (§11.7)
     layers: Mapped[list] = mapped_column(JSON, default=list)
+    # creator-authored overlays (subtitles/logo/text) pre-rendered over the raw
+    # video in the editor — NOT burned until the customer exports. Snapshot-format
+    # JSON matching the app's EditorProject.snapshot(): {subs:[...], logoUrl, logoDx,...}.
+    overlays: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     access: Mapped[Access] = mapped_column(Enum(Access), default=Access.free, index=True)
     status: Mapped[ClipStatus] = mapped_column(Enum(ClipStatus), default=ClipStatus.pending, index=True)
