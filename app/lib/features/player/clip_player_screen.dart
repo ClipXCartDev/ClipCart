@@ -243,7 +243,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     final saved = _faved.contains(clip.id);
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Column(children: [
+      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(
           child: Stack(children: [
         PageView.builder(
@@ -471,6 +471,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     final title = editable ? 'Ready to edit' : 'Preview only';
     final sub = editable ? 'Opening the editor uses 1 credit' : 'Subscribe to edit and export';
     return Container(
+      width: double.infinity,
       decoration: const BoxDecoration(
         color: AppColors.bg,
         border: Border(top: BorderSide(color: AppColors.line)),
@@ -479,32 +480,41 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-          child: Row(children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                  const SizedBox(height: 4),
-                  Text(sub, style: const TextStyle(fontFamily: kSans, fontSize: 11.5, height: 1.3, fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            SizedBox(
-              height: 50,
-              child: FilledButton(
-                onPressed: editable ? () => _showCreditSheet(clip) : () => context.push('/plans'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.brand,
-                  padding: const EdgeInsets.symmetric(horizontal: 26),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
+          // Explicit widths via LayoutBuilder — the surrounding Column ([Expanded
+          // video, bar]) can trigger intrinsic sizing of a Row+Expanded, which
+          // measured the text at 1-char width (it rendered vertically). Sizing the
+          // text column explicitly sidesteps that entirely.
+          child: LayoutBuilder(builder: (context, cons) {
+            const btnW = 104.0, gap = 16.0;
+            final textW = cons.maxWidth.isFinite ? (cons.maxWidth - btnW - gap).clamp(0.0, double.infinity) : 180.0;
+            return Row(mainAxisSize: MainAxisSize.max, crossAxisAlignment: CrossAxisAlignment.center, children: [
+              SizedBox(
+                width: textW,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                    const SizedBox(height: 4),
+                    Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kSans, fontSize: 11.5, height: 1.3, fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
+                  ],
                 ),
-                child: Text(editable ? 'Edit' : 'Unlock', style: const TextStyle(fontFamily: kSans, fontSize: 15.5, fontWeight: FontWeight.w600)),
               ),
-            ),
-          ]),
+              const SizedBox(width: gap),
+              SizedBox(
+                width: btnW, height: 50,
+                child: FilledButton(
+                  onPressed: editable ? () => _showCreditSheet(clip) : () => context.push('/plans'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.brand,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
+                  ),
+                  child: Text(editable ? 'Edit' : 'Unlock', style: const TextStyle(fontFamily: kSans, fontSize: 15.5, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ]);
+          }),
         ),
       ),
     );

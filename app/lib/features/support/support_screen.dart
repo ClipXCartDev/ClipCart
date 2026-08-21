@@ -98,7 +98,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   ListRowTile(
                     icon: Icons.lock_outline_rounded,
                     label: 'Change password',
-                    value: 'Last changed 4 months ago',
+                    value: '4 months ago',
                     onTap: _openChangePassword,
                   ),
                 ]),

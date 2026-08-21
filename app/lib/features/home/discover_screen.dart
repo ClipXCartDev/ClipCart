@@ -210,7 +210,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         : 'Subscribe to edit and export';
     final String subtitle = active
         ? (credits != null ? '$credits edit credits left' : 'Edit credits available')
-        : 'Browsing is free · plans from 4 USDT';
+        : 'Plans from 4 USDT';
     final String cta = active ? 'Renew' : 'View plans';
     final Color pillBg = active ? AppColors.okText : AppColors.brand;
 
@@ -231,7 +231,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: kSans, fontSize: 14, height: 1.2, fontWeight: FontWeight.w600, color: titleColor)),
+                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: kSans, fontSize: 14, height: 1.2, fontWeight: FontWeight.w600, color: titleColor)),
                 const SizedBox(height: 3),
                 Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: kSans, fontSize: 12, height: 1.25, fontWeight: FontWeight.w400, color: subColor)),
               ]),
@@ -256,7 +256,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
         child: Row(children: [
-          Text(title, style: T.section),
+          Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.section)),
           const SizedBox(width: 8),
           Padding(padding: const EdgeInsets.only(bottom: 1), child: Text('${clips.length}', style: T.dataMuted)),
           const Spacer(),

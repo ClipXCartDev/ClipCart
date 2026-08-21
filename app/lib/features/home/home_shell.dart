@@ -133,11 +133,20 @@ class _AccountTab extends StatefulWidget {
 
 class _AccountTabState extends State<_AccountTab> {
   late Future<Map<String, dynamic>?> _sub;
+  int? _deviceCount;
 
   @override
   void initState() {
     super.initState();
     _sub = context.read<BillingService>().subscription().catchError((_) => null);
+    _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    try {
+      final list = await context.read<AuthController>().auth.devices();
+      if (mounted) setState(() => _deviceCount = list.length);
+    } catch (_) {/* leave as unknown */}
   }
 
   @override
@@ -185,7 +194,7 @@ class _AccountTabState extends State<_AccountTab> {
         const FieldLabel('Devices'),
         ListCard(children: [
           ListRowTile(icon: Icons.phone_android_rounded, label: 'This device', value: 'Active now', onTap: () => context.push('/devices')),
-          ListRowTile(icon: Icons.devices_other_rounded, label: 'Manage devices', value: '2 of 2', onTap: () => context.push('/devices')),
+          ListRowTile(icon: Icons.devices_other_rounded, label: 'Manage devices', value: _deviceCount == null ? '—' : '$_deviceCount of 2', onTap: () => context.push('/devices')),
         ]),
         const FieldLabel('Settings'),
         ListCard(children: [
