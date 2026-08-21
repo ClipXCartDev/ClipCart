@@ -5,11 +5,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../core/ui_kit.dart';
 import '../../services/billing_service.dart';
 
-/// Notifications (Mobile §3.4) — carbon-copy chrome (header, filter pills, colored
-/// vs dimmed rows). Rows are derived from real state (subscription + latest
-/// export) so nothing is fabricated; empty state when there is nothing.
+/// §23 Notifications — a pushed route with its own Scaffold and nav row. Rows are
+/// derived from real state (subscription + latest export) so nothing is
+/// fabricated; empty state when there is nothing.
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
   @override
@@ -25,6 +26,7 @@ class _Notif {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   int _filter = 0; // 0 All · 1 Account · 2 Clips
+  bool _allRead = false;
   late Future<List<_Notif>> _future;
 
   @override
@@ -50,7 +52,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.mp4')).toList()
           ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
         if (files.isNotEmpty) {
-          out.add(_Notif('brand', Icons.play_arrow_rounded, 'Your video is ready', 'Open Library to play or share it.', 'TODAY'));
+          out.add(_Notif('brand', Icons.play_arrow_rounded, 'Your video is ready', 'Open My Clips to play or share it.', 'TODAY'));
         }
       }
     } catch (_) {}
@@ -63,22 +65,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-          // header
+          // nav row: back · title · Mark read
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('Notifications', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w600, letterSpacing: -0.65, color: AppColors.ink)),
+            padding: const EdgeInsets.fromLTRB(16, 6, 20, 14),
+            child: Row(children: [
+              CircleIconBtn(Icons.arrow_back_rounded, onTap: () => Navigator.of(context).maybePop()),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Notifications', style: T.screenTitle)),
               GestureDetector(
-                onTap: () => Navigator.of(context).maybePop(),
-                child: const Text('Mark all read', style: TextStyle(fontSize: 13, color: AppColors.brand, fontWeight: FontWeight.w600)),
+                onTap: () => setState(() => _allRead = true),
+                behavior: HitTestBehavior.opaque,
+                child: const Text('Mark read', style: TextStyle(fontFamily: kSans, fontSize: 14, color: AppColors.brand, fontWeight: FontWeight.w600)),
               ),
             ]),
           ),
           // filter pills
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Row(children: [
-              _pill('All', 0), const SizedBox(width: 7), _pill('Account', 1), const SizedBox(width: 7), _pill('Clips', 2),
+              _pill('All', 0),
+              const SizedBox(width: 8),
+              _pill('Account', 1),
+              const SizedBox(width: 8),
+              _pill('Clips', 2),
             ]),
           ),
           Expanded(
@@ -95,11 +104,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   return const Padding(
                     padding: EdgeInsets.only(top: 90),
                     child: Column(children: [
-                      Icon(Icons.notifications_none_rounded, size: 44, color: AppColors.mut),
-                      SizedBox(height: 12),
-                      Text("You're all caught up", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                      Icon(Icons.notifications_none_rounded, size: 44, color: AppColors.inkGhost),
+                      SizedBox(height: 14),
+                      Text("You're all caught up", style: TextStyle(fontFamily: kSans, fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.ink)),
                       SizedBox(height: 6),
-                      Text('Account and clip updates will appear here.', style: TextStyle(fontSize: 14, color: AppColors.mut)),
+                      Text('Account and clip updates will appear here.', style: TextStyle(fontFamily: kSans, fontSize: 14, color: AppColors.inkMuted)),
                     ]),
                   );
                 }
@@ -123,52 +132,62 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       onTap: () => setState(() => _filter = i),
       child: Container(
         height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: on ? AppColors.ink : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
+          color: on ? AppColors.ink : AppColors.surfaceHover2,
+          borderRadius: BorderRadius.circular(R.pill),
           border: on ? null : Border.all(color: AppColors.line),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, color: on ? Colors.white : AppColors.ink, fontWeight: on ? FontWeight.w600 : FontWeight.w400)),
+        child: Text(label,
+            style: TextStyle(
+                fontFamily: kSans, fontSize: 12.5, color: on ? Colors.white : AppColors.inkMuted, fontWeight: on ? FontWeight.w600 : FontWeight.w500)),
       ),
     );
   }
 
   Widget _row(_Notif n) {
-    final (Color tileBg, Color tileFg, Color? cardBg, Color? cardBorder, bool dim) = switch (n.kind) {
-      'ok' => (AppColors.okBg, AppColors.okText, const Color(0xFFF5FBF7), const Color(0xFFCFE6D6), false),
-      'brand' => (AppColors.brandSurface, AppColors.brand, null, null, false),
-      'warn' => (AppColors.warnBg, AppColors.warnText, null, null, false),
-      _ => (const Color(0xFFF1EFEC), AppColors.mut, null, null, true),
+    final (Color tileBg, Color tileFg) = switch (n.kind) {
+      'ok' => (AppColors.okBg, AppColors.okIcon),
+      'brand' => (AppColors.brandTint, AppColors.brand),
+      'warn' => (AppColors.warnBg, AppColors.warnIcon),
+      'gold' => (AppColors.goldBg, AppColors.goldText),
+      _ => (AppColors.bgAlt, AppColors.inkMuted),
     };
-    return Opacity(
-      opacity: dim ? 0.72 : 1,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: cardBg ?? AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: cardBorder ?? AppColors.line),
-        ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: tileBg, borderRadius: BorderRadius.circular(9)),
-            child: Icon(n.icon, size: 17, color: tileFg),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(n.title, style: TextStyle(fontSize: 15, fontWeight: dim ? FontWeight.w500 : FontWeight.w600, color: AppColors.ink)),
-              const SizedBox(height: 2),
-              Text(n.body, style: const TextStyle(fontSize: 13, color: AppColors.mut, height: 1.5)),
-              const SizedBox(height: 6),
-              Text(n.time, style: const TextStyle(fontFamily: kMono, fontSize: 11, color: AppColors.mut)),
-            ]),
-          ),
-        ]),
+    final unread = !_allRead; // derived rows are all fresh until "Mark read"
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(R.media),
+        border: Border.all(color: unread ? AppColors.brandBorder : AppColors.line),
       ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: tileBg, borderRadius: BorderRadius.circular(R.tile)),
+          child: Icon(n.icon, size: 18, color: tileFg),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(n.title, style: const TextStyle(fontFamily: kSans, fontSize: 14, height: 1.35, fontWeight: FontWeight.w600, color: AppColors.ink)),
+            const SizedBox(height: 3),
+            Text(n.body, style: const TextStyle(fontFamily: kSans, fontSize: 12.5, height: 1.5, color: AppColors.inkMuted)),
+            const SizedBox(height: 8),
+            Text(n.time, style: const TextStyle(fontFamily: kMono, fontSize: 11, color: AppColors.inkGhost)),
+          ]),
+        ),
+        if (unread)
+          Container(
+            margin: const EdgeInsets.only(left: 10, top: 4),
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
+          ),
+      ]),
     );
   }
 }

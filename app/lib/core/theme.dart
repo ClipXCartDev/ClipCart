@@ -1,113 +1,176 @@
 import 'package:flutter/material.dart';
 
-/// ClipCart design system — tokens taken directly from the .dc.html design files.
-/// Violet brand · warm-paper canvas · Instrument Sans + IBM Plex Mono.
-/// Every value below is the oklch token from CLIPCART-SPEC.md §1 converted to sRGB.
-/// DO NOT introduce a colour that is not in this file.
+/// ClipCart design system — CLIPCART_DESIGN_SPEC.md (mobile v3).
+/// Violet brand · warm-paper canvas · Instrument Sans (UI) + IBM Plex Mono (data).
+/// There is NO dark theme. The only dark surfaces are the Account plan card and
+/// the Home subscription banner (`ink` #221F19), used as deliberate contrast blocks.
+/// DO NOT introduce a colour that is not in §1.
 class AppColors {
-  // brand — violet. oklch(0.52 0.18 288). One accent carries every commit action.
-  static const brand = Color(0xFF684FC8);        // --br
-  static const brandHover = Color(0xFF553CB0);   // pressed / deep violet
-  static const brandLight = Color(0xFF9B87E8);   // on dark chrome (editor)
-  static const brandSurface = Color(0xFFEFEEFF); // --brs, subtle violet fill
+  // ── §1.1 brand ──────────────────────────────────────────────────────────
+  static const brand = Color(0xFF684FC8);        // primary
+  static const brandPressed = Color(0xFF553CB0); // pressed / hover
+  static const brandTint = Color(0xFFEFEEFF);    // info panels, active layer row, icon chips
+  static const brandTintDeep = Color(0xFFE2DFFA);// pressed state of tinted surfaces
+  static const brandInk = Color(0xFF4A3E7A);     // text on brandTint
+  static const brandBorder = Color(0xFFDAD5F5);  // border of unread / brand-tinted cards
+  static const brandLight = Color(0xFF9B87E8);   // brand on the darkest surfaces
 
-  // neutrals — warm paper, not grey
-  static const bg = Color(0xFFFCFAF6);      // --bg  warm paper canvas
-  static const paper = Color(0xFFFCFAF6);   // alias
-  static const surface = Color(0xFFFFFFFF); // --sf  cards / sheets
-  static const ink = Color(0xFF221F19);     // --ink primary text
-  static const mut = Color(0xFF6F6B64);     // --mut secondary text
-  static const line = Color(0xFFE4E1DB);    // --ln  borders / dividers
+  // ── §1.2 neutrals (warm paper, not grey) ────────────────────────────────
+  static const bg = Color(0xFFFCFAF6);           // screen background
+  static const bgAlt = Color(0xFFEFECE5);        // segmented track, chips, thumb placeholders
+  static const surface = Color(0xFFFFFFFF);      // cards, fields, list containers
+  static const surfaceHover = Color(0xFFF7F5F1); // row hover, icon buttons
+  static const surfaceHover2 = Color(0xFFF1EEE8);// search field, circular icon buttons
+  static const line = Color(0xFFE4E1DB);         // all 1px borders and dividers
+  static const lineStrong = Color(0xFFD8D4CC);   // dashed borders, sheet grabber
+  static const ink = Color(0xFF221F19);          // primary text, dark contrast cards
+  static const inkMuted = Color(0xFF6F6B64);     // secondary text, labels
+  static const inkFaint = Color(0xFF8B857C);     // tertiary text, placeholders
+  static const inkGhost = Color(0xFFA8A29A);     // timestamps, disabled
+  static const chevron = Color(0xFFC4BFB6);      // row chevrons
 
-  // media / dark chrome — warm ink-dark, not neutral black
-  static const dark = Color(0xFF15120F);   // --dk
-  static const dark2 = Color(0xFF27241F);  // --dk2 raised
-  static const dark3 = Color(0xFF38342D);  // dark border / track
-
-  // premium + status
-  static const gold = Color(0xFFEBAA2D);   // --gd premium / featured
-  static const ok = Color(0xFF258343);     // --ok success / active / approved
-  static const warn = Color(0xFFD88018);   // --wn pending / changes requested
-  static const err = Color(0xFFC2272D);    // --er error / rejected / failed
-
-  // status fills — tints of the status hues, used behind status labels
-  static const okBg = Color(0xFFE6F4EA), okText = Color(0xFF1B6334);
-  static const warnBg = Color(0xFFFDF0E0), warnText = Color(0xFF8F5410);
-  static const errBg = Color(0xFFFBE9E9), errText = Color(0xFF8E1D22);
+  // ── §1.3 status ─────────────────────────────────────────────────────────
+  static const okBg = Color(0xFFE6F4EA), okText = Color(0xFF1B6334), okIcon = Color(0xFF258343);
+  static const warnBg = Color(0xFFFDF0E0), warnText = Color(0xFF8F5410), warnIcon = Color(0xFFD88018);
   static const goldBg = Color(0xFFFCF2DD), goldText = Color(0xFF7A560F);
+  static const errBg = Color(0xFFFBE9E9), errText = Color(0xFFC2272D), errTextDark = Color(0xFF8E1D22);
+  static const goldAccent = Color(0xFFEBAA2D);   // paywall star tile
+  static const greenDot = Color(0xFF5FBE7E);     // autosave / online indicator
 
-  // Back-compat aliases so existing widgets keep compiling.
-  static const accent = brand;
-  static const accent2 = brandLight;
-  static const accentInk = brandHover;
+  // ── media / dark chrome (§1.4) ──────────────────────────────────────────
+  static const mediaPlaceholder = Color(0xFF241F45);
+  static const scrimModal = Color(0x52221F19);   // rgba(34,31,25,.32) modal scrim
 
-  // dark mode
-  static const bgDark = Color(0xFF15120F);
-  static const surfaceDark = Color(0xFF27241F);
-  static const inkDark = Color(0xFFF4F1EB);
-  static const mutDark = Color(0xFF9E9890);
-  static const lineDark = Color(0xFF38342D);
+  // ── back-compat aliases (existing widgets keep compiling) ───────────────
+  static const brandHover = brandPressed;
+  static const brandSurface = brandTint;
+  static const mut = inkMuted;
+  static const ok = okIcon, warn = warnIcon, err = errText;
+  static const gold = goldAccent, goldIcon = goldText;
+  static const paper = bg;
+  static const accent = brand, accent2 = brandLight, accentInk = brandPressed;
+  static const dark = Color(0xFF15120F), dark2 = Color(0xFF27241F), dark3 = Color(0xFF38342D);
+  static const bgDark = dark, surfaceDark = dark2;
+  static const inkDark = Color(0xFFF4F1EB), mutDark = Color(0xFF9E9890), lineDark = dark3;
 }
 
-/// Radii from the design: 12 small · 14 cards+inputs · 16 surfaces · 999 pills.
+/// §3.1 corner radius.
 class R {
-  static const sm = 12.0, card = 14.0, surface = 16.0, pill = 999.0;
+  static const phone = 44.0;
+  static const sheet = 24.0;      // bottom sheet top corners
+  static const editor = 22.0;     // editor panel top corners
+  static const large = 18.0;      // large card / list container
+  static const media = 16.0;      // media card, list item, surface
+  static const thumb = 14.0;      // media thumbnail (rail)
+  static const button = 14.0;     // button, field
+  static const inner = 12.0;      // small button, inner card
+  static const tile = 10.0;       // icon tile
+  static const pill = 999.0;
+  // legacy aliases
+  static const sm = button, card = thumb;
+  static double get surface => media;
+}
+
+/// §3.3 fixed heights.
+class H {
+  static const statusBar = 52.0;
+  static const nav = 54.0;
+  static const header = 52.0;
+  static const editorBar = 48.0;
+  static const primaryBtn = 54.0;
+  static const ghostBtn = 48.0;
+  static const compactBtn = 44.0;
+  static const editorPill = 36.0;
+  static const field = 52.0;
+  static const smallField = 44.0;
+  static const searchField = 44.0;
+  static const iconBtn = 40.0;
+  static const mediaIconBtn = 36.0;
+  static const tabBar = 58.0;
 }
 
 const kSans = 'InstrumentSans';
 const kMono = 'IBMPlexMono';
 
-/// The design has NO gradients. These exist only so old imports compile —
-/// they are flat brand fills. Do not add colour stops.
+/// §2.1 type scale. One place, so every screen stays on the ramp.
+class T {
+  static const _s = kSans;
+  static const _m = kMono;
+  // display / titles
+  static const display = TextStyle(fontFamily: _s, fontSize: 46, height: 1.02, fontWeight: FontWeight.w600, letterSpacing: -2.0, color: AppColors.ink);
+  static const screenTitle = TextStyle(fontFamily: _s, fontSize: 24, height: 1.05, fontWeight: FontWeight.w600, letterSpacing: -0.8, color: AppColors.ink);
+  static const pageTitle = TextStyle(fontFamily: _s, fontSize: 19, height: 1.0, fontWeight: FontWeight.w600, letterSpacing: -0.5, color: AppColors.ink);
+  static const section = TextStyle(fontFamily: _s, fontSize: 16, height: 1.0, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: AppColors.ink);
+  // cards / rows
+  static const cardTitle = TextStyle(fontFamily: _s, fontSize: 15, height: 1.25, fontWeight: FontWeight.w600, color: AppColors.ink);
+  static const rowLabel = TextStyle(fontFamily: _s, fontSize: 14, height: 1.0, fontWeight: FontWeight.w500, color: AppColors.ink);
+  static const body = TextStyle(fontFamily: _s, fontSize: 14.5, height: 1.55, fontWeight: FontWeight.w400, color: AppColors.inkMuted);
+  static const bodySmall = TextStyle(fontFamily: _s, fontSize: 12.5, height: 1.45, fontWeight: FontWeight.w400, color: AppColors.inkMuted);
+  static const fieldLabel = TextStyle(fontFamily: _s, fontSize: 12.5, height: 1.0, fontWeight: FontWeight.w500, color: AppColors.inkMuted);
+  static const caption = TextStyle(fontFamily: _s, fontSize: 11.5, height: 1.0, fontWeight: FontWeight.w400, color: AppColors.inkFaint);
+  static const badge = TextStyle(fontFamily: _s, fontSize: 10.5, height: 1.0, fontWeight: FontWeight.w600);
+  static const tab = TextStyle(fontFamily: _s, fontSize: 9.5, height: 1.0, fontWeight: FontWeight.w500);
+  // mono — numbers, ids, prices, timestamps, eyebrows
+  static const eyebrow = TextStyle(fontFamily: _m, fontSize: 11.5, height: 1.0, fontWeight: FontWeight.w600, letterSpacing: 1.9, color: AppColors.brand);
+  static const data = TextStyle(fontFamily: _m, fontSize: 12, height: 1.0, fontWeight: FontWeight.w500, color: AppColors.ink);
+  static const dataMuted = TextStyle(fontFamily: _m, fontSize: 11, height: 1.0, fontWeight: FontWeight.w400, color: AppColors.inkFaint);
+  static const price = TextStyle(fontFamily: _m, fontSize: 19, height: 1.0, fontWeight: FontWeight.w600, color: AppColors.ink);
+}
+
+/// §1.4 mono eyebrow helper (colour override).
+TextStyle eyebrow([Color color = AppColors.brand]) => T.eyebrow.copyWith(color: color);
+
+/// Compat gradients — the design has NO gradients; these are flat brand fills.
 const brandGradient = LinearGradient(colors: [AppColors.brand, AppColors.brand]);
 const coralGradient = brandGradient;
 
-ThemeData buildTheme(Brightness brightness) {
-  final isDark = brightness == Brightness.dark;
+ThemeData buildTheme([Brightness brightness = Brightness.light]) {
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.brand,
-    brightness: brightness,
+    brightness: Brightness.light,
     primary: AppColors.brand,
     secondary: AppColors.brandLight,
-    surface: isDark ? AppColors.surfaceDark : AppColors.surface,
+    surface: AppColors.surface,
+    error: AppColors.errText,
   );
-
-  final ink = isDark ? AppColors.inkDark : AppColors.ink;
-  final line = isDark ? AppColors.lineDark : AppColors.line;
-  final surface = isDark ? AppColors.surfaceDark : AppColors.surface;
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    scaffoldBackgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
+    scaffoldBackgroundColor: AppColors.bg,
     fontFamily: kSans,
-    cardColor: surface,
-    dividerColor: line,
-    textTheme: _textTheme(ink),
-    appBarTheme: AppBarTheme(
-      backgroundColor: isDark ? AppColors.bgDark : AppColors.bg,
-      foregroundColor: ink,
+    cardColor: AppColors.surface,
+    dividerColor: AppColors.line,
+    splashFactory: InkSparkle.splashFactory,
+    textTheme: _textTheme(),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.bg,
+      foregroundColor: AppColors.ink,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: TextStyle(
-          fontFamily: kSans, color: ink, fontWeight: FontWeight.w600, fontSize: 18, letterSpacing: -0.3),
+      titleTextStyle: T.pageTitle,
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.brand,
         foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.sm)),
-        textStyle: const TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, fontSize: 15),
+        disabledBackgroundColor: AppColors.lineStrong,
+        minimumSize: const Size.fromHeight(H.primaryBtn),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
+        textStyle: const TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, fontSize: 16),
+      ).copyWith(
+        overlayColor: WidgetStateProperty.all(AppColors.brandPressed.withValues(alpha: .28)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.ink,
-        minimumSize: const Size.fromHeight(48),
-        side: BorderSide(color: line),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.sm)),
+        backgroundColor: AppColors.surface,
+        minimumSize: const Size.fromHeight(H.field),
+        side: const BorderSide(color: AppColors.line),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
         textStyle: const TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, fontSize: 15),
       ),
     ),
@@ -119,45 +182,42 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: isDark ? AppColors.dark2 : AppColors.surface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      hintStyle: TextStyle(color: isDark ? AppColors.mutDark : AppColors.mut),
+      fillColor: AppColors.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      hintStyle: const TextStyle(color: AppColors.inkFaint, fontSize: 15, fontWeight: FontWeight.w400),
+      labelStyle: T.fieldLabel,
       border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(R.sm), borderSide: BorderSide(color: line)),
+          borderRadius: BorderRadius.circular(R.button), borderSide: const BorderSide(color: AppColors.line)),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(R.sm), borderSide: BorderSide(color: line)),
+          borderRadius: BorderRadius.circular(R.button), borderSide: const BorderSide(color: AppColors.line)),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(R.sm),
-          borderSide: const BorderSide(color: AppColors.brand, width: 2)),
+          borderRadius: BorderRadius.circular(R.button),
+          borderSide: const BorderSide(color: AppColors.brand, width: 1.5)),
       errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(R.sm),
-          borderSide: const BorderSide(color: AppColors.err)),
+          borderRadius: BorderRadius.circular(R.button),
+          borderSide: const BorderSide(color: AppColors.errText)),
+      focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(R.button),
+          borderSide: const BorderSide(color: AppColors.errText, width: 1.5)),
     ),
-    dividerTheme: DividerThemeData(color: line, thickness: 1, space: 1),
+    dividerTheme: const DividerThemeData(color: AppColors.line, thickness: 1, space: 1),
+    splashColor: AppColors.brandTint,
+    highlightColor: Colors.transparent,
   );
 }
 
-TextTheme _textTheme(Color ink) {
-  TextStyle s(double size, FontWeight w, {double h = 1.3, double ls = 0}) =>
-      TextStyle(fontFamily: kSans, color: ink, fontSize: size, fontWeight: w, height: h, letterSpacing: ls);
-  return TextTheme(
-    displayLarge: s(40, FontWeight.w600, h: 1.02, ls: -1.2),
-    headlineMedium: s(26, FontWeight.w600, h: 1.1, ls: -0.65),
-    titleLarge: s(20, FontWeight.w600, h: 1.2, ls: -0.4),
-    titleMedium: s(16, FontWeight.w600),
-    bodyLarge: s(15, FontWeight.w400, h: 1.55),
-    bodyMedium: s(13.5, FontWeight.w400, h: 1.5),
-    labelLarge: s(14, FontWeight.w600),
-    labelSmall: TextStyle(
-        fontFamily: kMono, color: ink, fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1.1),
-  );
-}
+TextTheme _textTheme() => const TextTheme(
+      displayLarge: T.display,
+      headlineMedium: T.screenTitle,
+      titleLarge: T.pageTitle,
+      titleMedium: T.section,
+      bodyLarge: T.body,
+      bodyMedium: T.bodySmall,
+      labelLarge: T.rowLabel,
+      labelSmall: T.eyebrow,
+    );
 
-/// Mono uppercase eyebrow — the design's signature section marker.
-TextStyle eyebrow(Color color) => TextStyle(
-    fontFamily: kMono, fontSize: 11, fontWeight: FontWeight.w500, letterSpacing: 1.3, color: color);
-
-/// Big screen title: 26px / 600 / -0.025em.
+/// Big screen title block (Home/Explore/My Clips headers). 24/600/-0.8.
 class ScreenHeader extends StatelessWidget {
   const ScreenHeader({super.key, required this.title, this.subtitle, this.trailing});
   final String title;
@@ -166,25 +226,15 @@ class ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? AppColors.inkDark : AppColors.ink;
-    final mut = dark ? AppColors.mutDark : AppColors.mut;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
       child: Row(children: [
         Expanded(
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(title,
-                    style: TextStyle(
-                        fontSize: 26, fontWeight: FontWeight.w600, letterSpacing: -0.65, color: ink, height: 1.05)),
-                if (subtitle != null)
-                  Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(subtitle!, style: TextStyle(fontSize: 13, color: mut, height: 1.4))),
-              ]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(title, style: T.screenTitle),
+            if (subtitle != null)
+              Padding(padding: const EdgeInsets.only(top: 8), child: Text(subtitle!, style: T.caption)),
+          ]),
         ),
         if (trailing != null) trailing!,
       ]),
@@ -192,30 +242,35 @@ class ScreenHeader extends StatelessWidget {
   }
 }
 
-/// Standard content card — 1px hairline, radius 14, surface bg.
+/// Standard content card — §4.5 list container: surface, 1px line, radius 18.
 class DesignCard extends StatelessWidget {
-  const DesignCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap});
+  const DesignCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap, this.radius = R.large});
   final Widget child;
   final EdgeInsets padding;
   final VoidCallback? onTap;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final card = Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: dark ? AppColors.surfaceDark : AppColors.surface,
-        borderRadius: BorderRadius.circular(R.card),
-        border: Border.all(color: dark ? AppColors.lineDark : AppColors.line),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: AppColors.line),
       ),
       child: child,
     );
-    return onTap == null ? card : GestureDetector(onTap: onTap, child: card);
+    return onTap == null
+        ? card
+        : Material(
+            color: Colors.transparent,
+            child: InkWell(borderRadius: BorderRadius.circular(radius), onTap: onTap, child: card),
+          );
   }
 }
 
-/// Status pill — colour is NEVER the only signal, the label always rides with it.
+/// §1.3 status pill — colour is never the only signal, the label rides with it.
 class StatusPill extends StatelessWidget {
   const StatusPill(this.label, this.bg, this.fg, {super.key});
   final String label;
@@ -223,14 +278,14 @@ class StatusPill extends StatelessWidget {
 
   factory StatusPill.ok(String l) => StatusPill(l, AppColors.okBg, AppColors.okText);
   factory StatusPill.warn(String l) => StatusPill(l, AppColors.warnBg, AppColors.warnText);
-  factory StatusPill.err(String l) => StatusPill(l, AppColors.errBg, AppColors.errText);
+  factory StatusPill.err(String l) => StatusPill(l, AppColors.errBg, AppColors.errTextDark);
   factory StatusPill.gold(String l) => StatusPill(l, AppColors.goldBg, AppColors.goldText);
+  factory StatusPill.neutral(String l) => StatusPill(l, AppColors.bgAlt, AppColors.inkMuted);
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(R.pill)),
-        child: Text(label,
-            style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
+        child: Text(label, style: T.badge.copyWith(color: fg)),
       );
 }

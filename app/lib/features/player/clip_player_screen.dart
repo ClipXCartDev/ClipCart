@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/theme.dart';
+import '../../core/ui_kit.dart';
 import '../../models/clip.dart';
+import '../../services/billing_service.dart';
 import '../../services/catalog_service.dart';
-import '../../widgets/primary_button.dart';
 
-/// Deep-link entry (/clip/:slug): fetch one clip, show it in the reels player.
+/// Deep-link entry (/clip/:slug): fetch one clip, show it in the player.
 class ClipPlayerScreen extends StatelessWidget {
   const ClipPlayerScreen({super.key, required this.slug});
   final String slug;
@@ -55,8 +55,9 @@ class ClipPlayerScreen extends StatelessWidget {
   }
 }
 
-/// Instagram/TikTok-style vertical reels: swipe up/down between clips, each
-/// auto-plays a muted looping preview. Tap to pause/play. "Use template" → editor.
+/// §06 Video — a full-bleed clip player: swipe up/down between clips, each
+/// auto-plays a looping preview. Tap to pause/play. Editing a clip spends one
+/// credit (§11 credit-confirm sheet) before opening the editor.
 class ReelsPlayerScreen extends StatefulWidget {
   const ReelsPlayerScreen({super.key, required this.clips, required this.startIndex});
   final List<Clip> clips;
@@ -74,6 +75,30 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   final Set<String> _faved = {}; // clip ids saved this session (optimistic)
   bool _muted = true;
   int _gen = 0; // bumps whenever we tear controllers down; stale async _ensure bail on mismatch
+  Map<String, dynamic>? _sub; // active subscription (drives editable / credit count) or null
+
+  // ── plan / credit state ────────────────────────────────────────────────────
+  bool get _editable => (_sub?['status'] as String?)?.toLowerCase() == 'active';
+
+  int get _creditsLeft {
+    final v = _sub?['edit_credits'] ?? _sub?['credits_left'];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) {
+      final n = int.tryParse(v);
+      if (n != null) return n;
+    }
+    return 17; // spec placeholder when the server sends no quota
+  }
+
+  Future<void> _loadSub() async {
+    try {
+      final s = await context.read<BillingService>().subscription();
+      if (mounted) setState(() => _sub = s);
+    } catch (_) {
+      // leave _sub null → "Preview only" / Unlock affordance
+    }
+  }
 
   Future<void> _toggleFav(Clip clip) async {
     final id = clip.id;
@@ -100,6 +125,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     _current = widget.startIndex;
     _pc = PageController(initialPage: _current);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+    _loadSub();
     // seed the heart state from the server so an already-saved clip shows filled
     // (prevents a silent unsave when the user taps a heart that was wrongly empty).
     context.read<CatalogService>().favoriteIds().then((ids) {
@@ -175,7 +201,10 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     _loading.clear();
     if (mounted) setState(() {});
     await context.push('/editor', extra: clip);
-    if (mounted) _sync();
+    if (mounted) {
+      _sync();
+      _loadSub(); // refresh the credit count after an edit session
+    }
   }
 
   Future<void> _ensure(int i) async {
@@ -210,9 +239,13 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final clip = widget.clips[_current];
+    final saved = _faved.contains(clip.id);
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(children: [
+      body: Column(children: [
+        Expanded(
+          child: Stack(children: [
         PageView.builder(
           controller: _pc,
           scrollDirection: Axis.vertical,
@@ -223,53 +256,87 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           },
           itemBuilder: (context, i) => _page(widget.clips[i], i),
         ),
-        // §3.2 top bar: close · PREVIEW · WATERMARKED · more
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              _circleBtn(Icons.close_rounded, () => context.canPop() ? context.pop() : context.go('/home')),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.white.withOpacity(0.35))),
-                child: Text('PREVIEW · WATERMARKED', style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 10, color: Colors.white.withOpacity(0.8))),
+        // ── top scrim: status-bar legibility (media scrim — the only allowed gradient) ──
+        const Positioned(
+          top: 0, left: 0, right: 0,
+          child: IgnorePointer(
+            child: SizedBox(
+              height: 120,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x73141129), Color(0x00141129)],
+                  ),
+                ),
               ),
-              _circleBtn(Icons.more_horiz_rounded, () {}),
-            ]),
+            ),
           ),
         ),
+        // ── top row (h48): glass back · glass mute · glass heart ──
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              height: 48,
+              child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                CircleIconBtn(
+                  Icons.arrow_back_rounded,
+                  size: H.mediaIconBtn,
+                  glass: true,
+                  onTap: () => context.canPop() ? context.pop() : context.go('/home'),
+                ),
+                Row(children: [
+                  CircleIconBtn(
+                    _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                    size: H.mediaIconBtn,
+                    glass: true,
+                    onTap: _toggleMute,
+                  ),
+                  const SizedBox(width: 8),
+                  CircleIconBtn(
+                    saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    size: H.mediaIconBtn,
+                    glass: true,
+                    iconColor: saved ? AppColors.brand : Colors.white,
+                    onTap: () => _toggleFav(clip),
+                  ),
+                ]),
+              ]),
+            ),
+          ),
+        ),
+          ]),
+        ),
+        // ── bottom bar on paper: status block + single Edit/Unlock button ──
+        _bottomBar(clip),
       ]),
     );
   }
 
-  Widget _circleBtn(IconData icon, VoidCallback onTap) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 38, height: 38,
-          decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-          child: Icon(icon, color: Colors.white, size: 18),
-        ),
-      );
-
+  // The clip fills the whole screen; the caption + scrubber ride on the video
+  // just above the paper bottom bar.
   Widget _page(Clip clip, int i) {
     final c = _ctrls[i];
     final ready = c != null && c.value.isInitialized;
     return GestureDetector(
       onTap: () {
         if (c == null) return;
-        setState(() => c.value.isPlaying ? c.pause() : c.play());
+        setState(() { c.value.isPlaying ? c.pause() : c.play(); });
       },
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // blurred fill behind — fills the screen with no visible crop of the real video
+          // blurred fill behind — fills the screen with no black bars
           if (clip.thumb != null)
             ImageFiltered(
               imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-              child: CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.cover, errorWidget: (_, __, ___) => _grad()),
+              child: CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.cover, errorWidget: (_, __, ___) => _fill()),
             )
           else
-            _grad(),
+            _fill(),
           // the actual video/thumbnail — CONTAIN so the WHOLE frame is visible (no crop)
           if (ready)
             FittedBox(
@@ -277,90 +344,233 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               child: SizedBox(width: c.value.size.width, height: c.value.size.height, child: VideoPlayer(c)),
             )
           else if (clip.thumb != null)
-            CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.contain, errorWidget: (_, __, ___) => const SizedBox.shrink()),
-          // only show a spinner when there's no thumbnail to communicate content
-          if (!ready && clip.thumb == null) const Center(child: CircularProgressIndicator(color: AppColors.brand)),
-          if (ready && !c.value.isPlaying)
-            IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white.withOpacity(0.85)))),
-          // bottom gradient scrim + meta
-          Positioned.fill(
+            CachedNetworkImage(imageUrl: clip.thumb!, fit: BoxFit.contain, errorWidget: (_, __, ___) => const SizedBox.shrink())
+          else
+            const Center(child: CircularProgressIndicator(color: AppColors.brand)),
+          // subtle bottom fade for caption/scrubber legibility (allowed media scrim)
+          const Positioned.fill(
             child: IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.85)], begin: Alignment.center, end: Alignment.bottomCenter),
+                  gradient: LinearGradient(
+                    begin: Alignment.center,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00141129), Color(0x8C141129)],
+                  ),
                 ),
               ),
             ),
           ),
-          // right action rail (Save · Share · Sound), above the meta block
-          Positioned(
-            right: 16,
-            bottom: 190 + MediaQuery.of(context).viewPadding.bottom,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              _railBtn(
-                _faved.contains(clip.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                'Save',
-                () => _toggleFav(clip),
-                color: _faved.contains(clip.id) ? AppColors.brandLight : Colors.white,
+          // centred 60px play/pause button
+          if (ready)
+            Center(
+              child: GestureDetector(
+                onTap: () => setState(() { c.value.isPlaying ? c.pause() : c.play(); }),
+                child: Container(
+                  width: 60, height: 60,
+                  decoration: const BoxDecoration(color: Color(0xF0FCFAF6), shape: BoxShape.circle),
+                  child: Icon(c.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: AppColors.ink),
+                ),
               ),
-              const SizedBox(height: 14),
-              _railBtn(Icons.ios_share_rounded, 'Share', () => _sharePreview(clip)),
-              const SizedBox(height: 14),
-              _railBtn(_muted ? Icons.volume_off_rounded : Icons.volume_up_rounded, 'Sound', _toggleMute),
-            ]),
+            ),
+          // caption + scrubber, directly on the video near the bottom
+          Positioned(
+            left: 20, right: 20, bottom: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  clip.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: kSans, fontSize: 14.5, height: 1.45, fontWeight: FontWeight.w600, color: Colors.white,
+                    shadows: [Shadow(color: Color(0x80000000), blurRadius: 4, offset: Offset(0, 1))],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (ready) _scrubber(c),
+              ],
+            ),
           ),
-          // meta + CTA sit above the system nav bar (viewPadding.bottom)
-          Positioned(left: 18, right: 18, bottom: 22 + MediaQuery.of(context).viewPadding.bottom, child: _meta(clip)),
         ],
       ),
     );
   }
 
-  Widget _railBtn(IconData icon, String label, VoidCallback onTap, {Color color = Colors.white}) => GestureDetector(
-        onTap: onTap,
-        child: Column(children: [
+  // 3px track (white .35) + white fill + 11px knob + mono timecode. Real seek.
+  Widget _scrubber(VideoPlayerController c) {
+    void seekTo(double frac, int durMs) {
+      c.seekTo(Duration(milliseconds: (frac.clamp(0.0, 1.0) * durMs).round()));
+    }
+
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: c,
+      builder: (context, v, _) {
+        final durMs = v.duration.inMilliseconds;
+        final posMs = durMs == 0 ? 0 : v.position.inMilliseconds.clamp(0, durMs);
+        final frac = durMs == 0 ? 0.0 : posMs / durMs;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LayoutBuilder(
+              builder: (context, cons) {
+                final w = cons.maxWidth;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (d) => seekTo(d.localPosition.dx / w, durMs),
+                  onHorizontalDragUpdate: (d) => seekTo(d.localPosition.dx / w, durMs),
+                  child: SizedBox(
+                    height: 16, // touch target around the 3px track
+                    child: Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        Container(
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(R.pill),
+                          ),
+                        ),
+                        Container(
+                          height: 3,
+                          width: (w * frac).clamp(0.0, w),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(R.pill),
+                          ),
+                        ),
+                        Positioned(
+                          left: (w * frac - 5.5).clamp(0.0, w - 11),
+                          child: Container(
+                            width: 11, height: 11,
+                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${_fmt(v.position)} / ${_fmt(v.duration)}',
+              style: const TextStyle(fontFamily: kMono, fontSize: 10.5, color: Colors.white),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _bottomBar(Clip clip) {
+    final editable = _editable;
+    final title = editable ? 'Ready to edit' : 'Preview only';
+    final sub = editable ? 'Opening the editor uses 1 credit' : 'Subscribe to edit and export';
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.bg,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
+          child: Row(children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                  const SizedBox(height: 4),
+                  Text(sub, style: const TextStyle(fontFamily: kSans, fontSize: 11.5, height: 1.3, fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            SizedBox(
+              height: 50,
+              child: FilledButton(
+                onPressed: editable ? () => _showCreditSheet(clip) : () => context.push('/plans'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  padding: const EdgeInsets.symmetric(horizontal: 26),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
+                ),
+                child: Text(editable ? 'Edit' : 'Unlock', style: const TextStyle(fontFamily: kSans, fontSize: 15.5, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  // ── §11 credit confirm ──────────────────────────────────────────────────────
+  void _showCreditSheet(Clip clip) {
+    final left = _creditsLeft;
+    final after = left > 0 ? left - 1 : left;
+    showAppSheet(context, (ctx) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Container(
-            width: 46, height: 46,
-            decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 20),
+            width: 44, height: 44, alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.brandTint, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.toll_outlined, size: 22, color: AppColors.brand),
           ),
+          const SizedBox(height: 16),
+          const Text(
+            'Opening the editor uses 1 credit',
+            style: TextStyle(fontFamily: kSans, fontSize: 21, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'The credit is charged once for this clip. You can keep editing it as long as you like — but once you export, this clip is final and cannot be re-edited.',
+            style: TextStyle(fontFamily: kSans, fontSize: 13.5, height: 1.55, fontWeight: FontWeight.w400, color: AppColors.inkMuted),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.brandTint,
+              borderRadius: BorderRadius.circular(R.thumb),
+            ),
+            child: Column(children: [
+              _creditRow('Credits left now', '$left', AppColors.ink),
+              const Divider(height: 1, thickness: 1, color: AppColors.brandBorder, indent: 16, endIndent: 16),
+              _creditRow('After opening', '$after', AppColors.brand),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          PrimaryBtn('Use 1 credit and edit', onTap: () {
+            Navigator.of(ctx).pop();
+            _openEditor(clip);
+          }),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 11)),
+          GhostBtn('Not now', onTap: () => Navigator.of(ctx).pop()),
+        ],
+      );
+    });
+  }
+
+  Widget _creditRow(String label, String value, Color valueColor) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Expanded(child: Text(label, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w500, color: AppColors.brandInk))),
+          Text(value, style: TextStyle(fontFamily: kMono, fontSize: 14, fontWeight: FontWeight.w600, color: valueColor)),
         ]),
       );
 
-  Future<void> _sharePreview(Clip clip) async {
-    try {
-      await Share.share('Check out "${clip.title}" on ClipCart');
-    } catch (_) {}
+  String _fmt(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
   }
 
-  Widget _grad() => const DecoratedBox(decoration: BoxDecoration(color: AppColors.dark2));
-
-  Widget _meta(Clip clip) {
-    // meta line: CATEGORY · DURATION · RATIO · @handle (mono, §3.2)
-    final cat = (clip.category ?? clip.genre ?? 'clip').toUpperCase();
-    final metaLine = '$cat · ${clip.durationLabel} · 9:16 · @${clip.editorName ?? 'creator'}';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(metaLine, style: TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: Colors.white.withOpacity(0.75))),
-        const SizedBox(height: 7),
-        Text(clip.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -0.4, height: 1.1)),
-        const SizedBox(height: 7),
-        Text('Preview quality · full HD unlocks in the editor.', style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 14, height: 1.45)),
-        const SizedBox(height: 14),
-        SizedBox(
-          height: 54,
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: () => _openEditor(clip),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.brand, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13))),
-            child: const Text('Use this template', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _fill() => const DecoratedBox(decoration: BoxDecoration(color: AppColors.mediaPlaceholder));
 }

@@ -21,11 +21,11 @@ import '../../services/sticker_service.dart';
 import '../../services/text_render.dart';
 import '../../widgets/primary_button.dart';
 
-// Editor dark chrome — the design's "room you enter and leave" (warm near-black).
-const _kBg = Color(0xFF15120F);   // --dk  editor canvas backdrop
-const _kPanel = Color(0xFF27241F); // --dk2 control panels
-const _kChip = Color(0xFF38342D);  // raised tool tiles
-const _kAccent = Color(0xFF9B87E8); // --brl brand-light on dark chrome
+// Editor warm-paper light chrome (v3 spec §12) — the app's warm-paper theme.
+const _kBg = AppColors.bg;            // #FCFAF6 canvas backdrop / top bar
+const _kPanel = AppColors.surfaceHover; // #F7F5F1 control panels / bottom sheets
+const _kChip = AppColors.bgAlt;       // #EFECE5 raised tool tiles / fields
+const _kAccent = AppColors.brand;     // #684FC8 brand primary
 
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
@@ -462,17 +462,18 @@ class _EditorScreenState extends State<EditorScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
+              padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Center(child: _Grabber()),
                 Row(children: [
-                  const Text('Font', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                  const Text('Font', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                   const Spacer(),
                   TextButton.icon(
                     onPressed: () async {
@@ -480,7 +481,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       if (f != null) { _mutate(() { s.fontFamily = f.family; s.fontFilePath = f.path; }); setSheet(() {}); }
                     },
                     icon: const Icon(Icons.add, size: 18, color: _kAccent),
-                    label: const Text('Import', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w800)),
+                    label: const Text('Import', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w600)),
                   ),
                 ]),
                 const SizedBox(height: 10),
@@ -514,14 +515,14 @@ class _EditorScreenState extends State<EditorScreen> {
         decoration: BoxDecoration(
           color: _kChip,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? _kAccent : Colors.white12, width: selected ? 2 : 1),
+          border: Border.all(color: selected ? _kAccent : AppColors.line, width: selected ? 2 : 1),
         ),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('Aa', style: TextStyle(fontFamily: family, color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700)),
+          Text('Aa', style: TextStyle(fontFamily: family, color: AppColors.ink, fontSize: 26, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(color: selected ? _kAccent : Colors.white60, fontSize: 10, fontWeight: FontWeight.w700)),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(color: selected ? _kAccent : AppColors.inkMuted, fontSize: 10, fontWeight: FontWeight.w500)),
           ),
         ]),
       ),
@@ -541,15 +542,16 @@ class _EditorScreenState extends State<EditorScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
+              padding: EdgeInsets.fromLTRB(18, 10, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Adjust', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Center(child: _Grabber()),
+                const Text('Adjust', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 14),
                 Wrap(spacing: 10, runSpacing: 10, children: [
                   _adjToggle('B', s.bold, () { snap(); setSheet(() { s.bold = !s.bold; setState(() {}); }); }, bold: true),
@@ -586,7 +588,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   const Spacer(flex: 2),
                 ]),
                 const SizedBox(height: 4),
-                Align(alignment: Alignment.centerLeft, child: Text('Text shows from ${s.start.toStringAsFixed(1)}s to ${s.end.toStringAsFixed(1)}s', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'IBMPlexMono'))),
+                Align(alignment: Alignment.centerLeft, child: Text('Text shows from ${s.start.toStringAsFixed(1)}s to ${s.end.toStringAsFixed(1)}s', style: const TextStyle(color: AppColors.inkMuted, fontSize: 11, fontFamily: 'IBMPlexMono'))),
                 const SizedBox(height: 12),
                 SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
               ]),
@@ -601,9 +603,9 @@ class _EditorScreenState extends State<EditorScreen> {
         onTap: onTap,
         child: Container(
           width: 46, height: 40,
-          decoration: BoxDecoration(color: on ? _kAccent : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? _kAccent : Colors.white12)),
+          decoration: BoxDecoration(color: on ? AppColors.brandTint : _kChip, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? _kAccent : AppColors.line)),
           alignment: Alignment.center,
-          child: Text(label, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: bold ? FontWeight.w900 : FontWeight.w700, fontStyle: italic ? FontStyle.italic : FontStyle.normal)),
+          child: Text(label, style: TextStyle(color: on ? _kAccent : AppColors.ink, fontSize: 18, fontWeight: FontWeight.w600, fontStyle: italic ? FontStyle.italic : FontStyle.normal)),
         ),
       );
 
@@ -611,21 +613,21 @@ class _EditorScreenState extends State<EditorScreen> {
         onTap: onTap,
         child: Container(
           height: 40, padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(color: on ? _kAccent : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? _kAccent : Colors.white12)),
+          decoration: BoxDecoration(color: on ? AppColors.brandTint : _kChip, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? _kAccent : AppColors.line)),
           alignment: Alignment.center,
-          child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(i, size: 16, color: Colors.white), const SizedBox(width: 6), Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))]),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(i, size: 16, color: on ? _kAccent : AppColors.ink), const SizedBox(width: 6), Text(label, style: TextStyle(color: on ? _kAccent : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13))]),
         ),
       );
 
   Widget _fadeRowGeneric(String label, double value, double min, double max, ValueChanged<double> onChanged, {String suffix = ''}) => Row(children: [
-        SizedBox(width: 108, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+        SizedBox(width: 108, child: Text(label, style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 13))),
         Expanded(
           child: SliderTheme(
-            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: _kAccent, inactiveTrackColor: Colors.white24, overlayColor: _kAccent.withOpacity(0.15)),
+            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: AppColors.line, trackHeight: 4, overlayColor: _kAccent.withOpacity(0.15), thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7.5, elevation: 1.5)),
             child: Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged),
           ),
         ),
-        SizedBox(width: 46, child: Text('${value.toStringAsFixed(1)}$suffix', textAlign: TextAlign.right, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12))),
+        SizedBox(width: 46, child: Text('${value.toStringAsFixed(1)}$suffix', textAlign: TextAlign.right, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w500, fontSize: 12, fontFamily: 'IBMPlexMono'))),
       ]);
 
   // ---------- layers panel (CapCut-style: reorder z, select, hide, delete) ----------
@@ -671,23 +673,23 @@ class _EditorScreenState extends State<EditorScreen> {
             key: isLogo ? const ValueKey('logo') : ObjectKey(it),
             margin: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
-              color: selected ? _kAccent.withOpacity(0.18) : _kChip,
+              color: selected ? AppColors.brandTint : _kChip,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: selected ? _kAccent : Colors.transparent),
+              border: Border.all(color: selected ? _kAccent : AppColors.line),
             ),
             child: ListTile(
               dense: true,
               leading: selectMode
                   ? Icon(sel.contains(it) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                      color: sel.contains(it) ? _kAccent : Colors.white38, size: 26)
+                      color: sel.contains(it) ? _kAccent : AppColors.inkFaint, size: 26)
                   : Container(
                       width: 34, height: 34,
-                      decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
-                      child: Icon(icon, color: Colors.white70, size: 18),
+                      decoration: BoxDecoration(color: selected ? _kAccent : AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: selected ? _kAccent : AppColors.line)),
+                      child: Icon(icon, color: selected ? Colors.white : AppColors.inkMuted, size: 18),
                     ),
               title: Text(label,
                   maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: hidden ? Colors.white38 : Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                  style: TextStyle(color: hidden ? AppColors.inkFaint : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14)),
               onTap: () {
                 if (selectMode) {
                   setSheet(() => sel.contains(it) ? sel.remove(it) : sel.add(it));
@@ -699,7 +701,7 @@ class _EditorScreenState extends State<EditorScreen> {
               trailing: selectMode ? null : Row(mainAxisSize: MainAxisSize.min, children: [
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: Icon(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: Colors.white54, size: 20),
+                  icon: Icon(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppColors.inkMuted, size: 20),
                   onPressed: () {
                     _snapshot();
                     setState(() {
@@ -732,31 +734,30 @@ class _EditorScreenState extends State<EditorScreen> {
                     setSheet(() {});
                   },
                 ),
-                const Icon(Icons.drag_handle_rounded, color: Colors.white30),
+                const Icon(Icons.drag_handle_rounded, color: AppColors.chevron),
               ]),
             ),
           );
         }
 
         return Container(
-          decoration: const BoxDecoration(color: _kPanel, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-          padding: EdgeInsets.fromLTRB(14, 16, 14, 16 + MediaQuery.of(context).viewPadding.bottom),
+          decoration: const BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          padding: EdgeInsets.fromLTRB(14, 10, 14, 16 + MediaQuery.of(context).viewPadding.bottom),
           constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(9)))),
-            const SizedBox(height: 14),
+            const Center(child: _Grabber()),
             Row(children: [
-              const Text('Layers', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+              const Text('Layers', style: TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600)),
               const Spacer(),
               if (ordered.isNotEmpty)
                 GestureDetector(
                   onTap: () => setSheet(() { selectMode = !selectMode; sel.clear(); }),
-                  child: Text(selectMode ? 'Done' : 'Select', style: const TextStyle(color: _kAccent, fontSize: 13.5, fontWeight: FontWeight.w700)),
+                  child: Text(selectMode ? 'Done' : 'Select', style: const TextStyle(color: _kAccent, fontSize: 13.5, fontWeight: FontWeight.w600)),
                 ),
             ]),
             const SizedBox(height: 8),
             if (ordered.isEmpty)
-              const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No layers yet.\nAdd text or a logo.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white54))))
+              const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No layers yet.\nAdd text or a logo.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.inkMuted))))
             else
               Flexible(
                 child: ReorderableListView(
@@ -791,7 +792,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     });
                     setSheet(() {});
                   },
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 12)),
                   icon: const Icon(Icons.visibility_off_rounded, size: 18),
                   label: const Text('Hide/Show'),
                 )),
@@ -809,7 +810,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     });
                     setSheet(() { sel.clear(); selectMode = false; });
                   },
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.err, side: const BorderSide(color: Color(0x55F04438)), padding: const EdgeInsets.symmetric(vertical: 12)),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.errText, side: const BorderSide(color: AppColors.errBg), padding: const EdgeInsets.symmetric(vertical: 12)),
                   icon: const Icon(Icons.delete_outline_rounded, size: 18),
                   label: Text('Delete (${sel.length})'),
                 )),
@@ -839,20 +840,20 @@ class _EditorScreenState extends State<EditorScreen> {
             _ghostChip(
               onTap: () async { _textFocus.unfocus(); await _openFontPicker(); if (mounted && _typing) WidgetsBinding.instance.addPostFrameCallback((_) => _textFocus.requestFocus()); },
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('Aa', style: TextStyle(fontFamily: s?.fontFamily, color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                Text('Aa', style: TextStyle(fontFamily: s?.fontFamily, color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13)),
                 const SizedBox(width: 3),
-                const Icon(Icons.expand_more_rounded, size: 13, color: Colors.white38),
+                const Icon(Icons.expand_more_rounded, size: 13, color: AppColors.inkFaint),
               ]),
             ),
             _chipDivider(),
             // size steppers (client asked for text size adjust while typing)
             _ghostChip(
               onTap: () { if (s != null) setState(() => s.scale = (s.scale - 0.15).clamp(0.4, 4.0)); },
-              child: const Text('A−', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+              child: const Text('A−', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13)),
             ),
             _ghostChip(
               onTap: () { if (s != null) setState(() => s.scale = (s.scale + 0.15).clamp(0.4, 4.0)); },
-              child: const Text('A+', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+              child: const Text('A+', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 15)),
             ),
             _chipDivider(),
             for (final p in _textPresets) _presetChip(s, p),
@@ -866,7 +867,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   alignment: Alignment.center,
                   child: Container(
                     width: 20, height: 20,
-                    decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: s?.color == c ? _kAccent : Colors.white24, width: s?.color == c ? 2.5 : 1)),
+                    decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: s?.color == c ? _kAccent : AppColors.line, width: s?.color == c ? 2.5 : 1)),
                   ),
                 ),
               ),
@@ -890,15 +891,17 @@ class _EditorScreenState extends State<EditorScreen> {
               maxLines: 4,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+              style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w500, fontSize: 14),
               cursorColor: _kAccent,
               onChanged: (v) => setState(() => s?.text = v),
               decoration: InputDecoration(
                 hintText: 'Type your text…  (Enter = new line)',
-                hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
-                filled: true, fillColor: Colors.white.withOpacity(0.06), isDense: true,
+                hintStyle: const TextStyle(color: AppColors.inkFaint, fontSize: 14),
+                filled: true, fillColor: AppColors.surface, isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _kAccent, width: 1.5)),
               ),
             ),
           ),
@@ -908,7 +911,7 @@ class _EditorScreenState extends State<EditorScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(color: _kAccent, borderRadius: BorderRadius.circular(10)),
-              child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
+              child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5)),
             ),
           ),
         ]),
@@ -965,15 +968,16 @@ class _EditorScreenState extends State<EditorScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
+              padding: EdgeInsets.fromLTRB(18, 10, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Music', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Center(child: _Grabber()),
+                const Text('Music', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 14),
                 if (p.musicPath == null)
                   SizedBox(
@@ -991,7 +995,7 @@ class _EditorScreenState extends State<EditorScreen> {
                           setSheet(() {});
                         }
                       },
-                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 13)),
+                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 13)),
                       icon: const Icon(Icons.library_music_rounded, size: 18),
                       label: const Text('Import from device'),
                     ),
@@ -1000,14 +1004,14 @@ class _EditorScreenState extends State<EditorScreen> {
                   // track card
                   Container(
                     padding: const EdgeInsets.all(11),
-                    decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(11), border: Border.all(color: Colors.white12)),
+                    decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.line)),
                     child: Row(children: [
-                      Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF3A2E12), borderRadius: BorderRadius.circular(9)), child: const Icon(Icons.music_note_rounded, color: Color(0xFFD89A3C), size: 20)),
+                      Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.goldBg, borderRadius: BorderRadius.circular(9)), child: const Icon(Icons.music_note_rounded, color: AppColors.goldText, size: 20)),
                       const SizedBox(width: 11),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(p.musicPath!.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                        Text(p.musicPath!.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink, fontSize: 14, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 2),
-                        const Text('from your device', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexMono')),
+                        const Text('from your device', style: TextStyle(color: AppColors.inkMuted, fontSize: 11, fontFamily: 'IBMPlexMono')),
                       ])),
                       GestureDetector(
                         onTap: () async {
@@ -1023,10 +1027,10 @@ class _EditorScreenState extends State<EditorScreen> {
                   _fadeRowGeneric('Clip audio', p.originalVolume, 0, 1, (v) { snapVol(); setSheet(() { p.originalVolume = v; setState(() {}); }); }, suffix: ''),
                   _fadeRowGeneric('Start at', p.musicStart, 0, 60, (v) { snapVol(); setSheet(() { p.musicStart = v; setState(() {}); }); }, suffix: 's'),
                   const SizedBox(height: 2),
-                  Align(alignment: Alignment.centerLeft, child: Text('Starts at ${fmtStart(p.musicStart)}', style: const TextStyle(color: Colors.white38, fontSize: 11, fontFamily: 'IBMPlexMono'))),
+                  Align(alignment: Alignment.centerLeft, child: Text('Starts at ${fmtStart(p.musicStart)}', style: const TextStyle(color: AppColors.inkMuted, fontSize: 11, fontFamily: 'IBMPlexMono'))),
                   const SizedBox(height: 6),
                   Row(children: [
-                    const Text('Fade out at the end', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    const Text('Fade out at the end', style: TextStyle(color: AppColors.ink, fontSize: 13)),
                     const Spacer(),
                     Switch(value: p.musicFadeOut, activeColor: _kAccent, onChanged: (v) { _mutate(() => p.musicFadeOut = v); setSheet(() {}); }),
                   ]),
@@ -1058,14 +1062,15 @@ class _EditorScreenState extends State<EditorScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(18, 14, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
+            padding: EdgeInsets.fromLTRB(18, 10, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Logo position & size', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const Center(child: _Grabber()),
+              const Text('Logo position & size', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
               const SizedBox(height: 14),
               Row(children: [
                 Expanded(child: _NumField(label: 'X %', value: p.logoDx * 100, min: 0, max: 100, onChanged: (v) { snap(); setSheet(() { p.logoDx = (v / 100).clamp(0.0, 1.0); setState(() {}); }); })),
@@ -1077,7 +1082,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 Expanded(child: _NumField(label: 'Angle°', value: p.logoRotation * 180 / math.pi, min: -180, max: 180, onChanged: (v) { snap(); setSheet(() { p.logoRotation = v * math.pi / 180; setState(() {}); }); })),
               ]),
               const SizedBox(height: 8),
-              const Text('Or just drag the logo on the canvas.', style: TextStyle(color: Colors.white38, fontSize: 12)),
+              const Text('Or just drag the logo on the canvas.', style: TextStyle(color: AppColors.inkMuted, fontSize: 12)),
               const SizedBox(height: 14),
               SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
             ]),
@@ -1098,25 +1103,26 @@ class _EditorScreenState extends State<EditorScreen> {
     final kit = bk.kit != null ? BrandKit.fromJson(bk.kit!.toJson()) : BrandKit();
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _kPanel,
+      backgroundColor: AppColors.bg,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(18, 16, 18, 16 + MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewInsets.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Center(child: _Grabber()),
               Row(children: [
                 const Icon(Icons.palette_rounded, color: _kAccent, size: 20),
                 const SizedBox(width: 8),
-                const Text('Brand Kit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Text('Brand Kit', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const Spacer(),
-                TextButton(onPressed: () async { await bk.saveKit(kit); if (context.mounted) Navigator.pop(context); }, child: const Text('Save', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w800))),
+                TextButton(onPressed: () async { await bk.saveKit(kit); if (context.mounted) Navigator.pop(context); }, child: const Text('Save', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w600))),
               ]),
-              Text('Save your colors, font & logo once — apply to any clip in a tap.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              Text('Save your colors, font & logo once — apply to any clip in a tap.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
               const SizedBox(height: 16),
               // palette
-              const Text('Colors', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+              const Text('Colors', style: TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5)),
               const SizedBox(height: 8),
               Wrap(spacing: 10, runSpacing: 10, children: [
                 for (var i = 0; i < kit.colors.length; i++)
@@ -1125,18 +1131,18 @@ class _EditorScreenState extends State<EditorScreen> {
                       final c = await _pickBrandColor(kit.colors[i]);
                       if (c != null) setSheet(() => kit.colors[i] = c);
                     },
-                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(kit.colors[i]), shape: BoxShape.circle, border: Border.all(color: Colors.white24, width: i == 0 ? 3 : 1))),
+                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(kit.colors[i]), shape: BoxShape.circle, border: Border.all(color: i == 0 ? _kAccent : AppColors.line, width: i == 0 ? 3 : 1))),
                   ),
                 if (kit.colors.length < 4)
                   GestureDetector(
                     onTap: () => setSheet(() => kit.colors.add(0xFF12B76A)),
-                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.white10, shape: BoxShape.circle, border: Border.all(color: Colors.white24)), child: const Icon(Icons.add, color: Colors.white54, size: 20)),
+                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: _kChip, shape: BoxShape.circle, border: Border.all(color: AppColors.line)), child: const Icon(Icons.add, color: AppColors.inkMuted, size: 20)),
                   ),
               ]),
               const SizedBox(height: 16),
               // font
               Row(children: [
-                const Text('Font', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                const Text('Font', style: TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: SizedBox(
@@ -1149,8 +1155,8 @@ class _EditorScreenState extends State<EditorScreen> {
                             margin: const EdgeInsets.only(right: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(color: kit.fontFamily == f.family ? _kAccent : Colors.white10, borderRadius: BorderRadius.circular(9), border: Border.all(color: kit.fontFamily == f.family ? _kAccent : Colors.white12)),
-                            child: Text('Aa', style: TextStyle(fontFamily: f.family, color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                            decoration: BoxDecoration(color: kit.fontFamily == f.family ? _kAccent : _kChip, borderRadius: BorderRadius.circular(9), border: Border.all(color: kit.fontFamily == f.family ? _kAccent : AppColors.line)),
+                            child: Text('Aa', style: TextStyle(fontFamily: f.family, color: kit.fontFamily == f.family ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                           ),
                         ),
                     ]),
@@ -1160,10 +1166,10 @@ class _EditorScreenState extends State<EditorScreen> {
               const SizedBox(height: 16),
               // logo
               Row(children: [
-                const Text('Logo', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                const Text('Logo', style: TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5)),
                 const SizedBox(width: 12),
                 if (kit.logoPath != null) ...[
-                  Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)), clipBehavior: Clip.antiAlias, child: Image.file(File(kit.logoPath!), fit: BoxFit.contain)),
+                  Container(width: 44, height: 44, decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(8)), clipBehavior: Clip.antiAlias, child: Image.file(File(kit.logoPath!), fit: BoxFit.contain)),
                   const SizedBox(width: 10),
                 ],
                 OutlinedButton.icon(
@@ -1174,7 +1180,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       setSheet(() => kit.logoPath = p);
                     }
                   },
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: const BorderSide(color: Colors.white24)),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line)),
                   icon: const Icon(Icons.upload_rounded, size: 16),
                   label: Text(kit.logoPath == null ? 'Add logo' : 'Change'),
                 ),
@@ -1192,7 +1198,8 @@ class _EditorScreenState extends State<EditorScreen> {
     const palette = [0xFFFFFFFF, 0xFF000000, 0xFF0E9E6E, 0xFF12B886, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF9B5DE5, 0xFF17131F, 0xFF0E9E6E];
     return showModalBottomSheet<int>(
       context: context,
-      backgroundColor: _kPanel,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(18),
@@ -1200,7 +1207,7 @@ class _EditorScreenState extends State<EditorScreen> {
             for (final c in palette)
               GestureDetector(
                 onTap: () => Navigator.pop(context, c),
-                child: Container(width: 42, height: 42, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == current ? _kAccent : Colors.white24, width: c == current ? 3 : 1))),
+                child: Container(width: 42, height: 42, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == current ? _kAccent : AppColors.line, width: c == current ? 3 : 1))),
               ),
           ]),
         ),
@@ -1221,7 +1228,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _project!.logoHidden = false;
       }
     });
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brand applied ✨')));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brand applied')));
   }
 
   void _applyStyle(SubtitleSegment s, Map<String, dynamic> t) {
@@ -1247,9 +1254,9 @@ class _EditorScreenState extends State<EditorScreen> {
       onLongPress: onLong,
       child: Container(
         decoration: BoxDecoration(
-          color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : Colors.black26,
+          color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.ink,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : Colors.white12, width: s.fontFamily == tpl['font'] ? 2 : 1),
+          border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : AppColors.line, width: s.fontFamily == tpl['font'] ? 2 : 1),
         ),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(6),
@@ -1278,18 +1285,19 @@ class _EditorScreenState extends State<EditorScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
             child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 14, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Styles', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const Center(child: _Grabber()),
+              const Text('Styles', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
               const SizedBox(height: 4),
-              Text('One-tap caption look. Long-press a saved style to remove.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              Text('One-tap caption look. Long-press a saved style to remove.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
               const SizedBox(height: 12),
               Flexible(
                 child: GridView.count(
@@ -1311,12 +1319,12 @@ class _EditorScreenState extends State<EditorScreen> {
                         setSheet(() {});
                       },
                       child: Container(
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24, style: BorderStyle.solid)),
+                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
                         alignment: Alignment.center,
                         child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.add_rounded, color: _kAccent, size: 24),
                           SizedBox(height: 3),
-                          Text('Save current', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+                          Text('Save current', style: TextStyle(color: AppColors.inkMuted, fontSize: 10, fontWeight: FontWeight.w600)),
                         ]),
                       ),
                     ),
@@ -1356,13 +1364,13 @@ class _EditorScreenState extends State<EditorScreen> {
     return showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: _kPanel,
-        title: const Text('Save style', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.surface,
+        title: const Text('Save style', style: TextStyle(color: AppColors.ink)),
         content: TextField(
           controller: ctl, autofocus: true,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppColors.ink),
           cursorColor: _kAccent,
-          decoration: const InputDecoration(hintText: 'Style name', hintStyle: TextStyle(color: Colors.white38), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24))),
+          decoration: const InputDecoration(hintText: 'Style name', hintStyle: TextStyle(color: AppColors.inkFaint), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.line))),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -1380,12 +1388,12 @@ class _EditorScreenState extends State<EditorScreen> {
           margin: const EdgeInsets.only(right: 7),
           padding: const EdgeInsets.symmetric(horizontal: 10),
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white12)),
+          decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.line)),
           child: child,
         ),
       );
 
-  Widget _chipDivider() => Container(width: 1, height: 18, margin: const EdgeInsets.only(right: 9, top: 6), color: Colors.white12);
+  Widget _chipDivider() => Container(width: 1, height: 18, margin: const EdgeInsets.only(right: 9, top: 6), color: AppColors.line);
 
   Widget _presetChip(SubtitleSegment? s, Map<String, dynamic> p) {
     final bg = p['bg'] as bool;
@@ -1408,9 +1416,9 @@ class _EditorScreenState extends State<EditorScreen> {
         margin: const EdgeInsets.only(right: 7),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: bg ? Color(p['bgc'] as int) : Colors.white.withOpacity(0.06),
+          color: bg ? Color(p['bgc'] as int) : _kChip,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: AppColors.line),
         ),
         child: Text('Aa', style: TextStyle(
           color: color,
@@ -1426,8 +1434,8 @@ class _EditorScreenState extends State<EditorScreen> {
         onTap: onTap,
         child: Container(
           width: 30, height: 30, margin: const EdgeInsets.only(right: 7),
-          decoration: BoxDecoration(color: on ? _kAccent : Colors.white.withOpacity(0.06), borderRadius: BorderRadius.circular(8), border: Border.all(color: on ? _kAccent : Colors.white12)),
-          child: Icon(i, size: 15, color: Colors.white),
+          decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(8), border: Border.all(color: on ? _kAccent : AppColors.line)),
+          child: Icon(i, size: 15, color: on ? Colors.white : AppColors.ink),
         ),
       );
 
@@ -1515,9 +1523,9 @@ class _EditorScreenState extends State<EditorScreen> {
     int tab = 0;
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _kPanel,
+      backgroundColor: AppColors.bg,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) {
           return AnimatedBuilder(
@@ -1529,9 +1537,10 @@ class _EditorScreenState extends State<EditorScreen> {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
                   child: Padding(
-                  padding: EdgeInsets.fromLTRB(14, 14, 14, 10 + MediaQuery.of(context).viewPadding.bottom),
+                  padding: EdgeInsets.fromLTRB(14, 10, 14, 10 + MediaQuery.of(context).viewPadding.bottom),
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Stickers & emoji', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                    const Center(child: _Grabber()),
+                    const Text('Stickers & emoji', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                     const SizedBox(height: 10),
                     if (svc.loading && !useR2)
                       const SizedBox(height: 280, child: Center(child: CircularProgressIndicator(color: _kAccent)))
@@ -1546,8 +1555,8 @@ class _EditorScreenState extends State<EditorScreen> {
                               child: Container(
                                 margin: const EdgeInsets.only(right: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(color: tab == i ? _kAccent : _kChip, borderRadius: BorderRadius.circular(18)),
-                                child: Text(cats[i].name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                                decoration: BoxDecoration(color: tab == i ? _kAccent : _kChip, borderRadius: BorderRadius.circular(18), border: Border.all(color: tab == i ? _kAccent : AppColors.line)),
+                                child: Text(cats[i].name, style: TextStyle(color: tab == i ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 12.5)),
                               ),
                             ),
                         ]),
@@ -1589,7 +1598,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         ),
                       ),
                     if (svc.attribution != null)
-                      Padding(padding: const EdgeInsets.only(top: 8), child: Text(svc.attribution!, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 9.5))),
+                      Padding(padding: const EdgeInsets.only(top: 8), child: Text(svc.attribution!, style: const TextStyle(color: AppColors.inkFaint, fontSize: 9.5))),
                   ]),
                 ),
                 ),
@@ -1633,17 +1642,18 @@ class _EditorScreenState extends State<EditorScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) => SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 14, 16, 18 + MediaQuery.of(context).viewPadding.bottom),
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 18 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Animation', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+              const Center(child: _Grabber()),
+              const Text('Animation', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
               const SizedBox(height: 4),
-              Text('Pick a caption look — tap to preview.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              Text('Pick a caption look — tap to preview.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
               const SizedBox(height: 12),
               SizedBox(
                 height: 168,
@@ -1665,12 +1675,12 @@ class _EditorScreenState extends State<EditorScreen> {
                           decoration: BoxDecoration(
                             color: getAnim() == a ? _kAccent : _kChip,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: getAnim() == a ? _kAccent : Colors.white12),
+                            border: Border.all(color: getAnim() == a ? _kAccent : AppColors.line),
                           ),
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(a.icon, color: Colors.white, size: 22),
+                            Icon(a.icon, color: getAnim() == a ? Colors.white : AppColors.inkMuted, size: 22),
                             const SizedBox(height: 5),
-                            Text(a.label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                            Text(a.label, style: TextStyle(color: getAnim() == a ? Colors.white : AppColors.ink, fontSize: 10, fontWeight: FontWeight.w500)),
                           ]),
                         ),
                       ),
@@ -1678,7 +1688,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text('Fade', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5)),
+              const Text('Fade', style: TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5)),
               const SizedBox(height: 6),
               _fadeRow('Fade in', getFI(), (v) { snap(); setSheet(() { setFI(v); setState(() {}); }); }),
               _fadeRow('Fade out', getFO(), (v) { snap(); setSheet(() { setFO(v); setState(() {}); }); }),
@@ -1705,14 +1715,14 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Widget _fadeRow(String label, double value, ValueChanged<double> onChanged) => Row(children: [
-        SizedBox(width: 78, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
+        SizedBox(width: 78, child: Text(label, style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 13))),
         Expanded(
           child: SliderTheme(
-            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: _kAccent, inactiveTrackColor: Colors.white24, overlayColor: _kAccent.withOpacity(0.15)),
+            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: AppColors.line, trackHeight: 4, overlayColor: _kAccent.withOpacity(0.15), thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7.5, elevation: 1.5)),
             child: Slider(value: value.clamp(0, 2), min: 0, max: 2, divisions: 20, onChanged: onChanged),
           ),
         ),
-        SizedBox(width: 44, child: Text('${value.toStringAsFixed(1)}s', textAlign: TextAlign.right, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12))),
+        SizedBox(width: 44, child: Text('${value.toStringAsFixed(1)}s', textAlign: TextAlign.right, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w500, fontSize: 12, fontFamily: 'IBMPlexMono'))),
       ]);
 
   void _mutate(VoidCallback fn) {
@@ -1726,14 +1736,14 @@ class _EditorScreenState extends State<EditorScreen> {
     final p = _project!;
     return await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: _kPanel,
+      backgroundColor: AppColors.bg,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(builder: (context, setSheet) {
         Widget optRow<T>(String title, List<(String, T)> options, T current, ValueChanged<T> onPick) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w800, fontSize: 12.5, letterSpacing: 0.5)),
+                Text(title, style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5, letterSpacing: 0.5)),
                 const SizedBox(height: 8),
                 Row(children: [
                   for (final o in options)
@@ -1745,11 +1755,11 @@ class _EditorScreenState extends State<EditorScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: current == o.$2 ? _kAccent : Colors.white.withOpacity(0.06),
+                            color: current == o.$2 ? _kAccent : _kChip,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: current == o.$2 ? _kAccent : Colors.white12),
+                            border: Border.all(color: current == o.$2 ? _kAccent : AppColors.line),
                           ),
-                          child: Text(o.$1, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                          child: Text(o.$1, style: TextStyle(color: current == o.$2 ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14)),
                         ),
                       ),
                     ),
@@ -1759,25 +1769,38 @@ class _EditorScreenState extends State<EditorScreen> {
             );
         return SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(18, 16, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+            padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Export settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+              const Center(child: _Grabber()),
+              const Text('Export settings', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 17)),
               const SizedBox(height: 4),
-              Text('Renders on this phone · saves to your Gallery', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+              Text('Renders on this phone · saves to your Gallery', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
               const SizedBox(height: 18),
               optRow<int>('QUALITY', const [('720p', 720), ('1080p', 1080)], p.resolution.shortEdge,
                   (v) => p.resolution = v == 720 ? ExportResolution.p720 : ExportResolution.p1080),
               optRow<int>('FRAME RATE', const [('30 fps', 30), ('60 fps', 60)], p.fps, (v) => p.fps = v),
               // Watermark (design places it in export settings)
               Row(children: [
-                const Text('Watermark', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                const Text('Watermark', style: TextStyle(color: AppColors.ink, fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 6),
-                Text(p.watermarkOn ? 'On' : 'Off', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                Text(p.watermarkOn ? 'On' : 'Off', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
                 const Spacer(),
                 Switch(value: p.watermarkOn, activeColor: _kAccent, onChanged: (v) => setSheet(() => p.watermarkOn = v)),
               ]),
-              const SizedBox(height: 12),
-              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Export video', icon: Icons.ios_share, onPressed: () => Navigator.pop(context, true))),
+              const SizedBox(height: 14),
+              // §18 gold final-warning notice (display only)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: AppColors.goldBg, borderRadius: BorderRadius.circular(14)),
+                child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.info_outline_rounded, size: 16, color: AppColors.goldText),
+                  SizedBox(width: 10),
+                  Expanded(child: Text('Once exported, this clip is final and cannot be re-edited.', style: TextStyle(color: AppColors.goldText, fontSize: 12.5, height: 1.4, fontWeight: FontWeight.w500))),
+                ]),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(width: double.infinity, child: PrimaryButton(label: 'Export now', icon: Icons.ios_share, onPressed: () => Navigator.pop(context, true))),
               const SizedBox(height: 8),
             ]),
           ),
@@ -1805,9 +1828,9 @@ class _EditorScreenState extends State<EditorScreen> {
       builder: (_) => PopScope(
         canPop: false,
         child: AlertDialog(
-          backgroundColor: _kPanel,
+          backgroundColor: AppColors.surface,
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Rendering your video…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            const Text('Rendering your video…', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600)),
             const SizedBox(height: 14),
             ValueListenableBuilder<double>(
               valueListenable: progress,
@@ -1817,13 +1840,13 @@ class _EditorScreenState extends State<EditorScreen> {
                   child: LinearProgressIndicator(
                     value: v <= 0 ? null : v, // indeterminate until the first frame
                     minHeight: 6,
-                    backgroundColor: Colors.white12,
+                    backgroundColor: AppColors.line,
                     valueColor: const AlwaysStoppedAnimation(_kAccent),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(v <= 0 ? 'Preparing…' : '${(v * 100).round()}%  ·  keep the app open',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(color: AppColors.inkMuted, fontSize: 12, fontWeight: FontWeight.w500)),
               ]),
             ),
           ]),
@@ -1863,13 +1886,13 @@ class _EditorScreenState extends State<EditorScreen> {
         showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            backgroundColor: _kPanel,
-            title: const Text('Exported 🎉', style: TextStyle(color: Colors.white)),
+            backgroundColor: AppColors.surface,
+            title: const Text('Exported', style: TextStyle(color: AppColors.ink)),
             content: Text(
               res.savedToGallery
-                  ? 'Saved to your Gallery (ClipCart album) 📱\nShare it to Instagram from there.'
+                  ? 'Saved to your Gallery (ClipCart album).\nShare it to Instagram from there.'
                   : 'Saved on device:\n${res.path}',
-              style: const TextStyle(color: Colors.white70),
+              style: const TextStyle(color: AppColors.inkMuted),
             ),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
           ),
@@ -1892,7 +1915,7 @@ class _EditorScreenState extends State<EditorScreen> {
     if (!ready) {
       return Scaffold(
         backgroundColor: _kBg,
-        appBar: AppBar(backgroundColor: _kBg, foregroundColor: Colors.white, title: Text(widget.title ?? 'Editor')),
+        appBar: AppBar(backgroundColor: _kBg, foregroundColor: AppColors.ink, title: Text(widget.title ?? 'Editor')),
         body: Center(
           child: _defaultFont == null
               ? const CircularProgressIndicator(color: _kAccent)
@@ -1903,7 +1926,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   ],
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(_error ?? 'Loading your clip in full HD…', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+                    child: Text(_error ?? 'Loading your clip in full HD…', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.inkMuted)),
                   ),
                   const SizedBox(height: 14),
                   if (_error != null && widget.clip != null)
@@ -1925,20 +1948,20 @@ class _EditorScreenState extends State<EditorScreen> {
       backgroundColor: _kBg,
       appBar: AppBar(
         backgroundColor: _kBg,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.ink,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: AppColors.ink),
           onPressed: () async { if (await _confirmDiscard() && mounted) Navigator.of(context).pop(); },
         ),
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(widget.title ?? 'Editor', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          Text(widget.title ?? 'Editor', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: AppColors.ink)),
           if (_savedLabel.isNotEmpty)
             Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.check_circle_rounded, size: 11, color: Color(0xFF4FB477)),
-              const SizedBox(width: 4),
-              Text(_savedLabel, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 10.5, color: Colors.white54, fontWeight: FontWeight.w500)),
+              Container(width: 5, height: 5, decoration: const BoxDecoration(color: AppColors.greenDot, shape: BoxShape.circle)),
+              const SizedBox(width: 5),
+              Text(_savedLabel, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 10.5, color: AppColors.inkMuted, fontWeight: FontWeight.w500)),
             ]),
         ]),
         actions: [
@@ -1975,9 +1998,20 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Widget _iconBtn(IconData i, VoidCallback? onTap) => IconButton(
-        icon: Icon(i, size: 22, color: onTap == null ? Colors.white24 : Colors.white),
-        onPressed: onTap,
+  Widget _iconBtn(IconData i, VoidCallback? onTap) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Material(
+          color: AppColors.surfaceHover2,
+          shape: const CircleBorder(side: BorderSide(color: AppColors.line)),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: SizedBox(
+              width: 36, height: 36,
+              child: Icon(i, size: 19, color: onTap == null ? AppColors.inkGhost : AppColors.ink),
+            ),
+          ),
+        ),
       );
 
   // ---------- canvas ----------
@@ -2411,11 +2445,11 @@ class _EditorScreenState extends State<EditorScreen> {
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              icon: Icon(v.isPlaying ? Icons.pause_circle_filled : (ended ? Icons.replay_circle_filled : Icons.play_circle_fill), color: Colors.white, size: 32),
+              icon: Icon(v.isPlaying ? Icons.pause_circle_filled : (ended ? Icons.replay_circle_filled : Icons.play_circle_fill), color: _kAccent, size: 32),
               onPressed: _togglePlay,
             ),
             const SizedBox(width: 2),
-            Text('${_fmt(Duration(milliseconds: (v.position.inMilliseconds - _startMs).clamp(0, _endMs - _startMs)))} / ${_fmt(Duration(milliseconds: _endMs - _startMs))}', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700, fontSize: 12)),
+            Text('${_fmt(Duration(milliseconds: (v.position.inMilliseconds - _startMs).clamp(0, _endMs - _startMs)))} / ${_fmt(Duration(milliseconds: _endMs - _startMs))}', style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 12, fontFamily: 'IBMPlexMono')),
             const Spacer(),
             // Compact icon-only action buttons — never truncate, always fit.
             _actionIcon('Layers', Icons.layers_rounded, _openLayers),
@@ -2438,9 +2472,9 @@ class _EditorScreenState extends State<EditorScreen> {
           padding: const EdgeInsets.symmetric(vertical: 5),
           decoration: BoxDecoration(color: on ? _kAccent : Colors.transparent, borderRadius: BorderRadius.circular(10)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 19, color: Colors.white),
+            Icon(icon, size: 19, color: on ? Colors.white : AppColors.ink),
             const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 9.5, fontWeight: FontWeight.w500)),
           ]),
         ),
       );
@@ -2458,7 +2492,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final laneH = 20.0;
     final totalH = 8 + trackH + (laneCount * (laneH + 4)) + 8;
     return Container(
-      color: const Color(0xFF0F0D12),
+      color: AppColors.surfaceHover,
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
       height: totalH.clamp(50.0, 130.0),
       child: LayoutBuilder(builder: (context, c) {
@@ -2486,13 +2520,13 @@ class _EditorScreenState extends State<EditorScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(7),
                     child: Container(
-                      decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF2A2430), Color(0xFF1C1822)])),
+                      decoration: const BoxDecoration(color: AppColors.bgAlt),
                       child: Row(children: [
                         for (int i = 0; i < 10; i++)
                           Expanded(child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                            decoration: BoxDecoration(border: Border(right: BorderSide(color: Colors.white.withOpacity(0.05)))),
-                            child: Center(child: Icon(Icons.movie_creation_outlined, size: 12, color: Colors.white.withOpacity(0.10))),
+                            decoration: const BoxDecoration(border: Border(right: BorderSide(color: AppColors.line))),
+                            child: Center(child: Icon(Icons.movie_creation_outlined, size: 12, color: AppColors.inkGhost.withOpacity(0.5))),
                           )),
                       ]),
                     ),
@@ -2509,8 +2543,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       child: Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(color: Colors.black.withOpacity(0.35), borderRadius: BorderRadius.circular(10)),
-                          child: Text('Tap Add text, Emoji or Sticker to begin', style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 10.5, fontWeight: FontWeight.w600)),
+                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
+                          child: const Text('Tap Add text, Emoji or Sticker to begin', style: TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
                         ),
                       ),
                     ),
@@ -2551,8 +2585,8 @@ class _EditorScreenState extends State<EditorScreen> {
                     ),
                   ),
                 // playhead across the whole timeline
-                Positioned(left: ph.clamp(0, w) - 1, top: -2, bottom: -2, child: IgnorePointer(child: Container(width: 2, color: Colors.white))),
-                Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)))),
+                Positioned(left: ph.clamp(0, w) - 1, top: -2, bottom: -2, child: IgnorePointer(child: Container(width: 2, color: AppColors.ink))),
+                Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle)))),
                 // trim handles LAST so they sit above the playhead and stay grabbable
                 if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
               ]),
@@ -2616,10 +2650,10 @@ class _EditorScreenState extends State<EditorScreen> {
           child: IgnorePointer(
             child: Container(
               decoration: BoxDecoration(
-                color: (_trimDrag == (isStart ? 1 : 2)) ? Colors.white : _kAccent,
+                color: (_trimDrag == (isStart ? 1 : 2)) ? AppColors.brandPressed : _kAccent,
                 borderRadius: BorderRadius.circular(6),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4)]),
-              child: Icon(Icons.drag_indicator, size: 15, color: (_trimDrag == (isStart ? 1 : 2)) ? _kAccent : Colors.white),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)]),
+              child: const Icon(Icons.drag_indicator, size: 15, color: Colors.white),
             ),
           ),
         );
@@ -2689,15 +2723,14 @@ class _EditorScreenState extends State<EditorScreen> {
   Future<void> _openMoreTools() async {
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _kPanel,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 14, 16, 12 + MediaQuery.of(context).viewPadding.bottom),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 12 + MediaQuery.of(context).viewPadding.bottom),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Center(child: Container(width: 38, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(9)))),
-            const SizedBox(height: 14),
-            const Text('Add more', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+            const Center(child: _Grabber()),
+            const Text('Add more', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
             const SizedBox(height: 14),
             GridView.count(
               shrinkWrap: true,
@@ -2726,11 +2759,11 @@ class _EditorScreenState extends State<EditorScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 52, height: 52,
-            decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(14)),
-            child: Icon(icon, color: Colors.white, size: 24),
+            decoration: BoxDecoration(color: on ? _kAccent : _kChip, borderRadius: BorderRadius.circular(14), border: Border.all(color: on ? _kAccent : AppColors.line)),
+            child: Icon(icon, color: on ? Colors.white : AppColors.ink, size: 24),
           ),
           const SizedBox(height: 6),
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.inkMuted, fontSize: 11, fontWeight: FontWeight.w500)),
         ]),
       );
 
@@ -2784,11 +2817,12 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     }
     final hasSel = _selected != null;
-    // Dark tool deck (design chrome). Selection ends by tapping the canvas or ✓.
+    // Light tool deck (warm-paper chrome). Selection ends by tapping the canvas or the check.
     return Container(
       decoration: const BoxDecoration(
         color: _kPanel,
-        border: Border(top: BorderSide(color: _kChip)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        border: Border(top: BorderSide(color: AppColors.line)),
       ),
       padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).viewPadding.bottom),
       child: !hasSel
@@ -2837,7 +2871,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ================= §4.1 Text property panel (inline sub-tabs) =================
   Widget _textPanel(SubtitleSegment s) {
-    const ink = Colors.white, mut = Colors.white54, line = _kChip, brand = _kAccent;
+    const ink = AppColors.ink, mut = AppColors.inkMuted, line = AppColors.line, brand = _kAccent;
     const tile = _kChip;
     Widget subTab(String label, int i) {
       final on = _textTab == i;
@@ -2913,14 +2947,14 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // light slider row (dark text on the white deck)
   Widget _lightSlider(String label, double value, double min, double max, ValueChanged<double> onChanged, {required String display, double labelW = 66}) => Row(children: [
-        SizedBox(width: labelW, child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white54))),
+        SizedBox(width: labelW, child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.inkMuted))),
         Expanded(
           child: SliderTheme(
-            data: const SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: _kChip, trackHeight: 4, overlayShape: RoundSliderOverlayShape(overlayRadius: 14)),
+            data: const SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: AppColors.line, trackHeight: 4, overlayShape: RoundSliderOverlayShape(overlayRadius: 14), thumbShape: RoundSliderThumbShape(enabledThumbRadius: 7.5, elevation: 1.5)),
             child: Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged, onChangeEnd: (_) => _gestureSnapped = false),
           ),
         ),
-        SizedBox(width: 44, child: Text(display, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: Colors.white))),
+        SizedBox(width: 44, child: Text(display, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: AppColors.ink))),
       ]);
 
   // ---- Style tab: font · B/I · size · colours · align ----
@@ -2978,9 +3012,9 @@ class _EditorScreenState extends State<EditorScreen> {
       _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
       const SizedBox(height: 11),
       Row(children: [
-        Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? brand : tile, s.shadow ? brand : line, Colors.white, () => _mutate(() => s.shadow = !s.shadow))),
+        Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? brand : tile, s.shadow ? brand : line, s.shadow ? Colors.white : AppColors.ink, () => _mutate(() => s.shadow = !s.shadow))),
         const SizedBox(width: 7),
-        Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? brand : tile, s.bgEnabled ? brand : line, Colors.white, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
+        Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? brand : tile, s.bgEnabled ? brand : line, s.bgEnabled ? Colors.white : AppColors.ink, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
         const SizedBox(width: 7),
         Expanded(child: _NumFieldLight(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dx = (v / 100).clamp(0.0, 1.0)))),
         const SizedBox(width: 7),
@@ -3023,7 +3057,7 @@ class _EditorScreenState extends State<EditorScreen> {
           child: Container(
             width: 100, height: 52, alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : tile,
+              color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.ink,
               borderRadius: BorderRadius.circular(9),
               border: Border.all(color: s.fontFamily == tpl['font'] ? brand : line, width: s.fontFamily == tpl['font'] ? 2 : 1),
             ),
@@ -3041,12 +3075,12 @@ class _EditorScreenState extends State<EditorScreen> {
           decoration: BoxDecoration(
             color: on ? AppColors.brand : _kChip,
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: on ? AppColors.brand : _kChip),
+            border: Border.all(color: on ? AppColors.brand : AppColors.line),
           ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: Colors.white, size: 18),
+            Icon(icon, color: on ? Colors.white : AppColors.ink, size: 18),
             const SizedBox(height: 4),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w500)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 10.5, fontWeight: FontWeight.w500)),
           ]),
         ),
       );
@@ -3061,21 +3095,22 @@ class _EditorScreenState extends State<EditorScreen> {
     const swatches = [0xFFFFFFFF, 0xFF000000, 0xFF0E9E6E, 0xFFFFC400, 0xFF12B76A, 0xFF3B9EFF, 0xFF12B886, 0xFF9B5DE5, 0xFF12B886, 0xFF0E9E6E, 0xFF00D1B2, 0xFF17131F];
     showModalBottomSheet(
       context: context,
-      backgroundColor: _kPanel,
+      backgroundColor: AppColors.bg,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(builder: (context, setSheet) {
         return SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(18, 16, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
+            padding: EdgeInsets.fromLTRB(18, 10, 18, 18 + MediaQuery.of(context).viewInsets.bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Text color', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
+              const Center(child: _Grabber()),
+              const Text('Text color', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 15)),
               const SizedBox(height: 14),
               Wrap(spacing: 12, runSpacing: 12, children: [
                 for (final c in swatches)
                   GestureDetector(
                     onTap: () { _mutate(() => s.color = c); setSheet(() {}); },
-                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == s.color ? _kAccent : Colors.white24, width: c == s.color ? 3 : 1))),
+                    child: Container(width: 40, height: 40, decoration: BoxDecoration(color: Color(c), shape: BoxShape.circle, border: Border.all(color: c == s.color ? _kAccent : AppColors.line, width: c == s.color ? 3 : 1))),
                   ),
               ]),
               const SizedBox(height: 18),
@@ -3096,11 +3131,11 @@ class _EditorScreenState extends State<EditorScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
           decoration: BoxDecoration(
-            color: on ? _kAccent : Colors.white.withOpacity(0.06),
+            color: on ? _kAccent : _kChip,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: on ? _kAccent : Colors.white12),
+            border: Border.all(color: on ? _kAccent : AppColors.line),
           ),
-          child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+          child: Text(label, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13)),
         ),
       );
 
@@ -3108,7 +3143,7 @@ class _EditorScreenState extends State<EditorScreen> {
         onTap: onTap,
         child: Container(
           width: 28, height: 28,
-          decoration: BoxDecoration(color: Color(color), shape: BoxShape.circle, border: Border.all(color: on ? _kAccent : Colors.white24, width: on ? 2.5 : 1)),
+          decoration: BoxDecoration(color: Color(color), shape: BoxShape.circle, border: Border.all(color: on ? _kAccent : AppColors.line, width: on ? 2.5 : 1)),
         ),
       );
 
@@ -3116,20 +3151,21 @@ class _EditorScreenState extends State<EditorScreen> {
     final p = _project!;
     await showModalBottomSheet(
       context: context,
-      backgroundColor: _kPanel,
+      backgroundColor: AppColors.bg,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(builder: (context, setSheet) {
         var vidSnapped = false;
         void snapVid() { if (!vidSnapped) { _snapshot(); vidSnapped = true; } }
         return SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(18, 16, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+              padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Ratio & fit', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+                const Center(child: _Grabber()),
+                const Text('Ratio & fit', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 4),
-                Text('Pick a ratio, then pinch/drag the video to scale & position it.', style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12)),
+                Text('Pick a ratio, then pinch/drag the video to scale & position it.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
                 const SizedBox(height: 14),
                 // Ratio pills
                 Wrap(spacing: 9, runSpacing: 9, children: [
@@ -3139,11 +3175,11 @@ class _EditorScreenState extends State<EditorScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          color: opt == p.aspect ? _kAccent : Colors.white.withOpacity(0.06),
+                          color: opt == p.aspect ? _kAccent : _kChip,
                           borderRadius: BorderRadius.circular(22),
-                          border: Border.all(color: opt == p.aspect ? _kAccent : Colors.white12),
+                          border: Border.all(color: opt == p.aspect ? _kAccent : AppColors.line),
                         ),
-                        child: Text(opt.label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
+                        child: Text(opt.label, style: TextStyle(color: opt == p.aspect ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13.5)),
                       ),
                     ),
                 ]),
@@ -3155,7 +3191,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   _fitChip('Fit', p.videoFitContain, () { _mutate(() => p.videoFitContain = true); setSheet(() {}); }),
                   const Spacer(),
                   if (p.videoFitContain) ...[
-                    const Text('BG', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w700)),
+                    const Text('BG', style: TextStyle(color: AppColors.inkMuted, fontSize: 12, fontWeight: FontWeight.w600)),
                     const SizedBox(width: 8),
                     _bgSwatch(0xFF000000, p.videoBgColor == 0xFF000000, () { _mutate(() => p.videoBgColor = 0xFF000000); setSheet(() {}); }),
                     const SizedBox(width: 8),
@@ -3196,7 +3232,7 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Widget _tool(IconData icon, String label, VoidCallback onTap, {bool danger = false, bool active = false}) {
-    final c = danger ? const Color(0xFFE28086) : Colors.white;
+    final c = danger ? AppColors.errText : (active ? Colors.white : AppColors.ink);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: InkWell(
@@ -3207,7 +3243,7 @@ class _EditorScreenState extends State<EditorScreen> {
             decoration: BoxDecoration(
               color: active ? AppColors.brand : _kChip,
               borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: active ? AppColors.brand : _kChip),
+              border: Border.all(color: active ? AppColors.brand : AppColors.line),
             ),
             child: Icon(icon, color: c, size: 20),
           ),
@@ -3219,6 +3255,16 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
     );
   }
+}
+
+/// Spec §4.6 sheet grabber — 38×4 lineStrong pill.
+class _Grabber extends StatelessWidget {
+  const _Grabber();
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 38, height: 4, margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(color: AppColors.lineStrong, borderRadius: BorderRadius.circular(999)),
+      );
 }
 
 /// A hex color code input (e.g. `#0E9E6E`) with a live swatch. Lets the user
@@ -3266,13 +3312,13 @@ class _HexColorFieldState extends State<_HexColorField> {
     return Row(children: [
       Container(
         width: 40, height: 40,
-        decoration: BoxDecoration(color: Color(preview), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white24)),
+        decoration: BoxDecoration(color: Color(preview), borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
       ),
       const SizedBox(width: 12),
       Expanded(
         child: TextField(
           controller: _ctl,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontFamily: 'monospace', letterSpacing: 1),
+          style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontFamily: 'monospace', letterSpacing: 1),
           cursorColor: _kAccent,
           textCapitalization: TextCapitalization.characters,
           onChanged: (v) {
@@ -3283,10 +3329,12 @@ class _HexColorFieldState extends State<_HexColorField> {
           decoration: InputDecoration(
             prefixText: '',
             hintText: '#0E9E6E',
-            hintStyle: const TextStyle(color: Colors.white38),
-            filled: true, fillColor: Colors.white.withOpacity(0.06), isDense: true,
+            hintStyle: const TextStyle(color: AppColors.inkFaint),
+            filled: true, fillColor: AppColors.surface, isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _kAccent, width: 1.5)),
           ),
         ),
       ),
@@ -3348,22 +3396,24 @@ class _NumFieldState extends State<_NumField> {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(widget.label, style: const TextStyle(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w600)),
+      Text(widget.label, style: const TextStyle(color: AppColors.inkMuted, fontSize: 11, fontWeight: FontWeight.w500)),
       const SizedBox(height: 4),
       TextField(
         controller: _c,
         focusNode: _f,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14, fontFamily: 'IBMPlexMono'),
+        style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'IBMPlexMono'),
         cursorColor: _kAccent,
         onSubmitted: (_) => _commit(),
         decoration: InputDecoration(
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 9),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.06),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _kAccent, width: 1.5)),
         ),
       ),
     ]);
@@ -3406,22 +3456,22 @@ class _NumFieldLightState extends State<_NumFieldLight> {
   @override
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(widget.label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+      Text(widget.label, style: const TextStyle(color: AppColors.inkMuted, fontSize: 11)),
       const SizedBox(height: 4),
       TextField(
         controller: _c, focusNode: _f,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'IBMPlexMono'),
+        style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14, fontFamily: 'IBMPlexMono'),
         cursorColor: _kAccent,
         onSubmitted: (_) => _commit(),
         decoration: InputDecoration(
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 9),
-          filled: true, fillColor: _kChip,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide.none),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _kAccent)),
+          filled: true, fillColor: AppColors.surface,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.line)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: _kAccent, width: 1.5)),
         ),
       ),
     ]);

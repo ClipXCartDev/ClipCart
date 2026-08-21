@@ -1,14 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../core/ui_kit.dart';
 import '../../services/support_service.dart';
 
-/// In-app live support chat. Messages go to our backend; a CS agent replies from
-/// the admin console. The screen polls every few seconds for new replies
-/// (client: "normal in-app chat window jo backend se connect ho, CS reply de sake").
+/// §26 Send a query — the new-request compose screen. A topic, subject and
+/// description are collected and submitted to the backend support thread
+/// (the same [SupportService.send] a CS agent answers from the admin console).
 class SupportChatScreen extends StatefulWidget {
   const SupportChatScreen({super.key});
   @override
@@ -16,206 +15,297 @@ class SupportChatScreen extends StatefulWidget {
 }
 
 class _SupportChatScreenState extends State<SupportChatScreen> {
-  final _input = TextEditingController();
-  final _scroll = ScrollController();
-  List<SupportMessage> _messages = [];
-  bool _loading = true, _sending = false;
-  String? _error;
-  Timer? _poll;
+  static const _topics = ['Export or render', 'Payment', 'Editing', 'Account'];
+
+  final _subject = TextEditingController();
+  final _detail = TextEditingController();
+  int _topic = 0;
+  bool _hasAttachment = true;
+  bool _sending = false;
 
   SupportService get _svc => context.read<SupportService>();
 
   @override
-  void initState() {
-    super.initState();
-    _load(initial: true);
-    _svc.markRead();
-    // gentle polling for agent replies while the screen is open
-    _poll = Timer.periodic(const Duration(seconds: 6), (_) => _load());
-  }
-
-  @override
   void dispose() {
-    _poll?.cancel();
-    _input.dispose();
-    _scroll.dispose();
+    _subject.dispose();
+    _detail.dispose();
     super.dispose();
   }
 
-  Future<void> _load({bool initial = false}) async {
-    try {
-      final msgs = await _svc.thread();
-      if (!mounted) return;
-      final grew = msgs.length != _messages.length;
-      setState(() { _messages = msgs; _loading = false; _error = null; });
-      if (initial || grew) _jumpToEnd();
-      _svc.markRead();
-    } catch (e) {
-      if (mounted && initial) setState(() { _loading = false; _error = '$e'; });
-    }
-  }
-
-  void _jumpToEnd() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) _scroll.animateTo(_scroll.position.maxScrollExtent + 80, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
-    });
-  }
-
   Future<void> _send() async {
-    final text = _input.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (_sending) return;
+    final subject = _subject.text.trim();
+    final detail = _detail.text.trim();
+    if (subject.isEmpty && detail.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add a subject or a short description first')));
+      return;
+    }
     setState(() => _sending = true);
-    _input.clear();
-    // optimistic append
-    setState(() => _messages = [..._messages, SupportMessage('tmp_${DateTime.now().microsecondsSinceEpoch}', true, text, DateTime.now())]);
-    _jumpToEnd();
+    // Compose the ticket body from the structured fields.
+    final body = '[${_topics[_topic]}] ${subject.isEmpty ? '(no subject)' : subject}\n\n$detail';
     try {
-      await _svc.send(text);
-      await _load();
+      await _svc.send(body);
+      if (!mounted) return;
+      Navigator.of(context).maybePop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request sent — we\'ll reply within 6 working hours')),
+      );
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not send — check your connection')));
-    } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() => _sending = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not send — check your connection')));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: Row(children: [
-          Container(
-            width: 34, height: 34,
-            decoration: BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
-            child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 10),
-          const Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text('ClipCart Support', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-            Text('Usually replies within a few hours', style: TextStyle(color: Colors.grey, fontSize: 11)),
-          ]),
-        ]),
-      ),
-      body: Column(children: [
-        Expanded(child: _body()),
-        _composer(),
-      ]),
-    );
-  }
-
-  Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-    if (_error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text("Couldn't load the chat.", style: TextStyle(color: Colors.grey.shade600)),
-        TextButton(onPressed: () => _load(initial: true), child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w800))),
-      ]));
-    }
-    return ListView(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
-      children: [
-        _dayHint(),
-        if (_messages.isEmpty) _welcome(),
-        for (final m in _messages) _bubble(m),
-      ],
-    );
-  }
-
-  Widget _dayHint() => Center(
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(color: Colors.grey.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
-          child: Text('Chat with our team', style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5, fontWeight: FontWeight.w600)),
-        ),
-      );
-
-  Widget _welcome() => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.grey.withOpacity(0.15))),
-        child: const Text(
-          '👋 Hi! Tell us what you need help with — export issues, payments, subscriptions, or anything else. Our team will reply right here.',
-          style: TextStyle(fontSize: 13.5, height: 1.4),
-        ),
-      );
-
-  Widget _bubble(SupportMessage m) {
-    final mine = m.fromUser;
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: mine ? AppColors.brand : AppColors.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(mine ? 16 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 16),
-          ),
-          border: mine ? null : Border.all(color: Colors.grey.withOpacity(0.15)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(m.body, style: TextStyle(color: mine ? Colors.white : null, fontSize: 14, height: 1.35)),
-          const SizedBox(height: 3),
-          Text(_time(m.at), style: TextStyle(color: mine ? Colors.white70 : Colors.grey, fontSize: 10)),
-        ]),
-      ),
-    );
-  }
-
-  String _time(DateTime d) {
-    final hh = d.hour % 12 == 0 ? 12 : d.hour % 12;
-    final ap = d.hour < 12 ? 'AM' : 'PM';
-    return '$hh:${d.minute.toString().padLeft(2, '0')} $ap';
-  }
-
-  Widget _composer() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.15))),
-        ),
-        child: Row(children: [
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
+          _NavRow(title: 'New request', onBack: () => Navigator.of(context).maybePop()),
           Expanded(
-            child: TextField(
-              controller: _input,
-              minLines: 1,
-              maxLines: 4,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _send(),
-              decoration: InputDecoration(
-                hintText: 'Type a message…',
-                filled: true,
-                fillColor: Theme.of(context).cardColor,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.withOpacity(0.2))),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+              children: [
+                // ── topic ──────────────────────────────────────────────────
+                const FieldLabel('Topic', topGap: 4),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (var i = 0; i < _topics.length; i++)
+                      PillChip(_topics[i], selected: _topic == i, onTap: () => setState(() => _topic = i)),
+                  ],
+                ),
+
+                // ── subject ────────────────────────────────────────────────
+                const FieldLabel('Subject'),
+                TextField(
+                  controller: _subject,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(hintText: 'A short summary'),
+                ),
+
+                // ── describe ───────────────────────────────────────────────
+                const FieldLabel('Describe the issue'),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(R.thumb),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  constraints: const BoxConstraints(minHeight: 104),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: TextField(
+                    controller: _detail,
+                    minLines: 4,
+                    maxLines: 8,
+                    decoration: const InputDecoration(
+                      isCollapsed: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      hintText: 'What happened, and what did you expect?',
+                    ),
+                  ),
+                ),
+
+                // ── attachments ────────────────────────────────────────────
+                const FieldLabel('Attachments'),
+                Row(children: [
+                  if (_hasAttachment) ...[
+                    _ExampleThumb(onRemove: () => setState(() => _hasAttachment = false)),
+                    const SizedBox(width: 12),
+                  ],
+                  _AddTile(onTap: () => setState(() => _hasAttachment = true)),
+                ]),
+
+                const SizedBox(height: 18),
+                const InfoPanel(
+                  'A screen recording or screenshot helps us fix this faster. Please include the clip name, the time it happened, and what you were doing just before.',
+                ),
+
+                const SizedBox(height: 12),
+                // ── auto-attached card ─────────────────────────────────────
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(R.thumb),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: const Column(children: [
+                    _AutoRow(icon: Icons.receipt_long_outlined, label: 'Attached automatically', value: 'app logs', divider: true),
+                    _AutoRow(icon: Icons.smartphone_outlined, label: 'Device', value: 'Android · v3.0.0', divider: false),
+                  ]),
+                ),
+              ],
+            ),
+          ),
+          // ── sticky footer ─────────────────────────────────────────────────
+          Container(
+            decoration: const BoxDecoration(
+              color: AppColors.bg,
+              border: Border(top: BorderSide(color: AppColors.line)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  PrimaryBtn('Send request', loading: _sending, onTap: _send),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'You\'ll get a reply here and by email within 6 working hours.',
+                    textAlign: TextAlign.center,
+                    style: T.caption,
+                  ),
+                ]),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _send,
-            child: Container(
-              width: 46, height: 46,
-              decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
-              child: _sending
-                  ? const Padding(padding: EdgeInsets.all(13), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.arrow_upward_rounded, color: Colors.white),
-            ),
-          ),
         ]),
       ),
     );
   }
+}
+
+// ── nav row ──────────────────────────────────────────────────────────────────
+
+class _NavRow extends StatelessWidget {
+  const _NavRow({required this.title, required this.onBack});
+  final String title;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 6, 20, 10),
+        child: Row(children: [
+          CircleIconBtn(Icons.arrow_back_rounded, onTap: onBack),
+          const SizedBox(width: 12),
+          Text(title, style: T.pageTitle),
+        ]),
+      );
+}
+
+// ── attachment tiles ─────────────────────────────────────────────────────────
+
+class _ExampleThumb extends StatelessWidget {
+  const _ExampleThumb({required this.onRemove});
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 64,
+        height: 64,
+        child: Stack(clipBehavior: Clip.none, children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.mediaPlaceholder,
+              borderRadius: BorderRadius.circular(R.thumb),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.play_arrow_rounded, color: Colors.white70, size: 22),
+          ),
+          Positioned(
+            top: -6,
+            right: -6,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: AppColors.ink,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.bg, width: 2),
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 12),
+              ),
+            ),
+          ),
+        ]),
+      );
+}
+
+class _AddTile extends StatelessWidget {
+  const _AddTile({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: const DottedBorderBox(
+          size: 64,
+          child: Icon(Icons.add_rounded, color: AppColors.inkFaint, size: 22),
+        ),
+      );
+}
+
+/// A 64×64 rounded box with a 1px dashed [lineStrong] border.
+class DottedBorderBox extends StatelessWidget {
+  const DottedBorderBox({super.key, required this.size, required this.child});
+  final double size;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        painter: _DashedRectPainter(color: AppColors.lineStrong, radius: R.thumb),
+        child: SizedBox(width: size, height: size, child: Center(child: child)),
+      );
+}
+
+class _DashedRectPainter extends CustomPainter {
+  _DashedRectPainter({required this.color, required this.radius});
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final rrect = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+    final path = Path()..addRRect(rrect);
+    const dash = 4.0, gap = 3.0;
+    for (final metric in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        canvas.drawPath(metric.extractPath(d, d + dash), paint);
+        d += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRectPainter old) => old.color != color || old.radius != radius;
+}
+
+// ── auto-attached rows ───────────────────────────────────────────────────────
+
+class _AutoRow extends StatelessWidget {
+  const _AutoRow({required this.icon, required this.label, required this.value, required this.divider});
+  final IconData icon;
+  final String label, value;
+  final bool divider;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          border: divider ? const Border(bottom: BorderSide(color: AppColors.line)) : null,
+        ),
+        child: Row(children: [
+          Icon(icon, size: 16, color: AppColors.inkFaint),
+          const SizedBox(width: 11),
+          Expanded(child: Text(label, style: T.bodySmall.copyWith(color: AppColors.inkMuted))),
+          Text(value, style: T.dataMuted),
+        ]),
+      );
 }

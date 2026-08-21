@@ -6,19 +6,141 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/theme.dart';
+import '../../core/ui_kit.dart';
 import '../../models/plan.dart';
 import '../../services/billing_service.dart';
 
-/// Plans — one DesignCard per plan, a recommended card, and a footer line.
-/// Checkout is a real screen (not a dialog) with four designed payment states.
-class PlansScreen extends StatefulWidget {
+// ── shared chrome ────────────────────────────────────────────────────────────
+
+/// A 44×44 tappable nav glyph (back / close).
+Widget _navIcon(IconData icon, VoidCallback onTap) => Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 22, color: AppColors.ink)),
+      ),
+    );
+
+/// Nav row — leading glyph + page title (19/600).
+Widget _navBar(BuildContext context, String title, {IconData leading = Icons.arrow_back_rounded}) => SizedBox(
+      height: H.nav,
+      child: Row(children: [
+        _navIcon(leading, () => Navigator.of(context).maybePop()),
+        const SizedBox(width: 2),
+        Text(title, style: T.pageTitle),
+      ]),
+    );
+
+/// Sticky footer block — top hairline, bg fill, stretched children.
+Widget _footer({required List<Widget> children}) => Container(
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 16),
+      decoration: const BoxDecoration(
+        color: AppColors.bg,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+
+String _fmtPrice(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+String _fmtDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+// ══════════════════════════════ §07 Paywall ══════════════════════════════════
+
+/// The entry a free user reaches when they tap Unlock. Close (X), a gold star
+/// tile, the benefit list, and a sticky "See plans" CTA into the plan list.
+class PlansScreen extends StatelessWidget {
   const PlansScreen({super.key});
+
+  static const _benefits = [
+    ('Every layer editable', 'Text, logo, username, CTA and stickers stay separate.'),
+    ('No watermark', 'Clean renders straight to your gallery.'),
+    ('A set number of edits', 'One credit per clip, valid through your plan window.'),
+    ('Two devices', 'Phone and tablet on one account.'),
+  ];
+
   @override
-  State<PlansScreen> createState() => _PlansScreenState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(children: [
+          SizedBox(
+            height: H.nav,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _navIcon(Icons.close_rounded, () => Navigator.of(context).maybePop()),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              children: [
+                Container(
+                  width: 56, height: 56, alignment: Alignment.center,
+                  decoration: BoxDecoration(color: AppColors.goldAccent, borderRadius: BorderRadius.circular(R.media)),
+                  child: const Icon(Icons.star_rounded, size: 30, color: AppColors.ink),
+                ),
+                const SizedBox(height: 22),
+                const Text('Subscribe to edit and export',
+                    style: TextStyle(fontFamily: kSans, fontSize: 30, height: 1.08, fontWeight: FontWeight.w600, letterSpacing: -1.2, color: AppColors.ink)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Browsing and previews stay free. Editing layers and watermark-free rendering need an active plan.',
+                  style: TextStyle(fontFamily: kSans, fontSize: 14.5, height: 1.55, fontWeight: FontWeight.w400, color: AppColors.inkMuted),
+                ),
+                const SizedBox(height: 28),
+                for (final b in _benefits) _benefitRow(b.$1, b.$2),
+              ],
+            ),
+          ),
+          _footer(children: [
+            PrimaryBtn('See plans', onTap: () {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlansListScreen()));
+            }),
+            const SizedBox(height: 12),
+            const Text('Paid in USDT via Binance Pay · 30 calendar days',
+                textAlign: TextAlign.center, style: T.caption),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _benefitRow(String title, String desc) => Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 22, height: 22, alignment: Alignment.center,
+            decoration: const BoxDecoration(color: AppColors.brandTint, shape: BoxShape.circle),
+            child: const Icon(Icons.check_rounded, size: 14, color: AppColors.brand),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontFamily: kSans, fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+              const SizedBox(height: 3),
+              Text(desc, style: const TextStyle(fontFamily: kSans, fontSize: 13, height: 1.5, fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
+            ]),
+          ),
+        ]),
+      );
 }
 
-class _PlansScreenState extends State<PlansScreen> {
+// ══════════════════════════════ §08 Plans ════════════════════════════════════
+
+/// The plan list — real plans fetched from BillingService, one selectable card
+/// each, an info panel, and a sticky "Continue — N USDT" CTA into checkout.
+class PlansListScreen extends StatefulWidget {
+  const PlansListScreen({super.key});
+  @override
+  State<PlansListScreen> createState() => _PlansListScreenState();
+}
+
+class _PlansListScreenState extends State<PlansListScreen> {
   late Future<List<Plan>> _plans;
+  String? _selectedId;
 
   @override
   void initState() {
@@ -26,111 +148,146 @@ class _PlansScreenState extends State<PlansScreen> {
     _plans = context.read<BillingService>().plans();
   }
 
-  void _reload() => setState(() => _plans = context.read<BillingService>().plans());
+  void _reload() => setState(() { _plans = context.read<BillingService>().plans(); });
+
+  String? _popularId(List<Plan> plans) {
+    for (final p in plans) {
+      if (p.name.toLowerCase().contains('pro')) return p.id;
+    }
+    if (plans.length >= 2) return plans[1].id;
+    return plans.isNotEmpty ? plans.first.id : null;
+  }
+
+  Future<void> _openCheckout(Plan p) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => CheckoutScreen(plan: p)));
+    if (mounted) _reload();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Plans')),
-      body: FutureBuilder<List<Plan>>(
-        future: _plans,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.brand));
-          }
-          if (snap.hasError) {
-            return Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const Text("Couldn't load plans.", style: TextStyle(color: AppColors.mut)),
-                TextButton(onPressed: _reload, child: const Text('Retry')),
-              ]),
-            );
-          }
-          final plans = snap.data ?? [];
-          if (plans.isEmpty) return const Center(child: Text('No plans available yet.', style: TextStyle(color: AppColors.mut)));
-          final topPrice = plans.map((p) => p.priceUsd).fold<double>(0, (a, b) => b > a ? b : a);
-          return ListView(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 20 + MediaQuery.of(context).viewPadding.bottom),
-            children: [
-              for (final p in plans) _planCard(p, recommended: p.priceUsd == topPrice && topPrice > 0),
-              const SizedBox(height: 6),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Paid in USDT. Your plan unlocks automatically once the payment is confirmed.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12.5, color: AppColors.mut, height: 1.4),
-                ),
-              ),
-            ],
-          );
-        },
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(children: [
+          _navBar(context, 'Choose a plan'),
+          Expanded(
+            child: FutureBuilder<List<Plan>>(
+              future: _plans,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: AppColors.brand));
+                }
+                if (snap.hasError) {
+                  return Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text("Couldn't load plans.", style: T.body),
+                      const SizedBox(height: 8),
+                      TextButton(onPressed: _reload, child: const Text('Retry')),
+                    ]),
+                  );
+                }
+                final plans = snap.data ?? [];
+                if (plans.isEmpty) {
+                  return const Center(child: Text('No plans available yet.', style: T.body));
+                }
+                final popularId = _popularId(plans);
+                final selectedId = _selectedId ?? popularId ?? plans.first.id;
+                final selected = plans.firstWhere((p) => p.id == selectedId, orElse: () => plans.first);
+
+                return Column(children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                      children: [
+                        for (final p in plans)
+                          _planCard(p, selected: p.id == selectedId, popular: p.id == popularId, onTap: () => setState(() => _selectedId = p.id)),
+                        const SizedBox(height: 6),
+                        const InfoPanel(
+                          'Your 30 days start on the day you pay, not on the 1st. One edit credit is used the moment a clip opens in the editor.',
+                        ),
+                      ],
+                    ),
+                  ),
+                  _footer(children: [
+                    PrimaryBtn('Continue — ${_fmtPrice(selected.priceUsd)} USDT', onTap: () => _openCheckout(selected)),
+                  ]),
+                ]);
+              },
+            ),
+          ),
+        ]),
       ),
     );
   }
 
-  Widget _planCard(Plan p, {bool recommended = false}) {
-    final card = Container(
-      margin: const EdgeInsets.only(top: 8, bottom: 8),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(R.card),
-        border: Border.all(color: recommended ? AppColors.brand : AppColors.line, width: recommended ? 1.5 : 1),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 17, color: AppColors.ink))),
-          Text('MONTHLY', style: eyebrow(AppColors.mut)),
-        ]),
-        const SizedBox(height: 10),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-          Text(p.priceUsd.toStringAsFixed(2), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w600, letterSpacing: -1.0, color: AppColors.ink)),
-          const SizedBox(width: 6),
-          const Text('USDT / mo', style: TextStyle(fontSize: 14, color: AppColors.mut)),
-        ]),
-        const SizedBox(height: 14),
-        _feat(p.exportLabel),
-        _feat('${p.quality} · ${p.maxDevices} device${p.maxDevices == 1 ? '' : 's'}'),
-        for (final f in p.features) _feat(f),
-        const SizedBox(height: 16),
-        if (p.priceUsd > 0)
-          recommended
-              ? SizedBox(height: 48, child: FilledButton(onPressed: () => _openCheckout(p), child: Text('Get ${p.name}')))
-              : SizedBox(height: 44, child: OutlinedButton(onPressed: () => _openCheckout(p), child: const Text('Subscribe'))),
-      ]),
-    );
-    if (!recommended) return card;
-    // "MOST CHOSEN" pill overlapping the top-left edge
-    return Stack(clipBehavior: Clip.none, children: [
-      card,
-      Positioned(
-        left: 14, top: 0,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.pill)),
-          child: const Text('MOST CHOSEN', style: TextStyle(color: Colors.white, fontFamily: kMono, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.4)),
+  Widget _planCard(Plan p, {required bool selected, required bool popular, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(R.large),
+          border: Border.all(color: selected ? AppColors.brand : AppColors.line, width: selected ? 1.5 : 1),
+          boxShadow: selected ? const [BoxShadow(color: AppColors.brandTint, blurRadius: 0, spreadRadius: 3)] : null,
         ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Row(children: [
+                Flexible(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kSans, fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.ink))),
+                if (popular) ...[const SizedBox(width: 8), _popularPill()],
+              ]),
+            ),
+            const SizedBox(width: 10),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(_fmtPrice(p.priceUsd), style: T.price),
+              const SizedBox(height: 2),
+              const Text('USDT', style: T.caption),
+            ]),
+          ]),
+          const SizedBox(height: 14),
+          Container(height: 1, color: AppColors.bgAlt),
+          const SizedBox(height: 10),
+          _kv('Duration', _durationLabel(p)),
+          _kv('Edits included', _editsLabel(p)),
+          _kv('Quality', p.quality),
+          _kv('Devices', '${p.maxDevices}'),
+        ]),
       ),
-    ]);
+    );
   }
 
-  Widget _feat(String t) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Padding(padding: EdgeInsets.only(top: 1), child: Icon(Icons.check_rounded, size: 16, color: AppColors.ok)),
-          const SizedBox(width: 10),
-          Expanded(child: Text(t, style: const TextStyle(fontSize: 13.5, color: AppColors.ink, height: 1.35))),
+  Widget _popularPill() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.pill)),
+        child: const Text('Popular', style: TextStyle(fontFamily: kSans, fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+      );
+
+  Widget _kv(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(children: [
+          Text(k, style: const TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
+          const Spacer(),
+          Text(v, style: const TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
         ]),
       );
 
-  Future<void> _openCheckout(Plan p) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => CheckoutScreen(plan: p)));
-    _reload();
+  String _durationLabel(Plan p) {
+    for (final f in p.features) {
+      final l = f.toLowerCase();
+      if (l.contains('day') || l.contains('week') || l.contains('month')) return f;
+    }
+    return '30 days';
   }
+
+  String _editsLabel(Plan p) => p.exportLimit == null ? 'Unlimited' : '${p.exportLimit} edits';
 }
 
-// ============================ Checkout screen ============================
+// ══════════════════════════ §09 Checkout (Binance Pay) ═══════════════════════
+// The state machine below (enum, timers, polling of subscription() → 'active',
+// and the BillingService.checkout call) is preserved exactly — only restyled.
 
 enum _PayState { starting, waiting, confirmed, expired, failed }
 
@@ -149,6 +306,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   double _amount = 0;
   Duration _left = const Duration(minutes: 15);
   Timer? _tick, _poll;
+  bool _agree = false;
 
   @override
   void initState() {
@@ -209,108 +367,247 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return '$m:${s.toString().padLeft(2, '0')}';
   }
 
+  double get _shownAmount => _amount == 0 ? widget.plan.priceUsd : _amount;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Pay ${_amount == 0 ? widget.plan.priceUsd.toStringAsFixed(2) : _amount.toStringAsFixed(2)} USDT')),
-      body: switch (_state) {
-        _PayState.starting => const Center(child: CircularProgressIndicator(color: AppColors.brand)),
-        _PayState.failed => _failed(),
-        _PayState.confirmed => _confirmed(),
-        _PayState.expired => _expired(),
-        _PayState.waiting => _waiting(),
-      },
-    );
-  }
-
-  Widget _waiting() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        // status banner
-        _statusBanner(AppColors.warnBg, AppColors.warn, 'Waiting for confirmation', 'Expires in $_timer', dot: true),
-        const SizedBox(height: 16),
-        // QR card
-        Center(
-          child: Container(
-            width: 212, height: 212,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(R.surface), border: Border.all(color: AppColors.line)),
-            child: _payData.isEmpty
-                ? const Center(child: Text('—'))
-                : QrImageView(data: _payData, version: QrVersions.auto, backgroundColor: Colors.white, gapless: true),
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(children: [
+          _navBar(context, 'Checkout'),
+          Expanded(
+            child: switch (_state) {
+              _PayState.starting => const Center(child: CircularProgressIndicator(color: AppColors.brand)),
+              _PayState.failed => _failed(),
+              _PayState.confirmed => _confirmed(),
+              _PayState.expired => _expired(),
+              _PayState.waiting => _waiting(),
+            },
           ),
-        ),
-        const SizedBox(height: 12),
-        const Text('Scan with your wallet app\nUSDT · BEP20', textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: AppColors.mut, height: 1.4)),
-        const SizedBox(height: 16),
-        // address card
-        DesignCard(
-          child: Row(children: [
-            Expanded(child: Text(_short(_address), style: const TextStyle(fontFamily: kMono, fontSize: 12.5, color: AppColors.ink))),
-            const SizedBox(width: 10),
-            GestureDetector(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: _address));
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Address copied')));
-              },
-              child: const Text('Copy', style: TextStyle(color: AppColors.brand, fontWeight: FontWeight.w600, fontSize: 13.5)),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 12),
-        // reassurance card
-        DesignCard(
-          child: RichText(
-            text: const TextSpan(children: [
-              TextSpan(text: 'You can close this screen. ', style: TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, color: AppColors.ink, fontSize: 13.5)),
-              TextSpan(text: 'Your plan unlocks by itself the moment the payment is confirmed — there is nothing to refresh.', style: TextStyle(fontFamily: kSans, color: AppColors.mut, fontSize: 13.5, height: 1.5)),
-            ]),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _confirmed() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: DesignCard(
-          padding: const EdgeInsets.all(20),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 38, height: 38, decoration: const BoxDecoration(color: AppColors.ok, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, color: Colors.white, size: 22)),
-            const SizedBox(height: 12),
-            const Text('Pro is active', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.ink)),
-            const SizedBox(height: 4),
-            const Text('Unlimited exports · renews next month', textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: AppColors.mut)),
-            const SizedBox(height: 16),
-            SizedBox(width: double.infinity, height: 48, child: FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done'))),
-          ]),
-        ),
+        ]),
       ),
     );
   }
 
+  // ── waiting: full order review + QR + sticky Pay button ────────────────────
+  Widget _waiting() {
+    final orderId = _order?['order_id']?.toString() ?? '—';
+    final activeUntil = _fmtDate(DateTime.now().add(const Duration(days: 30)));
+    return Column(children: [
+      Expanded(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          children: [
+            // waiting banner + countdown
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: AppColors.warnBg, borderRadius: BorderRadius.circular(R.thumb)),
+              child: Row(children: [
+                Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.warnIcon, shape: BoxShape.circle)),
+                const SizedBox(width: 10),
+                const Expanded(child: Text('Waiting for confirmation', style: TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.warnText))),
+                Text('Expires in $_timer', style: const TextStyle(fontFamily: kMono, fontSize: 12.5, fontWeight: FontWeight.w500, color: AppColors.warnText)),
+              ]),
+            ),
+            const SizedBox(height: 16),
+
+            // order summary
+            DesignCard(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Order summary', style: T.fieldLabel),
+                const SizedBox(height: 14),
+                _summaryRow('${widget.plan.name} · 30 days', '${_fmtPrice(_shownAmount)} USDT'),
+                const SizedBox(height: 10),
+                _summaryRow('Network fee (BSC)', '0.00'),
+                const SizedBox(height: 12),
+                Container(height: 1, color: AppColors.line),
+                const SizedBox(height: 12),
+                Row(children: [
+                  const Text('Total', style: TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                  const Spacer(),
+                  Text('${_fmtPrice(_shownAmount)} USDT', style: const TextStyle(fontFamily: kMono, fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                ]),
+              ]),
+            ),
+            const SizedBox(height: 12),
+
+            // selected payment method
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(R.large),
+                border: Border.all(color: AppColors.brand, width: 1.5),
+                boxShadow: const [BoxShadow(color: AppColors.brandTint, blurRadius: 0, spreadRadius: 3)],
+              ),
+              child: Row(children: [
+                Container(
+                  width: 40, height: 40, alignment: Alignment.center,
+                  decoration: BoxDecoration(color: const Color(0xFFF3BA2F), borderRadius: BorderRadius.circular(R.tile)),
+                  child: const Text('B', style: TextStyle(fontFamily: kSans, fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Binance Pay', style: TextStyle(fontFamily: kSans, fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                    SizedBox(height: 2),
+                    Text('USDT · opens the Binance app', style: TextStyle(fontFamily: kSans, fontSize: 12.5, color: AppColors.inkMuted)),
+                  ]),
+                ),
+                Container(
+                  width: 22, height: 22, alignment: Alignment.center,
+                  decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
+                  child: const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 12),
+
+            // dashed order id / active-until card
+            CustomPaint(
+              painter: const _DashedBorderPainter(),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(children: [
+                  Row(children: [
+                    const Text('Order ID', style: T.bodySmall),
+                    const Spacer(),
+                    Flexible(child: Text(orderId, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, style: T.data)),
+                  ]),
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Text('Active until', style: T.bodySmall),
+                    const Spacer(),
+                    Text(activeUntil, style: T.data),
+                  ]),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // QR
+            Center(
+              child: Container(
+                width: 212, height: 212,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(R.media), border: Border.all(color: AppColors.line)),
+                child: _payData.isEmpty
+                    ? const Center(child: Text('—', style: T.body))
+                    : QrImageView(data: _payData, version: QrVersions.auto, backgroundColor: Colors.white, gapless: true),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Scan with the Binance app\nUSDT · BEP20', textAlign: TextAlign.center, style: T.bodySmall),
+            const SizedBox(height: 14),
+
+            // address + copy
+            DesignCard(
+              child: Row(children: [
+                Expanded(child: Text(_short(_address), style: T.data)),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: _address));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Address copied')));
+                  },
+                  child: const Text('Copy', style: TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.brand)),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 16),
+
+            // terms
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _agree = !_agree),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: 20, height: 20, alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _agree ? AppColors.brand : AppColors.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: _agree ? AppColors.brand : AppColors.lineStrong, width: 1.5),
+                  ),
+                  child: _agree ? const Icon(Icons.check_rounded, size: 13, color: Colors.white) : null,
+                ),
+                const SizedBox(width: 11),
+                const Expanded(
+                  child: Text('I agree to the terms and understand the plan is non-refundable once active.', style: T.bodySmall),
+                ),
+              ]),
+            ),
+          ],
+        ),
+      ),
+      _footer(children: [
+        PrimaryBtn('Pay with Binance Pay', onTap: _agree ? _payTap : null),
+      ]),
+    ]);
+  }
+
+  void _payTap() {
+    final link = (_order?['checkout_url']?.toString().isNotEmpty ?? false) ? _order!['checkout_url'].toString() : _payData;
+    Clipboard.setData(ClipboardData(text: link));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment link copied — open it in the Binance app')));
+  }
+
+  Widget _summaryRow(String label, String value) => Row(children: [
+        Expanded(child: Text(label, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w400, color: AppColors.inkMuted))),
+        const SizedBox(width: 10),
+        Text(value, style: const TextStyle(fontFamily: kMono, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.ink)),
+      ]);
+
+  // ── confirmed ──────────────────────────────────────────────────────────────
+  Widget _confirmed() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 56, height: 56, alignment: Alignment.center,
+            decoration: const BoxDecoration(color: AppColors.okBg, shape: BoxShape.circle),
+            child: const Icon(Icons.check_rounded, color: AppColors.okIcon, size: 30),
+          ),
+          const SizedBox(height: 16),
+          Text('${widget.plan.name} is active', style: const TextStyle(fontFamily: kSans, fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -0.4, color: AppColors.ink)),
+          const SizedBox(height: 6),
+          const Text('Payment confirmed on-chain. You can start editing right away.', textAlign: TextAlign.center, style: T.body),
+          const SizedBox(height: 22),
+          SizedBox(
+            width: double.infinity,
+            child: PrimaryBtn('Continue', onTap: () {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => PaidScreen(plan: widget.plan, amount: _shownAmount)),
+              );
+            }),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ── expired ────────────────────────────────────────────────────────────────
   Widget _expired() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Container(
           padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: AppColors.errBg, borderRadius: BorderRadius.circular(R.card), border: Border.all(color: AppColors.errBg)),
+          decoration: BoxDecoration(color: AppColors.errBg, borderRadius: BorderRadius.circular(R.large)),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('Payment window expired', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.errText)),
-            const SizedBox(height: 4),
-            const Text('Nothing was charged.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: AppColors.mut)),
-            const SizedBox(height: 16),
-            SizedBox(width: double.infinity, height: 48, child: FilledButton(onPressed: _start, child: const Text('Start again'))),
+            const Text('Payment window expired', style: TextStyle(fontFamily: kSans, fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.errText)),
+            const SizedBox(height: 6),
+            const Text('Nothing was charged.', textAlign: TextAlign.center, style: TextStyle(fontFamily: kSans, fontSize: 13.5, height: 1.45, color: AppColors.errTextDark)),
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, child: PrimaryBtn('Start again', onTap: _start)),
           ]),
         ),
       ),
     );
   }
 
+  // ── could-not-start (never a raw exception) ────────────────────────────────
   Widget _failed() {
     return Center(
       child: Padding(
@@ -318,30 +615,120 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: DesignCard(
           padding: const EdgeInsets.all(20),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('Checkout could not start', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.ink)),
+            const Text('Checkout could not start', style: TextStyle(fontFamily: kSans, fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.ink)),
             const SizedBox(height: 6),
-            const Text('We couldn’t reach the payment service. Please check your connection and try again.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, color: AppColors.mut, height: 1.5)),
-            const SizedBox(height: 16),
-            SizedBox(width: double.infinity, height: 48, child: FilledButton(onPressed: _start, child: const Text('Retry'))),
+            const Text("We couldn't reach the payment service. Check your connection and try again.", textAlign: TextAlign.center, style: T.body),
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, child: PrimaryBtn('Retry', onTap: _start)),
           ]),
         ),
       ),
     );
   }
 
-  Widget _statusBanner(Color bg, Color fg, String title, String sub, {bool dot = false}) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(R.card)),
-        child: Row(children: [
-          if (dot) ...[Container(width: 8, height: 8, decoration: BoxDecoration(color: fg, shape: BoxShape.circle)), const SizedBox(width: 10)],
+  String _short(String a) => a.length <= 22 ? a : '${a.substring(0, 12)}…${a.substring(a.length - 8)}';
+}
+
+// ══════════════════════════════ §10 Paid ═════════════════════════════════════
+
+/// Success screen — a green tick, the receipt card, and two ways forward.
+class PaidScreen extends StatelessWidget {
+  const PaidScreen({super.key, required this.plan, required this.amount});
+  final Plan plan;
+  final double amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeUntil = _fmtDate(DateTime.now().add(const Duration(days: 30)));
+    final credits = plan.exportLimit ?? 30;
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(children: [
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: fg)),
-              Text(sub, style: const TextStyle(fontSize: 12.5, color: AppColors.mut)),
-            ]),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+              children: [
+                Center(
+                  child: Container(
+                    width: 62, height: 62, alignment: Alignment.center,
+                    decoration: const BoxDecoration(color: AppColors.okBg, shape: BoxShape.circle),
+                    child: const Icon(Icons.check_rounded, size: 34, color: AppColors.okIcon),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                const Text('Subscription active',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontFamily: kSans, fontSize: 27, height: 1.1, fontWeight: FontWeight.w600, letterSpacing: -1, color: AppColors.ink)),
+                const SizedBox(height: 10),
+                Text('Payment confirmed on-chain. ${plan.name} is live on this device for the next 30 days.',
+                    textAlign: TextAlign.center, style: T.body),
+                const SizedBox(height: 26),
+                DesignCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Column(children: [
+                    _row('Plan', Text(plan.name, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.ink))),
+                    _divider(),
+                    _row('Amount', Text('${_fmtPrice(amount)} USDT', style: const TextStyle(fontFamily: kMono, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.ink))),
+                    _divider(),
+                    _row('Active until', Text(activeUntil, style: const TextStyle(fontFamily: kMono, fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.ink))),
+                    _divider(),
+                    _row('Edit credits', Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(R.pill)),
+                      child: Text('$credits added', style: const TextStyle(fontFamily: kSans, fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.okText)),
+                    )),
+                  ]),
+                ),
+              ],
+            ),
           ),
+          _footer(children: [
+            PrimaryBtn('Start editing', onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+            const SizedBox(height: 6),
+            GhostBtn('Back to home', onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+          ]),
+        ]),
+      ),
+    );
+  }
+
+  Widget _row(String key, Widget value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        child: Row(children: [
+          Text(key, style: const TextStyle(fontFamily: kSans, fontSize: 13.5, fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
+          const Spacer(),
+          value,
         ]),
       );
 
-  String _short(String a) => a.length <= 22 ? a : '${a.substring(0, 12)}…${a.substring(a.length - 8)}';
+  Widget _divider() => Container(height: 1, color: AppColors.bgAlt);
+}
+
+// ── dashed rounded-rect border painter ───────────────────────────────────────
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter();
+
+  static const double _dash = 5, _gap = 4;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.lineStrong
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final path = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(R.large)));
+    final dashed = Path();
+    for (final metric in path.computeMetrics()) {
+      double dist = 0;
+      while (dist < metric.length) {
+        dashed.addPath(metric.extractPath(dist, dist + _dash), Offset.zero);
+        dist += _dash + _gap;
+      }
+    }
+    canvas.drawPath(dashed, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) => false;
 }

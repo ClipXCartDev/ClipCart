@@ -1,19 +1,20 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../core/ui_kit.dart';
 import '../../models/clip.dart';
 import '../../services/catalog_service.dart';
-import '../../widgets/clip_card.dart';
 import '../../widgets/premium_empty_state.dart';
 import '../../widgets/skeleton_grid.dart';
 import '../home/home_shell.dart';
 
-/// Explore — an Instagram-style browse grid with a search bar pinned on top.
-/// Shows all clips by default; typing filters. Category chips scroll under the
-/// search bar. Grid tiles hide their caption (text shows only in the player).
+/// §05 Explore — a search field + filter button, category chips, then a dense
+/// 3-column grid of 9:13 thumbnails. Tiles carry no caption (only a duration
+/// readout and a lock badge when gated); text appears only in the player.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key, this.initialCategory});
   final String? initialCategory;
@@ -112,106 +113,280 @@ class _SearchScreenState extends State<SearchScreen> {
     _reload();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Column(children: [
-          const ScreenHeader(title: 'Explore'),
-          // search bar — design spec: 46px, radius 12, --ln border, --mut icon
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: SizedBox(
-              height: 46,
-              child: TextField(
-                controller: _q,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _submitSearch(),
-                onChanged: (v) { if (v.isEmpty && _query.isNotEmpty) { setState(() => _query = ''); _reload(); } },
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-                decoration: InputDecoration(
-                  hintText: 'Search clips, movies, moods…',
-                  hintStyle: const TextStyle(color: AppColors.mut, fontSize: 16, fontWeight: FontWeight.w400),
-                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.mut, size: 22),
-                  suffixIcon: _q.text.isEmpty
-                      ? null
-                      : IconButton(icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.mut), onPressed: () { _q.clear(); setState(() => _query = ''); _reload(); }),
-                  filled: true,
-                  fillColor: Theme.of(context).cardColor,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.line)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.brand, width: 1.5)),
-                ),
-              ),
+  String _catName(String? slug) {
+    if (slug == null) return 'All';
+    for (final c in _cats) {
+      if (((c['slug'] as String?) ?? c['name']) == slug) return (c['name'] as String?) ?? slug;
+    }
+    return slug;
+  }
+
+  // ── filter sheet — categories only ─────────────────────────────────────────
+  void _openFilter() {
+    String? sel = _cat;
+    showAppSheet(context, (ctx) {
+      return StatefulBuilder(builder: (ctx, setSheet) {
+        final rows = <(String?, String)>[(null, 'All clips')];
+        for (final c in _cats) {
+          rows.add(((c['slug'] as String?) ?? c['name'] as String?, (c['name'] as String?) ?? 'Clips'));
+        }
+        final label = sel == _cat ? 'Show ${_grid.length} clips' : 'Show clips';
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 2, bottom: 4),
+            child: Text('Filter by category', style: T.section),
+          ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final r in rows)
+                  _CheckRow(
+                    label: r.$2,
+                    selected: sel == r.$1,
+                    onTap: () => setSheet(() => sel = r.$1),
+                  ),
+              ],
             ),
           ),
-          // category chips row (34px pills, radius 999)
-          if (_cats.isNotEmpty)
-            SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: [
-                  _chip('All', _cat == null, () => _pickCategory(null)),
-                  for (final c in _cats)
-                    _chip(c['name'] as String, _cat == ((c['slug'] as String?) ?? c['name']), () => _pickCategory((c['slug'] as String?) ?? c['name'] as String)),
-                ],
+          const SizedBox(height: 16),
+          Row(children: [
+            TextButton(
+              onPressed: () => setSheet(() => sel = null),
+              child: const Text('Reset', style: TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.inkMuted)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: PrimaryBtn(label, onTap: () { Navigator.pop(ctx); _pickCategory(sel); })),
+          ]),
+        ]);
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      // search field + filter button
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+        child: Row(children: [
+          Expanded(child: _searchField()),
+          const SizedBox(width: 10),
+          _filterButton(),
+        ]),
+      ),
+      // category chips
+      if (_cats.isNotEmpty)
+        SizedBox(
+          height: 46,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              Padding(padding: const EdgeInsets.only(right: 8), child: PillChip('All', selected: _cat == null, filterStyle: true, onTap: () => _pickCategory(null))),
+              for (final c in _cats)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: PillChip(
+                    (c['name'] as String?) ?? 'Clips',
+                    selected: _cat == ((c['slug'] as String?) ?? c['name']),
+                    filterStyle: true,
+                    onTap: () => _pickCategory((c['slug'] as String?) ?? c['name'] as String),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      Expanded(child: _body()),
+    ]);
+  }
+
+  Widget _searchField() {
+    return Container(
+      height: 42,
+      decoration: BoxDecoration(color: AppColors.surfaceHover2, borderRadius: BorderRadius.circular(R.pill)),
+      child: Row(children: [
+        const SizedBox(width: 14),
+        const Icon(Icons.search_rounded, size: 20, color: AppColors.inkFaint),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: _q,
+            textInputAction: TextInputAction.search,
+            onSubmitted: (_) => _submitSearch(),
+            onChanged: (v) {
+              if (v.isEmpty && _query.isNotEmpty) { setState(() => _query = ''); _reload(); }
+              setState(() {}); // keep the clear button in sync
+            },
+            style: const TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink),
+            cursorColor: AppColors.brand,
+            decoration: const InputDecoration(
+              isCollapsed: true,
+              border: InputBorder.none,
+              hintText: 'Search clips, movies, moods',
+              hintStyle: TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.inkFaint),
+            ),
+          ),
+        ),
+        if (_q.text.isNotEmpty)
+          GestureDetector(
+            onTap: () { _q.clear(); setState(() => _query = ''); _reload(); },
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Icon(Icons.close_rounded, size: 18, color: AppColors.inkFaint)),
+          )
+        else
+          const SizedBox(width: 14),
+      ]),
+    );
+  }
+
+  Widget _filterButton() {
+    final active = _cat != null;
+    return GestureDetector(
+      onTap: _openFilter,
+      child: SizedBox(
+        width: 42, height: 42,
+        child: Stack(children: [
+          Container(
+            width: 42, height: 42,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
+            child: const Icon(Icons.tune_rounded, size: 20, color: Colors.white),
+          ),
+          if (active)
+            Positioned(
+              right: 0, top: 0,
+              child: Container(
+                width: 18, height: 18,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: AppColors.brand, shape: BoxShape.circle, border: Border.all(color: AppColors.bg, width: 1.5)),
+                child: const Text('1', style: TextStyle(fontFamily: kMono, fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white)),
               ),
             ),
-          Expanded(child: _body()),
         ]),
       ),
     );
   }
 
-  // design chip: h34, radius 999; selected = ink fill / white text, unselected = --ln border
-  Widget _chip(String label, bool on, VoidCallback onTap) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 34,
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: on ? AppColors.brand : Colors.transparent,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: on ? AppColors.brand : AppColors.line),
-          ),
-          child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: on ? Colors.white : AppColors.ink)),
-        ),
-      );
-
   Widget _body() {
-    if (_loading) return const SkeletonGrid(count: 6);
+    if (_loading) return const SkeletonGrid(count: 9);
     if (_error != null) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text("Couldn't load clips.", style: TextStyle(color: AppColors.mut)),
-          TextButton(onPressed: _boot, child: const Text('Retry', style: TextStyle(color: AppColors.accentInk, fontWeight: FontWeight.w700))),
+          const Text("Couldn't load clips.", style: T.body),
+          TextButton(onPressed: _boot, child: const Text('Retry', style: TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, color: AppColors.brand))),
         ]),
       );
     }
     if (_grid.isEmpty) {
-      return const PremiumEmptyState(
+      return PremiumEmptyState(
         icon: Icons.search_off_rounded,
         title: 'No clips found',
-        subtitle: 'Try a different word, mood, or category.',
+        subtitle: _cat != null
+            ? 'Nothing in ${_catName(_cat)} yet. Try another category.'
+            : 'Try a different word, mood, or category.',
       );
     }
     return RefreshIndicator(
       onRefresh: _reload,
+      color: AppColors.brand,
       child: GridView.builder(
         controller: _scroll,
-        padding: EdgeInsets.fromLTRB(20, 4, 20, 20 + MediaQuery.of(context).viewPadding.bottom),
+        padding: EdgeInsets.fromLTRB(3, 3, 3, 20 + MediaQuery.of(context).viewPadding.bottom),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3, mainAxisSpacing: 7, crossAxisSpacing: 7, childAspectRatio: 9 / 14),
+          crossAxisCount: 3, mainAxisSpacing: 3, crossAxisSpacing: 3, childAspectRatio: 9 / 13),
         itemCount: _grid.length,
-        // Explore tiles are caption-less (feedback 2) — text shows only when opened.
-        itemBuilder: (context, i) => ClipTile(clip: _grid[i], aspect: 9 / 14, radius: 10, onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i})),
+        itemBuilder: (context, i) => _GridThumb(
+          clip: _grid[i],
+          onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i}),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dense grid tile — 9:13 media with a duration readout (bottom-left, soft
+/// shadow) and a lock badge (top-right) on gated clips. No caption.
+class _GridThumb extends StatelessWidget {
+  const _GridThumb({required this.clip, this.onTap});
+  final Clip clip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Stack(fit: StackFit.expand, children: [
+          const ColoredBox(color: AppColors.mediaPlaceholder),
+          if (clip.thumb != null)
+            CachedNetworkImage(
+              imageUrl: clip.thumb!,
+              fit: BoxFit.cover,
+              memCacheWidth: 320,
+              fadeInDuration: const Duration(milliseconds: 180),
+              placeholder: (_, __) => const ColoredBox(color: AppColors.mediaPlaceholder),
+              errorWidget: (_, __, ___) => const ColoredBox(color: AppColors.mediaPlaceholder),
+            ),
+          // duration readout (bottom-left, soft shadow)
+          Positioned(
+            left: 6, bottom: 6,
+            child: Text(
+              clip.durationLabel,
+              style: const TextStyle(
+                fontFamily: kMono, fontSize: 10, height: 1.0, fontWeight: FontWeight.w500, color: Colors.white,
+                shadows: [Shadow(color: Color(0xB3141129), blurRadius: 4)],
+              ),
+            ),
+          ),
+          // lock badge (top-right)
+          if (clip.isPro)
+            Positioned(
+              top: 6, right: 6,
+              child: Container(
+                width: 24, height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: const Color(0x8C141129), borderRadius: BorderRadius.circular(R.pill)),
+                child: const Icon(Icons.lock_outline_rounded, size: 11, color: Colors.white),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// A single checkbox row used inside the filter sheet.
+class _CheckRow extends StatelessWidget {
+  const _CheckRow({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(R.inner),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 13),
+          child: Row(children: [
+            Expanded(child: Text(label, style: T.rowLabel)),
+            Container(
+              width: 22, height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected ? AppColors.brand : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: selected ? AppColors.brand : AppColors.lineStrong, width: 1.5),
+              ),
+              child: selected ? const Icon(Icons.check_rounded, size: 15, color: Colors.white) : null,
+            ),
+          ]),
+        ),
       ),
     );
   }
