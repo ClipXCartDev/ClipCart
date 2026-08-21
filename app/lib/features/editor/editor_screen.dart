@@ -1482,6 +1482,7 @@ class _EditorScreenState extends State<EditorScreen> {
     if (_selected is SubtitleSegment) {
       final s = (_selected as SubtitleSegment).copy();
       s.dy = (s.dy + 0.06).clamp(0.05, 0.95);
+      s.z = _topZ(); // paint the copy on top (stable z, matches export ordering)
       setState(() {
         _project!.subtitles.add(s);
         _selected = s;
@@ -2351,9 +2352,17 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _logoOverlay(double w, double h) {
     final selected = _selected == 'logo';
     final p = _project!;
-    return Align(
-      alignment: Alignment(p.logoDx * 2 - 1, p.logoDy * 2 - 1),
-      child: Stack(clipBehavior: Clip.none, children: [
+    // Place the logo's CENTER exactly at (logoDx*w, logoDy*h). The old
+    // Align(dx*2-1,...) was size-aware (aligned edges), so an off-centre logo
+    // lagged the finger while dragging and landed at a different spot than the
+    // FFmpeg export (which centres on logoDx). Positioned + a -50%/-50% self
+    // shift makes preview == drag == export.
+    return Positioned(
+      left: p.logoDx * w,
+      top: p.logoDy * h,
+      child: FractionalTranslation(
+        translation: const Offset(-0.5, -0.5),
+        child: Stack(clipBehavior: Clip.none, children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => setState(() => _selected = 'logo'),
@@ -2398,7 +2407,8 @@ class _EditorScreenState extends State<EditorScreen> {
           Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
           Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
         ],
-      ]),
+        ]),
+      ),
     );
   }
 

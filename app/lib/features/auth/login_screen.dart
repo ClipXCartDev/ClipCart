@@ -64,11 +64,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _errorCard(String raw) {
     final lower = raw.toLowerCase();
     final isDeviceLimit = lower.contains('device') && lower.contains('limit');
-    final isBadCreds = lower.contains('credential') ||
-        lower.contains('password') ||
-        lower.contains('incorrect') ||
-        lower.contains("didn't match") ||
-        (lower.contains('email') && (lower.contains('taken') || lower.contains('exist') || lower.contains('registered')));
+    // Only rewrite to the friendly "those details didn't match" on the LOG IN
+    // path. On sign up, let the real backend reason through (e.g. "email already
+    // registered", "password must contain a number") — masking it there is worse.
+    final isBadCreds = !_signup &&
+        (lower.contains('credential') ||
+            lower.contains('password') ||
+            lower.contains('incorrect') ||
+            lower.contains("didn't match"));
     final String title, body;
     if (isDeviceLimit) {
       title = 'Device limit reached';

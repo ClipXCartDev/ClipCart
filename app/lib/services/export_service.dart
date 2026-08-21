@@ -77,14 +77,14 @@ class ExportService {
         // 2) zoom (scale the cropped box up), 3) re-crop to the box at the pan offset
         cropChain.write(",scale=iw*${_f(vz)}:ih*${_f(vz)}");
         cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
-            ":'(iw-ow)*(0.5+${_f(panX)})':'(ih-oh)*(0.5+${_f(panY)})'");
+            ":'(iw-ow)*(0.5-${_f(panX)})':'(ih-oh)*(0.5-${_f(panY)})'");
       }
       cropChain.write(',setsar=1');
     } else if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
       // no aspect change but user zoomed/panned the native frame
       cropChain.write("scale=iw*${_f(vz)}:ih*${_f(vz)}");
       cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
-          ":'(iw-ow)*(0.5+${_f(panX)})':'(ih-oh)*(0.5+${_f(panY)})',setsar=1");
+          ":'(iw-ow)*(0.5-${_f(panX)})':'(ih-oh)*(0.5-${_f(panY)})',setsar=1");
     } else {
       cropChain.write('null');
     }

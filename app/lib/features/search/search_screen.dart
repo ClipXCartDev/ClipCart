@@ -32,6 +32,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String _query = '';
   bool _loading = true, _loadingMore = false, _more = true;
   String? _error;
+  int _gen = 0; // bumps on every _reload; in-flight page loads with a stale gen are discarded
 
   @override
   void initState() {
@@ -63,12 +64,16 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _reload() async {
-    setState(() { _grid.clear(); _more = true; });
+    // New query/category: invalidate any in-flight page load, then start fresh.
+    _gen++;
+    setState(() { _grid.clear(); _more = true; _loadingMore = false; _error = null; });
     await _loadMore();
   }
 
   Future<void> _loadMore() async {
     if (_loadingMore || !_more) return;
+    final gen = _gen;
+    final firstPage = _grid.isEmpty;
     setState(() => _loadingMore = true);
     try {
       final next = await _cs.listClips(
@@ -78,15 +83,18 @@ class _SearchScreenState extends State<SearchScreen> {
         offset: _grid.length,
         sort: 'trending',
       );
-      if (!mounted) return;
+      if (!mounted || gen != _gen) return; // a newer _reload superseded this load
       setState(() {
         _grid.addAll(next);
         if (next.length < _page) _more = false;
       });
-    } catch (_) {
-      if (mounted) setState(() => _more = false);
+    } catch (e) {
+      if (!mounted || gen != _gen) return;
+      // First-page failure = surface an error/retry (not a false "no clips").
+      // A later-page failure just stops this attempt; scrolling retries.
+      setState(() { if (firstPage) _error = '$e'; });
     } finally {
-      if (mounted) setState(() => _loadingMore = false);
+      if (mounted && gen == _gen) setState(() => _loadingMore = false);
     }
   }
 

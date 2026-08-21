@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
@@ -52,13 +53,14 @@ class AuthService {
   Future<String?> _stableHardwareId() async {
     try {
       if (Platform.isAndroid) {
-        return await const AndroidId().getId();
+        // guard against a hung platform channel blocking login/register
+        return await const AndroidId().getId().timeout(const Duration(seconds: 3));
       }
       if (Platform.isIOS) {
-        final ios = await DeviceInfoPlugin().iosInfo;
+        final ios = await DeviceInfoPlugin().iosInfo.timeout(const Duration(seconds: 3));
         return ios.identifierForVendor;
       }
-    } catch (_) {/* fall through to the random fallback */}
+    } catch (_) {/* timeout or platform error → random fallback below */}
     return null;
   }
 

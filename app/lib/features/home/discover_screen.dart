@@ -56,7 +56,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   CatalogService get _cs => context.read<CatalogService>();
 
-  bool get _hasPlan => (_sub?['status'] as String?)?.toLowerCase() == 'active';
+  bool get _hasPlan => (_sub?['status']?.toString())?.toLowerCase() == 'active';
 
   Future<void> _refreshSub() async {
     try {

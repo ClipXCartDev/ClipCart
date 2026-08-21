@@ -262,7 +262,10 @@ class StickerOverlay {
     return a.clamp(0.0, 1.0);
   }
 
-  AnimFrame animAt(double t) => computeAnim(anim, t, start >= 9998 ? 0 : start, end >= 9998 ? start + 3 : end);
+  // Use the real end (a full-clip sentinel stays 9999) so a looping/full-clip
+  // sticker's out-animation doesn't fire ~3s in during preview while the export
+  // keeps it visible the whole clip.
+  AnimFrame animAt(double t) => computeAnim(anim, t, start >= 9998 ? 0 : start, end);
 
   StickerOverlay copy() => StickerOverlay(
         path: path, emoji: emoji, start: start, end: end, dx: dx, dy: dy,
@@ -416,18 +419,26 @@ class EditorProject {
     videoBgColor = (s['videoBgColor'] as int?) ?? 0xFF000000;
     resolution = (s['resolution'] as int? ?? 1080) == 720 ? ExportResolution.p720 : ExportResolution.p1080;
     fps = (s['fps'] as int?) ?? 30;
-    subtitles = (s['subs'] as List).map((e) => SubtitleSegment.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-    stickers = ((s['stk'] as List?) ?? []).map((e) => StickerOverlay.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    // Defensive parsing so a partial / malformed payload (e.g. a creator overlay
+    // with one bad field) loads the valid subset instead of discarding everything.
+    subtitles = <SubtitleSegment>[];
+    for (final e in (s['subs'] as List?) ?? const []) {
+      try { subtitles.add(SubtitleSegment.fromJson(Map<String, dynamic>.from(e as Map))); } catch (_) {/* skip bad segment */}
+    }
+    stickers = <StickerOverlay>[];
+    for (final e in (s['stk'] as List?) ?? const []) {
+      try { stickers.add(StickerOverlay.fromJson(Map<String, dynamic>.from(e as Map))); } catch (_) {/* skip bad sticker */}
+    }
     logoPath = s['logoPath'] as String?;
-    logoDx = (s['logoDx'] as num).toDouble();
-    logoDy = (s['logoDy'] as num).toDouble();
-    logoScale = (s['logoScale'] as num).toDouble();
-    logoRotation = (s['logoRotation'] as num).toDouble();
+    logoDx = (s['logoDx'] as num?)?.toDouble() ?? 0.85;
+    logoDy = (s['logoDy'] as num?)?.toDouble() ?? 0.10;
+    logoScale = (s['logoScale'] as num?)?.toDouble() ?? 1.0;
+    logoRotation = (s['logoRotation'] as num?)?.toDouble() ?? 0.0;
     logoZ = (s['logoZ'] as num?)?.toDouble() ?? 1000;
     logoHidden = (s['logoHidden'] as bool?) ?? false;
-    trimStart = (s['trimStart'] as num).toDouble();
+    trimStart = (s['trimStart'] as num?)?.toDouble() ?? 0.0;
     trimEnd = (s['trimEnd'] as num?)?.toDouble();
-    aspect = AspectOption.all[s['aspect'] as int];
+    aspect = AspectOption.all[((s['aspect'] as int?) ?? 0).clamp(0, AspectOption.all.length - 1)];
     watermarkOn = (s['watermarkOn'] as bool?) ?? true;
   }
 

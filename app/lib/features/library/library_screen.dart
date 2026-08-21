@@ -68,7 +68,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final out = <_Export>[];
     for (final f in dir.listSync().whereType<File>().where((f) => f.path.endsWith('.mp4'))) {
       final stat = f.statSync();
-      final thumb = File(f.path.replaceAll('.mp4', '.jpg'));
+      // replace only the trailing extension (path already ends with .mp4)
+      final thumb = File('${f.path.substring(0, f.path.length - 4)}.jpg');
       out.add(_Export(f, thumb.existsSync() ? thumb : null, stat.modified, stat.size / (1024 * 1024)));
     }
     out.sort((a, b) => b.modified.compareTo(a.modified));
@@ -173,7 +174,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         height: 72,
         child: Stack(fit: StackFit.expand, children: [
           if (e.thumb != null)
-            Image.file(e.thumb!, fit: BoxFit.cover)
+            Image.file(e.thumb!, fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(color: AppColors.mediaPlaceholder)))
           else
             const DecoratedBox(decoration: BoxDecoration(color: AppColors.mediaPlaceholder)),
           Center(

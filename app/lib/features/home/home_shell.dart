@@ -149,6 +149,14 @@ class _AccountTabState extends State<_AccountTab> {
     } catch (_) {/* leave as unknown */}
   }
 
+  /// Re-fetch plan + device count (e.g. after returning from checkout or the
+  /// devices screen) so the Account card never shows stale state.
+  void _refresh() {
+    if (!mounted) return;
+    setState(() => _sub = context.read<BillingService>().subscription().catchError((_) => null));
+    _loadDevices();
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthController>().user;
@@ -183,7 +191,7 @@ class _AccountTabState extends State<_AccountTab> {
           future: _sub,
           builder: (context, snap) {
             final sub = snap.data;
-            final active = (sub?['status'] as String?)?.toLowerCase() == 'active';
+            final active = (sub?['status']?.toString())?.toLowerCase() == 'active';
             final planName = active ? (sub?['plan_name'] ?? sub?['plan'] ?? 'Pro · 30 days').toString() : 'No plan';
             final until = (sub?['active_until'] ?? sub?['current_period_end'])?.toString();
             final credits = (sub?['edit_credits'] ?? sub?['credits_left'])?.toString();
@@ -192,14 +200,14 @@ class _AccountTabState extends State<_AccountTab> {
         ),
         const FieldLabel('Devices'),
         ListCard(children: [
-          ListRowTile(icon: Icons.phone_android_rounded, label: 'This device', value: 'Active now', onTap: () => context.push('/devices')),
-          ListRowTile(icon: Icons.devices_other_rounded, label: 'Manage devices', value: _deviceCount == null ? '—' : '$_deviceCount of 2', onTap: () => context.push('/devices')),
+          ListRowTile(icon: Icons.phone_android_rounded, label: 'This device', value: 'Active now', onTap: () async { await context.push('/devices'); _refresh(); }),
+          ListRowTile(icon: Icons.devices_other_rounded, label: 'Manage devices', value: _deviceCount == null ? '—' : '$_deviceCount of 2', onTap: () async { await context.push('/devices'); _refresh(); }),
         ]),
         const FieldLabel('Settings'),
         ListCard(children: [
           ListRowTile(label: 'Help & support', onTap: () => context.push('/support')),
           ListRowTile(label: 'Notifications', value: 'On', onTap: () => context.push('/notifications')),
-          ListRowTile(label: 'Plans & subscription', onTap: () => context.push('/plans')),
+          ListRowTile(label: 'Plans & subscription', onTap: () async { await context.push('/plans'); _refresh(); }),
           if (user?.isEditor == true) ListRowTile(label: 'Creator studio', onTap: () => context.push('/creator')),
           ListRowTile(label: 'Log out', danger: true, chevron: false, onTap: () => context.read<AuthController>().logout()),
         ]),

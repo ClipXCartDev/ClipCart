@@ -78,7 +78,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   Map<String, dynamic>? _sub; // active subscription (drives editable / credit count) or null
 
   // ── plan / credit state ────────────────────────────────────────────────────
-  bool get _editable => (_sub?['status'] as String?)?.toLowerCase() == 'active';
+  bool get _editable => (_sub?['status']?.toString())?.toLowerCase() == 'active';
 
   int get _creditsLeft {
     final v = _sub?['edit_credits'] ?? _sub?['credits_left'];
@@ -122,7 +122,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _current = widget.startIndex;
+    // clamp the start index so a bad/out-of-range index never crashes the build.
+    _current = widget.clips.isEmpty ? 0 : widget.startIndex.clamp(0, widget.clips.length - 1);
     _pc = PageController(initialPage: _current);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
     _loadSub();
@@ -155,15 +156,21 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
         c.seekTo(Duration.zero);
       }
     });
-    // ensure current ±1 exist, play current, dispose far ones
-    for (final i in [_current, _current - 1, _current + 1]) {
+    // Play the CURRENT clip first — don't make its playback wait on the
+    // neighbour prefetch network calls (that caused a 1-2s freeze on swipe).
+    await _ensure(_current);
+    final cur = _ctrls[_current];
+    if (cur != null) {
+      cur.setVolume(_muted ? 0 : 1); // only the current clip is audible
+      cur.play();
+    }
+    if (mounted) setState(() {}); // refresh chrome (heart / Edit bar) immediately
+    // Then pre-buffer the neighbours (±1), kept muted+paused.
+    for (final i in [_current - 1, _current + 1]) {
       if (i >= 0 && i < widget.clips.length) await _ensure(i);
     }
     _ctrls.forEach((i, c) {
-      if (i == _current) {
-        c.setVolume(_muted ? 0 : 1); // only the current clip is audible
-        c.play();
-      } else {
+      if (i != _current) {
         c.setVolume(0);
         c.pause();
       }
@@ -239,7 +246,18 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final clip = widget.clips[_current];
+    if (widget.clips.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: TextButton(
+            onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
+            child: const Text('Could not load clip', style: TextStyle(color: Colors.white)),
+          ),
+        ),
+      );
+    }
+    final clip = widget.clips[_current.clamp(0, widget.clips.length - 1)];
     final saved = _faved.contains(clip.id);
     return Scaffold(
       backgroundColor: Colors.black,
@@ -251,7 +269,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           scrollDirection: Axis.vertical,
           itemCount: widget.clips.length,
           onPageChanged: (i) {
-            _current = i;
+            setState(() => _current = i); // refresh chrome for the new page at once
             _sync();
           },
           itemBuilder: (context, i) => _page(widget.clips[i], i),

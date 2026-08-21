@@ -90,6 +90,12 @@ class AuthController extends ChangeNotifier {
     final detail = e.response?.data is Map ? e.response?.data['detail'] : null;
     if (detail is String) return detail;
     if (detail is Map && detail['message'] != null) return detail['message'].toString();
+    // FastAPI 422 validation errors: detail is a list of {loc,msg,type}.
+    if (detail is List && detail.isNotEmpty) {
+      final first = detail.first;
+      if (first is Map && first['msg'] != null) return first['msg'].toString();
+      return first.toString();
+    }
     return 'Request failed (${e.response?.statusCode ?? 'network'})';
   }
 
