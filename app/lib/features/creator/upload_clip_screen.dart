@@ -79,6 +79,25 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
     }
   }
 
+  // Brand-violet selectable chip (uniform selection across the app).
+  Widget _brandChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.brand : AppColors.surface,
+          borderRadius: BorderRadius.circular(R.pill),
+          border: Border.all(color: selected ? AppColors.brand : AppColors.line),
+        ),
+        child: Text(label,
+            style: TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: selected ? FontWeight.w600 : FontWeight.w500, color: selected ? Colors.white : AppColors.inkMuted)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,20 +137,21 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
           TextField(controller: _tags, decoration: const InputDecoration(labelText: 'Tags (comma separated)')),
           const SizedBox(height: 16),
           const Text('Access', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
           Row(children: [
-            ChoiceChip(label: const Text('Free'), selected: _access == 'free', onSelected: (_) => setState(() => _access = 'free')),
+            _brandChip('Free', _access == 'free', () => setState(() => _access = 'free')),
             const SizedBox(width: 8),
-            ChoiceChip(label: const Text('Pro'), selected: _access == 'pro', onSelected: (_) => setState(() => _access = 'pro')),
+            _brandChip('Pro', _access == 'pro', () => setState(() => _access = 'pro')),
           ]),
           const SizedBox(height: 16),
           const Text('Customizable layers', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: _allLayers.map((l) => FilterChip(
-                  label: Text(l),
-                  selected: _layers.contains(l),
-                  onSelected: (v) => setState(() => v ? _layers.add(l) : _layers.remove(l)),
-                )).toList(),
+            runSpacing: 8,
+            children: _allLayers
+                .map((l) => _brandChip(l, _layers.contains(l), () => setState(() => _layers.contains(l) ? _layers.remove(l) : _layers.add(l))))
+                .toList(),
           ),
           const SizedBox(height: 20),
           PrimaryButton(label: 'Submit for review', icon: Icons.send, loading: _busy, onPressed: _busy ? null : _submit),

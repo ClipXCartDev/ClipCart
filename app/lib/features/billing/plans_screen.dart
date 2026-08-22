@@ -456,7 +456,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text('Binance Pay', style: TextStyle(fontFamily: kSans, fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
                     SizedBox(height: 2),
-                    Text('USDT · opens the Binance app', style: TextStyle(fontFamily: kSans, fontSize: 12.5, color: AppColors.inkMuted)),
+                    Text('USDT · scan QR or copy the pay link', style: TextStyle(fontFamily: kSans, fontSize: 12.5, color: AppColors.inkMuted)),
                   ]),
                 ),
                 Container(

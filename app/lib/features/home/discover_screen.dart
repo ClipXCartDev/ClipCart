@@ -174,8 +174,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  // Compact subscribe / Pro pill for the header — gold (premium contrast on
-  // paper) when there's no plan, green when active.
+  // Compact subscribe / Pro pill for the header. When active it's a brand-violet
+  // "Pro" state carrying the days remaining; when there's no plan it's a gold
+  // "Subscribe" CTA (deliberate premium accent on paper).
   Widget _subPill() {
     final active = _hasPlan;
     final expiresRaw = _sub?['expires_at'] ?? _sub?['current_period_end'] ?? _sub?['end_at'];
@@ -183,13 +184,40 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (expiresRaw is String) expires = DateTime.tryParse(expiresRaw);
     final daysLeft = expires?.difference(DateTime.now()).inDays;
 
-    final Color bg = active ? AppColors.okBg : AppColors.goldAccent;
-    final Color fg = active ? AppColors.okText : const Color(0xFF3B2A05);
-    final IconData icon = active ? Icons.verified_rounded : Icons.bolt_rounded;
-    final String label = active
-        ? (daysLeft != null && daysLeft > 0 ? 'Pro · ${daysLeft}d' : 'Pro')
-        : 'Subscribe';
+    if (active) {
+      // brand-violet Pro chip — icon + "Pro" + days-left sub-label
+      final String sub = (daysLeft != null && daysLeft >= 0)
+          ? (daysLeft == 0 ? 'ends today' : '$daysLeft days left')
+          : 'active';
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => context.push('/plans'),
+        child: Container(
+          height: 34,
+          padding: const EdgeInsets.fromLTRB(9, 0, 13, 0),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF7A62D6), AppColors.brand]),
+            borderRadius: BorderRadius.circular(R.pill),
+            boxShadow: [BoxShadow(color: AppColors.brand.withValues(alpha: 0.34), blurRadius: 11, offset: const Offset(0, 3))],
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 20, height: 20,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
+              child: const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
+            ),
+            const SizedBox(width: 6),
+            Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Pro', style: TextStyle(fontFamily: kSans, fontSize: 12.5, height: 1.05, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: Colors.white)),
+              Text(sub, style: TextStyle(fontFamily: kMono, fontSize: 8.5, height: 1.05, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.82))),
+            ]),
+          ]),
+        ),
+      );
+    }
 
+    // no plan → gold Subscribe CTA
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => context.push('/plans'),
@@ -197,14 +225,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 13),
         decoration: BoxDecoration(
-          color: bg,
+          color: AppColors.goldAccent,
           borderRadius: BorderRadius.circular(R.pill),
-          boxShadow: active ? null : [BoxShadow(color: AppColors.goldAccent.withValues(alpha: 0.38), blurRadius: 11, offset: const Offset(0, 3))],
+          boxShadow: [BoxShadow(color: AppColors.goldAccent.withValues(alpha: 0.38), blurRadius: 11, offset: const Offset(0, 3))],
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 15, color: fg),
-          const SizedBox(width: 5),
-          Text(label, style: TextStyle(fontFamily: kSans, fontSize: 13, height: 1.0, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: fg)),
+        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.bolt_rounded, size: 15, color: Color(0xFF3B2A05)),
+          SizedBox(width: 5),
+          Text('Subscribe', style: TextStyle(fontFamily: kSans, fontSize: 13, height: 1.0, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: Color(0xFF3B2A05))),
         ]),
       ),
     );

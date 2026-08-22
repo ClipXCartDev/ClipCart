@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Native launch window background — matches the Flutter splash field so
+         there is no light flash before the first Flutter frame. -->
+    <color name="splash_bg">#2E2568</color>
+</resources>

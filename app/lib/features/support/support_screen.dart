@@ -26,6 +26,11 @@ class _SupportScreenState extends State<SupportScreen> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email copied')));
   }
 
+  void _copyWebsite() {
+    Clipboard.setData(const ClipboardData(text: 'https://clipcart.app/help'));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,16 +79,11 @@ class _SupportScreenState extends State<SupportScreen> {
                   ),
                   ListRowTile(
                     icon: Icons.public_rounded,
-                    label: 'Website',
+                    label: 'Help centre',
                     value: 'clipcart.app/help',
                     chevron: false,
-                    onTap: () => ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text('Opening clipcart.app/help'))),
-                    trailing: _RowAction(
-                      label: 'Open',
-                      onTap: () => ScaffoldMessenger.of(context)
-                          .showSnackBar(const SnackBar(content: Text('Opening clipcart.app/help'))),
-                    ),
+                    onTap: _copyWebsite,
+                    trailing: _RowAction(label: 'Copy', onTap: _copyWebsite),
                   ),
                 ]),
 
@@ -139,35 +139,46 @@ class _QueryCta extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(R.large),
-        child: InkWell(
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF6B54C9), Color(0xFF4A38A6)],
+          ),
           borderRadius: BorderRadius.circular(R.large),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(17),
-            child: Row(children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.inner)),
-                child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 13),
-              const Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text('Chat with support',
-                      style: TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.inkDark)),
-                  SizedBox(height: 4),
-                  Text('A real person replies here · within 6 working hours',
-                      style: TextStyle(fontFamily: kSans, fontSize: 11.5, color: AppColors.mutDark)),
-                ]),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.mutDark, size: 22),
-            ]),
+          boxShadow: [BoxShadow(color: AppColors.brand.withValues(alpha: 0.26), blurRadius: 16, offset: const Offset(0, 7))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(R.large),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(17),
+              child: Row(children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(R.inner)),
+                  child: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                    const Text('Chat with support',
+                        style: TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text('A real person replies here · within 6 working hours',
+                        style: TextStyle(fontFamily: kSans, fontSize: 11.5, color: Colors.white.withValues(alpha: 0.75))),
+                  ]),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.75), size: 22),
+              ]),
+            ),
           ),
         ),
       );

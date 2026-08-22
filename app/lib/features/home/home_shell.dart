@@ -209,7 +209,7 @@ class _AccountTabState extends State<_AccountTab> {
         const FieldLabel('Settings'),
         ListCard(children: [
           ListRowTile(label: 'Help & support', onTap: () => context.push('/support')),
-          ListRowTile(label: 'Notifications', value: 'On', onTap: () => context.push('/notifications')),
+          ListRowTile(label: 'Notifications', onTap: () => context.push('/notifications')),
           ListRowTile(label: 'Plans & subscription', onTap: () async { await context.push('/plans'); _refresh(); }),
           if (user?.isEditor == true) ListRowTile(label: 'Creator studio', onTap: () => context.push('/creator')),
           ListRowTile(label: 'Log out', danger: true, chevron: false, onTap: () => context.read<AuthController>().logout()),

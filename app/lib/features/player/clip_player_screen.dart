@@ -80,15 +80,14 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   // ── plan / credit state ────────────────────────────────────────────────────
   bool get _editable => (_sub?['status']?.toString())?.toLowerCase() == 'active';
 
-  int get _creditsLeft {
+  /// Remaining edit credits — an int when the server sends a finite quota, or
+  /// null when the plan is unlimited / the quota is unknown. Never fabricated.
+  int? get _creditsLeft {
     final v = _sub?['edit_credits'] ?? _sub?['credits_left'];
     if (v is int) return v;
     if (v is num) return v.toInt();
-    if (v is String) {
-      final n = int.tryParse(v);
-      if (n != null) return n;
-    }
-    return 17; // spec placeholder when the server sends no quota
+    if (v is String) return int.tryParse(v);
+    return null;
   }
 
   Future<void> _loadSub() async {
@@ -541,7 +540,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   // ── §11 credit confirm ──────────────────────────────────────────────────────
   void _showCreditSheet(Clip clip) {
     final left = _creditsLeft;
-    final after = left > 0 ? left - 1 : left;
+    final leftLabel = left == null ? 'Unlimited' : '$left';
+    final afterLabel = left == null ? 'Unlimited' : '${left > 0 ? left - 1 : 0}';
     showAppSheet(context, (ctx) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,9 +569,9 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               borderRadius: BorderRadius.circular(R.thumb),
             ),
             child: Column(children: [
-              _creditRow('Credits left now', '$left', AppColors.ink),
+              _creditRow('Credits left now', leftLabel, AppColors.ink),
               const Divider(height: 1, thickness: 1, color: AppColors.brandBorder, indent: 16, endIndent: 16),
-              _creditRow('After opening', '$after', AppColors.brand),
+              _creditRow('After opening', afterLabel, AppColors.brand),
             ]),
           ),
           const SizedBox(height: 20),

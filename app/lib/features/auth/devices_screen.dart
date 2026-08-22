@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../core/ui_kit.dart';
 import '../../state/auth_controller.dart';
 import '../../widgets/premium_empty_state.dart';
 
@@ -40,13 +41,15 @@ class _DevicesScreenState extends State<DevicesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Remove device?', style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Text('“${_deviceName(device)}” will be signed out and its slot freed.'),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.large)),
+        title: const Text('Remove device?', style: T.section),
+        content: Text('“${_deviceName(device)}” will be signed out and its slot freed.', style: T.body),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, color: AppColors.inkMuted))),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Remove', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800)),
+            child: const Text('Remove', style: TextStyle(fontFamily: kSans, color: AppColors.errText, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -91,70 +94,121 @@ class _DevicesScreenState extends State<DevicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Devices')),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: _kAccent));
-          }
-          if (snap.hasError) {
-            return PremiumEmptyState(
-              icon: Icons.wifi_off_rounded,
-              title: 'Couldn’t load devices',
-              subtitle: 'Check your connection and try again.',
-              cta: 'Retry',
-              onCta: () => setState(_load),
-            );
-          }
-          final devices = snap.data ?? const [];
-          if (devices.isEmpty) {
-            return const PremiumEmptyState(
-              icon: Icons.phone_android_rounded,
-              title: 'No devices yet',
-              subtitle: 'Devices you sign in on will appear here. You can be signed in on up to 2 devices.',
-            );
-          }
-          return RefreshIndicator(
-            color: _kAccent,
-            onRefresh: () async => setState(_load),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: devices.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, i) {
-                final d = devices[i];
-                final id = d['id']?.toString();
-                final removing = _removingId != null && _removingId == id;
-                final isCurrent = _thisId != null && d['device_id']?.toString() == _thisId;
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.withOpacity(0.15)),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    leading: const Icon(Icons.phone_android_rounded, color: _kAccent),
-                    title: Text(isCurrent ? '${_deviceName(d)} · This device' : _deviceName(d), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    subtitle: Text(_lastSeen(d), style: const TextStyle(color: Colors.grey, fontSize: 12.5)),
-                    // You can't sign yourself out from the device list — remove it
-                    // from the OTHER device instead. Prevents an accidental self-deauth.
-                    trailing: isCurrent
-                        ? const Text('In use', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 12.5))
-                        : removing
-                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5))
-                            : TextButton(
-                                onPressed: _removingId != null ? null : () => _remove(d),
-                                child: const Text('Remove', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w800)),
-                              ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(children: [
+          // nav row (design-system, matches Support/Notifications)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 20, 10),
+            child: Row(children: [
+              CircleIconBtn(Icons.arrow_back_rounded, onTap: () => Navigator.of(context).maybePop()),
+              const SizedBox(width: 12),
+              const Text('Devices', style: T.pageTitle),
+            ]),
+          ),
+          Expanded(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _future,
+              builder: (context, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: _kAccent));
+                }
+                if (snap.hasError) {
+                  return PremiumEmptyState(
+                    icon: Icons.wifi_off_rounded,
+                    title: 'Couldn’t load devices',
+                    subtitle: 'Check your connection and try again.',
+                    cta: 'Retry',
+                    onCta: () => setState(_load),
+                  );
+                }
+                final devices = snap.data ?? const [];
+                if (devices.isEmpty) {
+                  return const PremiumEmptyState(
+                    icon: Icons.phone_android_rounded,
+                    title: 'No devices yet',
+                    subtitle: 'Devices you sign in on will appear here. You can be signed in on up to 2 devices.',
+                  );
+                }
+                return RefreshIndicator(
+                  color: _kAccent,
+                  onRefresh: () async => setState(_load),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2, bottom: 12),
+                        child: Text('You can be signed in on up to 2 devices. Remove one to free a slot.', style: T.bodySmall),
+                      ),
+                      for (final d in devices) _deviceCard(d),
+                    ],
                   ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ]),
       ),
     );
   }
+
+  Widget _deviceCard(Map<String, dynamic> d) {
+    final id = d['id']?.toString();
+    final removing = _removingId != null && _removingId == id;
+    final isCurrent = _thisId != null && d['device_id']?.toString() == _thisId;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(R.large),
+          border: Border.all(color: isCurrent ? AppColors.brandBorder : AppColors.line),
+        ),
+        child: Row(children: [
+          Container(
+            width: 40, height: 40, alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.brandTint, borderRadius: BorderRadius.circular(R.tile)),
+            child: const Icon(Icons.phone_android_rounded, color: AppColors.brand, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(_deviceName(d), maxLines: 1, overflow: TextOverflow.ellipsis, style: T.cardTitle),
+              const SizedBox(height: 4),
+              Text(_lastSeen(d), style: T.bodySmall),
+            ]),
+          ),
+          const SizedBox(width: 8),
+          // You can't sign yourself out from the device list — remove it from the
+          // OTHER device instead. Prevents an accidental self-deauth.
+          if (isCurrent)
+            StatusPill.ok('This device')
+          else if (removing)
+            const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: _kAccent, strokeWidth: 2.5))
+          else
+            _RemoveBtn(onTap: _removingId != null ? null : () => _remove(d)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _RemoveBtn extends StatelessWidget {
+  const _RemoveBtn({required this.onTap});
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Material(
+        color: AppColors.errBg,
+        borderRadius: BorderRadius.circular(R.pill),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(R.pill),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            child: Text('Remove',
+                style: TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: FontWeight.w600, color: onTap == null ? AppColors.inkGhost : AppColors.errTextDark)),
+          ),
+        ),
+      );
 }

@@ -183,24 +183,21 @@ class _SearchScreenState extends State<SearchScreen> {
           _filterButton(),
         ]),
       ),
-      // category chips — compact, text-centered (no dead space under the label)
+      // category chips — modern & compact (thin pills, brand-fill on select)
       if (_cats.isNotEmpty)
         SizedBox(
-          height: 34,
+          height: 32,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
+            physics: const BouncingScrollPhysics(),
             children: [
-              Padding(padding: const EdgeInsets.only(right: 8), child: PillChip('All', selected: _cat == null, filterStyle: true, onTap: () => _pickCategory(null))),
+              _CatChip('All', selected: _cat == null, onTap: () => _pickCategory(null)),
               for (final c in _cats)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: PillChip(
-                    (c['name'] as String?) ?? 'Clips',
-                    selected: _cat == ((c['slug'] as String?) ?? c['name']),
-                    filterStyle: true,
-                    onTap: () => _pickCategory((c['slug'] as String?) ?? c['name'] as String),
-                  ),
+                _CatChip(
+                  (c['name'] as String?) ?? 'Clips',
+                  selected: _cat == ((c['slug'] as String?) ?? c['name']),
+                  onTap: () => _pickCategory((c['slug'] as String?) ?? c['name'] as String),
                 ),
             ],
           ),
@@ -255,20 +252,26 @@ class _SearchScreenState extends State<SearchScreen> {
       child: SizedBox(
         width: 42, height: 42,
         child: Stack(children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
             width: 42, height: 42,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle),
-            child: const Icon(Icons.tune_rounded, size: 20, color: Colors.white),
+            decoration: BoxDecoration(
+              color: active ? AppColors.brand : AppColors.brandTint,
+              shape: BoxShape.circle,
+              border: active ? null : Border.all(color: AppColors.brandBorder),
+              boxShadow: active ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.30), blurRadius: 10, offset: const Offset(0, 3))] : null,
+            ),
+            child: Icon(Icons.tune_rounded, size: 20, color: active ? Colors.white : AppColors.brand),
           ),
           if (active)
             Positioned(
               right: 0, top: 0,
               child: Container(
-                width: 18, height: 18,
+                width: 16, height: 16,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.brand, shape: BoxShape.circle, border: Border.all(color: AppColors.bg, width: 1.5)),
-                child: const Text('1', style: TextStyle(fontFamily: kMono, fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white)),
+                decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: AppColors.bg, width: 1.5)),
+                child: const Text('1', style: TextStyle(fontFamily: kMono, fontSize: 8.5, fontWeight: FontWeight.w700, color: AppColors.brand)),
               ),
             ),
         ]),
@@ -360,6 +363,51 @@ class _GridThumb extends StatelessWidget {
               ),
             ),
         ]),
+      ),
+    );
+  }
+}
+
+/// Modern, compact Explore category chip. Thin pill; brand-fill + subtle glow
+/// when selected, quiet outlined surface otherwise. Animates on selection.
+class _CatChip extends StatelessWidget {
+  const _CatChip(this.label, {required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 7),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 170),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.brand : AppColors.surface,
+            borderRadius: BorderRadius.circular(R.pill),
+            border: Border.all(color: selected ? AppColors.brand : AppColors.line),
+            boxShadow: selected
+                ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.26), blurRadius: 9, offset: const Offset(0, 3))]
+                : null,
+          ),
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 170),
+            style: TextStyle(
+              fontFamily: kSans,
+              fontSize: 12.5,
+              height: 1.0,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              color: selected ? Colors.white : AppColors.inkMuted,
+            ),
+            child: Text(label),
+          ),
+        ),
       ),
     );
   }
