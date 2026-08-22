@@ -181,11 +181,11 @@ class Segmented<T> extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: on ? AppColors.surface : Colors.transparent,
+                    color: on ? AppColors.brand : Colors.transparent,
                     borderRadius: BorderRadius.circular(9),
-                    boxShadow: on ? const [BoxShadow(color: Color(0x14221F19), blurRadius: 2, offset: Offset(0, 1))] : null,
+                    boxShadow: on ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.28), blurRadius: 4, offset: const Offset(0, 1))] : null,
                   ),
-                  child: Text(it.$2, style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: on ? FontWeight.w600 : FontWeight.w500, color: on ? AppColors.ink : AppColors.inkMuted)),
+                  child: Text(it.$2, style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: on ? FontWeight.w600 : FontWeight.w500, color: on ? Colors.white : AppColors.inkMuted)),
                 ),
               ),
             );
@@ -202,12 +202,12 @@ class PillChip extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  /// filter chips fill `ink` when selected; choice chips fill `brand`.
+  /// Kept for call-site compatibility; selection is now uniformly brand violet.
   final bool filterStyle;
 
   @override
   Widget build(BuildContext context) {
-    final selBg = filterStyle ? AppColors.ink : AppColors.brand;
+    final selBg = AppColors.brand; // uniform brand selection everywhere (was ink for filter chips)
     return GestureDetector(
       onTap: onTap,
       child: Container(

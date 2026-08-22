@@ -61,6 +61,7 @@ class SubscriptionOut(BaseModel):
     status: str
     started_at: datetime
     expires_at: datetime
+    edit_credits: int | None = None  # remaining edits this period; null = unlimited
 
 
 class PaymentOut(BaseModel):

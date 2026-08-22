@@ -193,8 +193,11 @@ class _AccountTabState extends State<_AccountTab> {
             final sub = snap.data;
             final active = (sub?['status']?.toString())?.toLowerCase() == 'active';
             final planName = active ? (sub?['plan_name'] ?? sub?['plan'] ?? 'Pro · 30 days').toString() : 'No plan';
-            final until = (sub?['active_until'] ?? sub?['current_period_end'])?.toString();
-            final credits = (sub?['edit_credits'] ?? sub?['credits_left'])?.toString();
+            final until = (sub?['expires_at'] ?? sub?['active_until'] ?? sub?['current_period_end'])?.toString();
+            // backend sends edit_credits (null = unlimited plan)
+            final credits = active
+                ? (sub != null && sub.containsKey('edit_credits') && sub['edit_credits'] == null ? 'Unlimited' : (sub?['edit_credits'] ?? sub?['credits_left'])?.toString())
+                : null;
             return _PlanCard(planName: planName, active: active, until: until, credits: credits, isEditor: user?.isEditor == true);
           },
         ),

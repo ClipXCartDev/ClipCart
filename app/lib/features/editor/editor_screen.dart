@@ -2952,7 +2952,7 @@ class _EditorScreenState extends State<EditorScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 13),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: on ? ink : Colors.transparent,
+            color: on ? brand : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
             border: on ? null : Border.all(color: line),
           ),

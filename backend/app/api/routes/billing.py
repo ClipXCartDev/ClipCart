@@ -19,7 +19,7 @@ from app.schemas.billing import (
     SubscriptionOut,
 )
 from app.services import binance
-from app.services.billing import activate_from_payment, current_subscription
+from app.services.billing import _exports_this_month, activate_from_payment, current_subscription
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -111,9 +111,12 @@ def my_subscription(user: User = Depends(get_current_user), db: Session = Depend
     sub = current_subscription(db, user)
     if not sub:
         return None
+    # remaining edit credits this period: null = unlimited plan
+    limit = sub.plan.export_limit
+    edit_credits = None if limit is None else max(0, limit - _exports_this_month(db, user))
     return SubscriptionOut(
         id=sub.id, plan_name=sub.plan.name, status=sub.status.value,
-        started_at=sub.started_at, expires_at=sub.expires_at,
+        started_at=sub.started_at, expires_at=sub.expires_at, edit_credits=edit_credits,
     )
 
 

@@ -135,7 +135,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: on ? AppColors.ink : AppColors.surfaceHover2,
+          color: on ? AppColors.brand : AppColors.surfaceHover2,
           borderRadius: BorderRadius.circular(R.pill),
           border: on ? null : Border.all(color: AppColors.line),
         ),
