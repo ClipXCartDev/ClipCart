@@ -9,6 +9,7 @@ import '../../core/ui_kit.dart';
 import '../../models/editor_state.dart';
 import '../../services/project_store.dart';
 import '../../widgets/premium_empty_state.dart';
+import '../home/home_shell.dart' show homeTab;
 
 /// §21 Editor tab — saved-but-not-exported editor projects. Continue editing or
 /// delete (client: "jin videos mein kaam kiya hai unki saved progress dikhe,
@@ -26,6 +27,20 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   void initState() {
     super.initState();
     _future = context.read<ProjectStore>().list();
+    // The tab lives in an IndexedStack (kept alive), so refresh whenever the
+    // Editor tab is (re)selected — otherwise it shows a stale project list
+    // after editing/exporting elsewhere.
+    homeTab.addListener(_onTab);
+  }
+
+  void _onTab() {
+    if (homeTab.value == 2 && mounted) _reload();
+  }
+
+  @override
+  void dispose() {
+    homeTab.removeListener(_onTab);
+    super.dispose();
   }
 
   void _reload() => setState(() { _future = context.read<ProjectStore>().list(); });

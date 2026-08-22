@@ -146,16 +146,37 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     if (widget.clip != null) {
       final cs = context.read<CatalogService>();
+      final store = context.read<ProjectStore>();
+      final clipId = widget.clip!.id;
+      // ONE saved draft per clip (no duplicates): a stable id, resume any existing
+      // draft, and collapse older duplicate drafts for the same clip.
+      final stableId = 'clip_$clipId';
+      List<SavedProject> existing = const [];
+      try { existing = (await store.list()).where((p) => p.clipId == clipId).toList(); } catch (_) {}
       // attempt 0 uses any cache; attempt 1 forces a fresh re-download (recovers
       // from a corrupt/partial cache or a transient failure).
       for (var attempt = 0; attempt < 2; attempt++) {
         try {
-          final path = await cs.editClipFile(widget.clip!.id, fresh: attempt > 0);
+          final path = await cs.editClipFile(clipId, fresh: attempt > 0);
           await _load(path);
-          // Load creator-authored overlays (subtitles/logo/text) over the raw
-          // video — rendered, not burned. The customer edits these; export burns.
-          if (widget.clip!.overlays != null) {
+          if (existing.isNotEmpty) {
+            // Continue the existing draft (it already holds any creator overlays
+            // the customer was editing, plus their changes).
+            final restored = existing.first.toProject(); // list is newest-first
+            restored.baseClipPath = _project!.baseClipPath;
+            restored.defaultFontPath = _project!.defaultFontPath;
+            restored.duration = _project!.duration;
+            setState(() => _project = restored);
+          } else if (widget.clip!.overlays != null) {
+            // First time editing this clip: load the creator's overlays over the
+            // raw video — rendered, not burned (the customer edits; export burns).
             await _applyCreatorOverlays(widget.clip!.overlays!);
+          }
+          _projectId = stableId; // all saves target the one stable file for this clip
+          await _saveProject();  // persist under the stable id before pruning
+          // collapse older duplicate drafts for this clip
+          for (final p in existing) {
+            if (p.id != stableId) { try { await store.delete(p.id); } catch (_) {} }
           }
           _error = null;
           break;
@@ -173,7 +194,8 @@ class _EditorScreenState extends State<EditorScreen> {
     final p = _project;
     if (p == null) return false;
     try {
-      _projectId ??= 'proj_${DateTime.now().microsecondsSinceEpoch}';
+      // one stable file per clip → editing the same clip never duplicates.
+      _projectId ??= widget.clip != null ? 'clip_${widget.clip!.id}' : 'proj_${DateTime.now().microsecondsSinceEpoch}';
       final name = (widget.title ?? widget.clip?.title ?? widget.resume?.name ?? 'My project').trim();
       await context.read<ProjectStore>().save(SavedProject(
             id: _projectId!,
@@ -2872,16 +2894,16 @@ class _EditorScreenState extends State<EditorScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
-      padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(10, 6, 10, 6 + MediaQuery.of(context).viewPadding.bottom),
       child: !hasSel
           // PROJECT tools — 8-tile 4-column grid, compact (short tiles, no scroll)
           ? GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: 4,
-              mainAxisSpacing: 6,
+              mainAxisSpacing: 5,
               crossAxisSpacing: 6,
-              childAspectRatio: 1.7,
+              childAspectRatio: 2.1,
               children: [
                 _projTile(Icons.title_rounded, 'Text', _addSubtitle),
                 _projTile(Icons.image_outlined, 'Logo', _pickLogo, onLongPress: _openBrandKit),

@@ -309,7 +309,8 @@ Future<T?> showAppSheet<T>(BuildContext context, WidgetBuilder builder, {bool gr
     builder: (ctx) => Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 10, 22, 26),
+        // clear the system nav bar (viewPadding.bottom) so buttons never overlap it
+        padding: EdgeInsets.fromLTRB(22, 10, 22, 20 + MediaQuery.of(ctx).viewPadding.bottom),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           if (grabber) const Center(child: SheetGrabber()),
           Flexible(child: builder(ctx)),
