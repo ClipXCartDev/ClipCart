@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/brand_logo.dart';
 import '../../core/theme.dart';
 
 /// Modern animated splash — a depth-lit "C" monogram (with a play notch)
@@ -109,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                                   ),
                                 ],
                               ),
-                              child: CustomPaint(painter: _MonogramPainter(_ringDraw.value)),
+                              child: CustomPaint(painter: MonogramPainter(_ringDraw.value)),
                             ),
                           ),
                         ),
@@ -217,73 +218,6 @@ class _AmbientPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_AmbientPainter old) => old.t != t;
-}
-
-/// The depth-lit "C" monogram: an extruded ring arc (shadow → body → highlight)
-/// open on the right, with a play triangle nested in the opening.
-class _MonogramPainter extends CustomPainter {
-  _MonogramPainter(this.draw); // 0..1 sweep-in progress
-  final double draw;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final r = size.width * 0.34;
-    final rect = Rect.fromCircle(center: center, radius: r);
-    final stroke = size.width * 0.155;
-
-    // C geometry: ~280° arc, ~80° gap centred on the right
-    const start = 40 * math.pi / 180;
-    final sweep = (280 * math.pi / 180) * draw;
-
-    // back shadow (extrusion) — offset down-right, dark violet
-    final shadow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFF2A1E63);
-    canvas.drawArc(rect.shift(const Offset(2.4, 3.4)), start, sweep, false, shadow);
-
-    // main body — lit gradient (top-left light → bottom-right deep)
-    final body = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFF3EFFF), Color(0xFF9D86FF), Color(0xFF6A4FE0)],
-        stops: [0.0, 0.5, 1.0],
-      ).createShader(rect);
-    canvas.drawArc(rect, start, sweep, false, body);
-
-    // top bevel highlight — thin bright arc on the upper edge
-    final hi = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke * 0.28
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: 0.55 * draw);
-    canvas.drawArc(rect.shift(const Offset(-1.0, -1.3)), start + 0.20, sweep * 0.62, false, hi);
-
-    // play triangle nested in the C opening (fades in with the sweep)
-    if (draw > 0.55) {
-      final tri = ((draw - 0.55) / 0.45).clamp(0.0, 1.0);
-      final tp = Paint()..color = Colors.white.withValues(alpha: 0.92 * tri);
-      final s = r * 0.42;
-      final cx = center.dx + r * 0.16;
-      final cy = center.dy;
-      final path = Path()
-        ..moveTo(cx - s * 0.5, cy - s * 0.62)
-        ..lineTo(cx - s * 0.5, cy + s * 0.62)
-        ..lineTo(cx + s * 0.72, cy)
-        ..close();
-      canvas.drawShadow(path, const Color(0xFF1B1540), 3.0, false);
-      canvas.drawPath(path, tp);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MonogramPainter old) => old.draw != draw;
 }
 
 /// A thin track with a violet comet that sweeps left→right on the ambient loop.
