@@ -65,28 +65,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     } catch (_) {}
   }
 
-  Future<void> _boot() async {
+  Future<void> _boot({bool force = false}) async {
     setState(() { _loading = true; _error = null; });
+    if (force) _cs.clearCache(); // pull-to-refresh → fresh, else cache = instant
     try {
       // subscription (banner) — non-fatal
       _refreshSub();
-      // featured hero rail
-      try { _featured = await _cs.listClips(featured: true, limit: 10); } catch (_) {}
-      // categories → one rail each
-      final cats = await _cs.categories();
-      final rows = <_CatRow>[];
-      for (final c in cats) {
+      // Featured + categories run CONCURRENTLY (was serial → slow refresh).
+      // Gather via Future.wait so both futures get a listener synchronously — a
+      // categories() error can't land unlistened (no spurious unhandled-async).
+      final fFeat = _cs.listClips(featured: true, limit: 10, force: force).catchError((_) => <Clip>[]);
+      final fCats = _cs.categories(force: force);
+      final gathered = await Future.wait<Object?>([fFeat, fCats]);
+      _featured = gathered[0] as List<Clip>;
+      final cats = gathered[1] as List<Map<String, dynamic>>;
+      // One rail per category, all fetched IN PARALLEL (was a serial await loop
+      // per category — the main cause of the long refresh the client saw).
+      final rowFutures = cats.map((c) {
         final slug = (c['slug'] as String?) ?? c['name'] as String?;
         final name = (c['name'] as String?) ?? 'Clips';
-        try {
-          final clips = await _cs.listClips(category: slug, limit: 12, sort: 'trending');
-          if (clips.isNotEmpty) rows.add(_CatRow(name, slug, clips));
-        } catch (_) {}
-      }
+        return _cs
+            .listClips(category: slug, limit: 12, sort: 'trending', force: force)
+            .then<_CatRow?>((clips) => clips.isNotEmpty ? _CatRow(name, slug, clips) : null)
+            .catchError((_) => null);
+      }).toList();
+      var rows = (await Future.wait(rowFutures)).whereType<_CatRow>().toList();
       // fallback: if no categories produced rows, show one "Trending" rail
       if (rows.isEmpty) {
-        final all = await _cs.listClips(limit: 18, sort: 'trending');
-        if (all.isNotEmpty) rows.add(_CatRow('Trending', null, all));
+        final all = await _cs.listClips(limit: 18, sort: 'trending', force: force);
+        if (all.isNotEmpty) rows = [_CatRow('Trending', null, all)];
       }
       if (!mounted) return;
       setState(() { _rows = rows; });
@@ -119,7 +126,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       return _ErrorState(onRetry: _boot);
     }
     return RefreshIndicator(
-      onRefresh: _boot,
+      onRefresh: () => _boot(force: true),
       color: AppColors.brand,
       child: ListView(
         controller: _scroll,
@@ -191,7 +198,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           : 'active';
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => context.push('/plans'),
+        onTap: () async { await context.push('/plans'); if (mounted) _refreshSub(); },
         child: Container(
           height: 34,
           padding: const EdgeInsets.fromLTRB(9, 0, 13, 0),
@@ -220,7 +227,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     // no plan → gold Subscribe CTA
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => context.push('/plans'),
+      onTap: () async { await context.push('/plans'); if (mounted) _refreshSub(); },
       child: Container(
         height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 13),

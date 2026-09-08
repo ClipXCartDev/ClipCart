@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
 import '../../services/billing_service.dart';
 import '../../state/auth_controller.dart';
+import '../auth/change_password_sheet.dart';
 import '../library/library_screen.dart';
 import '../projects/projects_screen.dart';
 import '../search/search_screen.dart';
@@ -210,6 +211,8 @@ class _AccountTabState extends State<_AccountTab> {
         ListCard(children: [
           ListRowTile(label: 'Help & support', onTap: () => context.push('/support')),
           ListRowTile(label: 'Notifications', onTap: () => context.push('/notifications')),
+          // Change password moved here from Help & support (client §7).
+          ListRowTile(label: 'Change password', onTap: () => showAppSheet(context, (_) => const ChangePasswordSheet())),
           ListRowTile(label: 'Plans & subscription', onTap: () async { await context.push('/plans'); _refresh(); }),
           if (user?.isEditor == true) ListRowTile(label: 'Creator studio', onTap: () => context.push('/creator')),
           ListRowTile(label: 'Log out', danger: true, chevron: false, onTap: () => context.read<AuthController>().logout()),

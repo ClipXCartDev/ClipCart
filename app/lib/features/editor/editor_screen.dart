@@ -28,6 +28,9 @@ const _kBg = AppColors.bg;            // #FCFAF6 canvas backdrop / top bar
 const _kPanel = AppColors.surfaceHover; // #F7F5F1 control panels / bottom sheets
 const _kChip = AppColors.bgAlt;       // #EFECE5 raised tool tiles / fields
 const _kAccent = AppColors.brand;     // #684FC8 brand primary
+// Cover-crop overscan (matches ExportService._overscan) — a hair of zoom on a
+// cropped frame hides the 1px seam that showed on the aspect-crop edge.
+const double _kOverscan = 1.012;
 
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
@@ -50,7 +53,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Object? _selected; // SubtitleSegment | 'logo' | null
   bool _trimMode = false;
-  int _textTab = 0; // §4.1 text panel sub-tab: 0 Style · 1 Advanced · 2 Timing · 3 Presets
+  int _textTab = 0; // client §3 text panel sub-tab: 0 Font · 1 Styling · 2 Advance
 
   // Stable id for this project's on-disk save (reused when resuming so re-saving
   // updates the same file rather than piling up duplicates).
@@ -103,6 +106,21 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   double _snap(double v, double target, [double tol = 0.02]) => (v - target).abs() < tol ? target : v;
+
+  /// How far the video may pan (fraction of frame) at a given scale. When zoomed
+  /// in (>1) it's the croppable margin; when scaled DOWN (<1) it's the empty gap
+  /// the video can travel within the frame before hitting an edge.
+  double _videoPanLimit(double s) =>
+      (s >= 1.0 ? (1 - 1 / s) / 2 : (1 - s) / 2).clamp(0.0, 0.5);
+
+  /// Video display scale for the preview — adds cover overscan on a cropped frame
+  /// (only when filling and not scaling down) so the editor matches the export.
+  double _effVideoScale() {
+    final vz = _project!.videoScale;
+    final cropped = _project!.aspect.ratio != null;
+    if (cropped && !_project!.videoFitContain && vz >= 1.0) return vz * _kOverscan;
+    return vz;
+  }
 
   @override
   void initState() {
@@ -424,7 +442,7 @@ class _EditorScreenState extends State<EditorScreen> {
     // otherwise a zero-length caption silently never renders in preview or export.
     final dz = _duration;
     final s0 = dz <= 0 ? _t : _t.clamp(0.0, (dz - 0.5).clamp(0.0, dz));
-    final e0 = dz <= 0 ? s0 + 3 : (s0 + 3).clamp(s0 + 0.5, dz);
+    final e0 = (dz <= 0 || dz - s0 < 0.5) ? s0 + 3 : (s0 + 3).clamp(s0 + 0.5, dz);
     final seg = SubtitleSegment(text: '', start: s0, end: e0, z: _topZ());
     setState(() {
       _project!.subtitles.add(seg);
@@ -691,11 +709,12 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
 
   // ---------- layers panel (CapCut-style: reorder z, select, hide, delete) ----------
-  void _openLayers() {
+  void _openLayers({bool startInSelect = false}) {
     // Multi-select (§4.0 feedback 5): a select mode with per-row checks + batch
     // delete/hide. State lives here so it persists across StatefulBuilder rebuilds.
+    // [startInSelect] opens straight into select mode (transport-row "Select").
     final sel = <Object>{};
-    var selectMode = false;
+    var selectMode = startInSelect;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -723,12 +742,9 @@ class _EditorScreenState extends State<EditorScreen> {
 
         Widget rowFor(Object it) {
           final isLogo = it == 'logo';
-          final s = it is SubtitleSegment ? it : null;
-          final stk = it is StickerOverlay ? it : null;
-          final hidden = isLogo ? _project!.logoHidden : (s?.hidden ?? stk?.hidden ?? false);
+          final hidden = _layerHidden(it);
+          final locked = _layerLocked(it);
           final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
-          final label = isLogo ? 'Logo' : stk != null ? (stk.emoji != null ? '${stk.emoji} Emoji' : 'Sticker') : (s!.text.trim().isEmpty ? 'Text' : s.text);
-          final icon = isLogo ? Icons.image_outlined : stk != null ? Icons.auto_awesome_motion : Icons.title;
           return Container(
             key: isLogo ? const ValueKey('logo') : ObjectKey(it),
             margin: const EdgeInsets.symmetric(vertical: 4),
@@ -739,17 +755,18 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
             child: ListTile(
               dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              horizontalTitleGap: 10,
               leading: selectMode
                   ? Icon(sel.contains(it) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                       color: sel.contains(it) ? _kAccent : AppColors.inkFaint, size: 26)
-                  : Container(
-                      width: 34, height: 34,
-                      decoration: BoxDecoration(color: selected ? _kAccent : AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: selected ? _kAccent : AppColors.line)),
-                      child: Icon(icon, color: selected ? Colors.white : AppColors.inkMuted, size: 18),
-                    ),
-              title: Text(label,
+                  : _layerThumb(it, size: 38, selected: selected),
+              title: Text(_layerName(it),
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: hidden ? AppColors.inkFaint : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14)),
+              subtitle: Text(_layerDurLabel(it),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.inkFaint, fontSize: 11, fontFamily: 'IBMPlexMono')),
               onTap: () {
                 if (selectMode) {
                   setSheet(() => sel.contains(it) ? sel.remove(it) : sel.add(it));
@@ -759,42 +776,12 @@ class _EditorScreenState extends State<EditorScreen> {
                 Navigator.pop(context);
               },
               trailing: selectMode ? null : Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppColors.inkMuted, size: 20),
-                  onPressed: () {
-                    _snapshot();
-                    setState(() {
-                      if (isLogo) {
-                        _project!.logoHidden = !_project!.logoHidden;
-                      } else if (stk != null) {
-                        stk.hidden = !stk.hidden;
-                      } else {
-                        s!.hidden = !s.hidden;
-                      }
-                    });
-                    setSheet(() {});
-                  },
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.err, size: 20),
-                  onPressed: () {
-                    _snapshot();
-                    setState(() {
-                      if (isLogo) {
-                        _project!.logoPath = null;
-                      } else if (stk != null) {
-                        _project!.stickers.remove(stk);
-                      } else {
-                        _project!.subtitles.remove(s);
-                      }
-                      if (identical(_selected, it) || (isLogo && _selected == 'logo')) _selected = null;
-                    });
-                    setSheet(() {});
-                  },
-                ),
-                const Icon(Icons.drag_handle_rounded, color: AppColors.chevron),
+                _layerIconBtn(hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, AppColors.inkMuted, () { _toggleVis(it); setSheet(() {}); }),
+                _layerIconBtn(locked ? Icons.lock_rounded : Icons.lock_open_rounded, locked ? _kAccent : AppColors.inkMuted, () { _toggleLock(it); setSheet(() {}); }),
+                if (!isLogo) _layerIconBtn(Icons.copy_rounded, AppColors.inkMuted, () { _duplicateLayer(it); setSheet(() {}); }),
+                _layerIconBtn(Icons.delete_outline_rounded, AppColors.err, () { _deleteLayer(it); setSheet(() {}); }),
+                const SizedBox(width: 1),
+                const Icon(Icons.drag_handle_rounded, color: AppColors.chevron, size: 20),
               ]),
             ),
           );
@@ -815,6 +802,32 @@ class _EditorScreenState extends State<EditorScreen> {
                   child: Text(selectMode ? 'Done' : 'Select', style: const TextStyle(color: _kAccent, fontSize: 13.5, fontWeight: FontWeight.w600)),
                 ),
             ]),
+            // ── Add layer (relocated from the bottom toolbar per client §4) ──
+            if (!selectMode) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 78,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    for (final t in <(IconData, String, VoidCallback, bool)>[
+                      (Icons.title_rounded, 'Text', () { Navigator.pop(context); _addSubtitle(); }, false),
+                      (Icons.image_outlined, 'Logo', () { Navigator.pop(context); _pickLogo(); }, false),
+                      (Icons.emoji_emotions_outlined, 'Emoji', () { Navigator.pop(context); _openEmojiPicker(); }, false),
+                      (Icons.auto_awesome_motion, 'Sticker', () { Navigator.pop(context); _pickSticker(); }, false),
+                      (Icons.alternate_email_rounded, 'Handle', () { Navigator.pop(context); _addUsername(); }, false),
+                      (Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }, false),
+                      (Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }, false),
+                      (Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }, false),
+                      (Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, _project!.watermarkOn),
+                    ])
+                      Padding(padding: const EdgeInsets.only(right: 14), child: _addTile(t.$1, t.$2, t.$3, on: t.$4)),
+                  ],
+                ),
+              ),
+              const Divider(height: 20, color: AppColors.line),
+            ],
             const SizedBox(height: 8),
             if (ordered.isEmpty)
               const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No layers yet.\nAdd text or a logo.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.inkMuted))))
@@ -862,6 +875,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     _snapshot();
                     setState(() {
                       for (final it in sel) {
+                        if (_layerLocked(it)) continue; // locked layers are protected from delete
                         if (it is SubtitleSegment) _project!.subtitles.remove(it);
                         else if (it is StickerOverlay) _project!.stickers.remove(it);
                         else _project!.logoPath = null;
@@ -1314,7 +1328,7 @@ class _EditorScreenState extends State<EditorScreen> {
       onLongPress: onLong,
       child: Container(
         decoration: BoxDecoration(
-          color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.ink,
+          color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.bgAlt,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : AppColors.line, width: s.fontFamily == tpl['font'] ? 2 : 1),
         ),
@@ -1522,6 +1536,11 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   void _deleteSelected() {
+    final sel = _selected;
+    if (sel != null && _layerLocked(sel)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Layer is locked — unlock it first')));
+      return;
+    }
     _snapshot();
     setState(() {
       if (_selected is SubtitleSegment) _project!.subtitles.remove(_selected);
@@ -1529,6 +1548,215 @@ class _EditorScreenState extends State<EditorScreen> {
       if (_selected == 'logo') _project!.logoPath = null;
       _selected = null;
     });
+  }
+
+  // ---------- unified layer helpers (multi-track timeline + pro layers panel) ----------
+  // A "layer" is a SubtitleSegment | StickerOverlay | the 'logo' sentinel string.
+  double _layerZ(Object it) => it is SubtitleSegment ? it.z : it is StickerOverlay ? it.z : _project!.logoZ;
+  bool _layerLocked(Object it) => it is SubtitleSegment ? it.locked : it is StickerOverlay ? it.locked : _project!.logoLocked;
+  bool _layerHidden(Object it) => it is SubtitleSegment ? it.hidden : it is StickerOverlay ? it.hidden : _project!.logoHidden;
+  Color _layerColor(Object it) => it is SubtitleSegment ? AppColors.brand : it is StickerOverlay ? const Color(0xFF7B61FF) : const Color(0xFF17A2A2);
+  IconData? _layerIcon(Object it) =>
+      it == 'logo' ? Icons.image_rounded : it is StickerOverlay ? (it.emoji != null ? null : Icons.auto_awesome_motion_rounded) : Icons.title_rounded;
+
+  String _layerName(Object it) {
+    if (it == 'logo') return 'Logo';
+    if (it is StickerOverlay) return it.emoji != null ? '${it.emoji} Emoji' : 'Sticker';
+    if (it is SubtitleSegment) return it.text.trim().isEmpty ? 'Text' : it.text.trim();
+    return 'Layer';
+  }
+
+  String _layerDurLabel(Object it) {
+    final dur = _duration;
+    if (it == 'logo') return 'Full clip';
+    double st, en;
+    if (it is SubtitleSegment) { st = it.start; en = it.end; }
+    else if (it is StickerOverlay) { st = it.start >= 9998 ? 0 : it.start; en = it.end >= 9998 ? dur : it.end; }
+    else { return ''; }
+    String f(double s) => _fmt(Duration(milliseconds: (s * 1000).round()));
+    return '${f(st)} – ${f(en)}';
+  }
+
+  Widget _layerThumb(Object it, {double size = 36, bool selected = false}) {
+    Widget fallback() => Icon(_layerIcon(it) ?? Icons.broken_image_rounded, color: _layerColor(it), size: size * 0.55);
+    Widget inner;
+    if (it == 'logo' && _project!.logoPath != null) {
+      inner = Image.file(File(_project!.logoPath!), fit: BoxFit.contain, errorBuilder: (_, __, ___) => fallback());
+    } else if (it is StickerOverlay) {
+      inner = it.emoji != null
+          ? Center(child: Text(it.emoji!, style: TextStyle(fontSize: size * 0.55)))
+          : Image.file(File(it.path), fit: BoxFit.contain, errorBuilder: (_, __, ___) => fallback());
+    } else if (it is SubtitleSegment) {
+      final ch = it.text.trim().isEmpty ? 'T' : it.text.trim()[0].toUpperCase();
+      inner = Center(child: Text(ch, style: TextStyle(color: Color(it.color), fontWeight: FontWeight.w800, fontSize: size * 0.5)));
+    } else {
+      inner = const SizedBox();
+    }
+    return Container(
+      width: size, height: size, clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(color: selected ? _kAccent : AppColors.surface, borderRadius: BorderRadius.circular(8), border: Border.all(color: selected ? _kAccent : AppColors.line)),
+      child: inner,
+    );
+  }
+
+  Widget _layerIconBtn(IconData icon, Color color, VoidCallback onTap) => IconButton(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        constraints: const BoxConstraints(minWidth: 30, minHeight: 34),
+        icon: Icon(icon, color: color, size: 19),
+        onPressed: onTap,
+      );
+
+  void _toggleLock(Object it) {
+    _snapshot();
+    setState(() {
+      if (it is SubtitleSegment) it.locked = !it.locked;
+      else if (it is StickerOverlay) it.locked = !it.locked;
+      else _project!.logoLocked = !_project!.logoLocked;
+    });
+  }
+
+  void _toggleVis(Object it) {
+    _snapshot();
+    setState(() {
+      if (it is SubtitleSegment) it.hidden = !it.hidden;
+      else if (it is StickerOverlay) it.hidden = !it.hidden;
+      else _project!.logoHidden = !_project!.logoHidden;
+    });
+  }
+
+  void _deleteLayer(Object it) {
+    if (_layerLocked(it)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Layer is locked — unlock it first')));
+      return;
+    }
+    _snapshot();
+    setState(() {
+      if (it is SubtitleSegment) _project!.subtitles.remove(it);
+      else if (it is StickerOverlay) _project!.stickers.remove(it);
+      else if (it == 'logo') _project!.logoPath = null;
+      if (identical(_selected, it) || (it == 'logo' && _selected == 'logo')) _selected = null;
+    });
+  }
+
+  /// Duplicate any layer in place (generalised from [_duplicateSelected] so the
+  /// Layers-panel row + timeline can duplicate without touching global selection).
+  void _duplicateLayer(Object it) {
+    _snapshot();
+    if (it is SubtitleSegment) {
+      final s = it.copy();
+      s.dy = (s.dy + 0.06).clamp(0.05, 0.95);
+      s.z = _topZ();
+      setState(() { _project!.subtitles.add(s); _selected = s; });
+    } else if (it is StickerOverlay) {
+      final s = it.copy();
+      s.dx = (s.dx + 0.05).clamp(0.05, 0.95);
+      s.dy = (s.dy + 0.05).clamp(0.05, 0.95);
+      s.z = _topZ();
+      setState(() { _project!.stickers.add(s); _selected = s; });
+    }
+    // logo is a single instance in this model — not duplicable.
+  }
+
+  // Timeline drag/resize for one layer (shared by every per-layer track row).
+  void _dragLayerTime(Object it, double d, double dur) {
+    if (it is SubtitleSegment) {
+      final len = it.end - it.start;
+      it.start = (it.start + d).clamp(0.0, (dur - len).clamp(0.0, dur));
+      it.end = it.start + len;
+    } else if (it is StickerOverlay) {
+      final end = it.end >= 9998 ? dur : it.end;
+      final len = end - it.start;
+      it.start = (it.start + d).clamp(0.0, (dur - len).clamp(0.0, dur));
+      it.end = it.start + len;
+    }
+  }
+
+  void _resizeLayerStart(Object it, double d, double dur) {
+    if (it is SubtitleSegment) {
+      final hi = it.end - 0.3;
+      it.start = (it.start + d).clamp(0.0, hi < 0 ? 0.0 : hi);
+    } else if (it is StickerOverlay) {
+      final end = it.end >= 9998 ? dur : it.end;
+      it.end = end; // pin a concrete end before trimming the start
+      final hi = it.end - 0.3;
+      it.start = (it.start + d).clamp(0.0, hi < 0 ? 0.0 : hi);
+    }
+  }
+
+  void _resizeLayerEnd(Object it, double d, double dur) {
+    if (it is SubtitleSegment) {
+      final hi = dur <= 0 ? it.end + 5 : dur;
+      final lo = it.start + 0.3;
+      it.end = (it.end + d).clamp(lo > hi ? hi : lo, hi);
+    } else if (it is StickerOverlay) {
+      final end = it.end >= 9998 ? dur : it.end;
+      final hi = dur <= 0 ? end + 5 : dur;
+      final lo = it.start + 0.3;
+      it.end = (end + d).clamp(lo > hi ? hi : lo, hi);
+    }
+  }
+
+  /// Split (client §4): cut the SELECTED text/sticker at the playhead into two
+  /// independent layers (left = start→t, right = t→end). With nothing selected,
+  /// splits the single layer under the playhead; if that's ambiguous, guides the
+  /// user. The base video is a single clip — use Trim to shorten it.
+  void _splitAtPlayhead() {
+    final t = _t;
+    // Resolve a target: the selection, else the one overlay live at the playhead.
+    Object? target = (_selected is SubtitleSegment || _selected is StickerOverlay) ? _selected : null;
+    if (target == null) {
+      final live = <Object>[
+        ..._project!.subtitles.where((s) => !s.hidden && t > s.start + 0.05 && t < s.end - 0.05),
+        ..._project!.stickers.where((s) => !s.hidden && t > (s.start >= 9998 ? 0 : s.start) + 0.05 && t < (s.end >= 9998 ? _duration : s.end) - 0.05),
+      ];
+      if (live.length == 1) target = live.first;
+    }
+    if (target == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Select a text or sticker layer, then move the playhead inside it to split. (Use Trim for the video.)'),
+      ));
+      return;
+    }
+    if (_layerLocked(target)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Layer is locked — unlock it first')));
+      return;
+    }
+    if (target is SubtitleSegment) {
+      final seg = target; // final promoted local so it stays typed inside setState
+      if (t <= seg.start + 0.05 || t >= seg.end - 0.05) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Move the playhead inside the layer to split it')));
+        return;
+      }
+      _snapshot();
+      final right = seg.copy();
+      setState(() {
+        seg.end = t;
+        right.start = t;
+        right.z = _topZ();
+        _project!.subtitles.add(right);
+        _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
+        _selected = right;
+      });
+    } else if (target is StickerOverlay) {
+      final stk = target; // final promoted local
+      final end = stk.end >= 9998 ? _duration : stk.end;
+      if (t <= stk.start + 0.05 || t >= end - 0.05) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Move the playhead inside the layer to split it')));
+        return;
+      }
+      _snapshot();
+      final right = stk.copy();
+      setState(() {
+        stk.end = t;
+        right.start = t;
+        right.end = end;
+        right.z = _topZ();
+        _project!.stickers.add(right);
+        _selected = right;
+      });
+    }
+    HapticFeedback.selectionClick();
   }
 
   Future<void> _pickLogo() async {
@@ -1561,7 +1789,7 @@ class _EditorScreenState extends State<EditorScreen> {
       path: path,
       emoji: emoji,
       start: s0,
-      end: dz <= 0 ? 9999.0 : (s0 + 3).clamp(s0 + 0.5, dz),
+      end: (dz <= 0 || dz - s0 < 0.5) ? 9999.0 : (s0 + 3).clamp(s0 + 0.5, dz),
       z: _topZ(),
     );
     setState(() {
@@ -2026,8 +2254,7 @@ class _EditorScreenState extends State<EditorScreen> {
             ]),
         ]),
         actions: [
-          _iconBtn(Icons.undo_rounded, _undo.isEmpty ? null : _undoAction),
-          _iconBtn(Icons.redo_rounded, _redo.isEmpty ? null : _redoAction),
+          // Undo/Redo/Select/Delete now live on the transport row (client §4).
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: SizedBox(width: 104, child: PrimaryButton(label: 'Export', icon: Icons.ios_share, loading: _busy, onPressed: _busy ? null : _export)),
@@ -2058,22 +2285,6 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
     );
   }
-
-  Widget _iconBtn(IconData i, VoidCallback? onTap) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 3),
-        child: Material(
-          color: AppColors.surfaceHover2,
-          shape: const CircleBorder(side: BorderSide(color: AppColors.line)),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: SizedBox(
-              width: 36, height: 36,
-              child: Icon(i, size: 19, color: onTap == null ? AppColors.inkGhost : AppColors.ink),
-            ),
-          ),
-        ),
-      );
 
   // ---------- canvas ----------
   Widget _canvas() {
@@ -2134,11 +2345,13 @@ class _EditorScreenState extends State<EditorScreen> {
                       onScaleUpdate: _selected == null ? (d) => setState(() {
                         if (d.scale == 1.0 && d.focalPointDelta == Offset.zero) return;
                         if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; }
-                        final ns = (_gScale * d.scale).clamp(1.0, 4.0);
+                        // Pinch scales the video 0.25×–4×: below 1 shrinks it and
+                        // shows the background around it (client: "scale down").
+                        final ns = (_gScale * d.scale).clamp(0.25, 4.0);
                         _project!.videoScale = ns;
-                        // pan is meaningful only when zoomed in; clamp so the frame
-                        // never shows empty edges. Range shrinks as (1 - 1/scale)/2.
-                        final lim = ((1 - 1 / ns) / 2).clamp(0.0, 0.5);
+                        // Pan range = croppable margin (zoomed in) OR the empty gap
+                        // (scaled down) — either way clamp so it can't fly off-frame.
+                        final lim = _videoPanLimit(ns);
                         _project!.videoDx = (_gDx + d.focalPointDelta.dx / w).clamp(-lim, lim);
                         _project!.videoDy = (_gDy + d.focalPointDelta.dy / h).clamp(-lim, lim);
                         _hint = 'Video ${(ns * 100).round()}%';
@@ -2151,11 +2364,12 @@ class _EditorScreenState extends State<EditorScreen> {
                       // cover-crops. Scale/reposition apply to both.
                       child: ClipRect(
                         child: ColoredBox(
-                          color: _project!.videoFitContain ? Color(_project!.videoBgColor) : Colors.black,
+                          // User-controllable frame background (fill gap / letterbox).
+                          color: Color(_project!.videoBgColor),
                           child: Transform.translate(
                             offset: Offset(_project!.videoDx * w, _project!.videoDy * h),
                             child: Transform.scale(
-                              scale: _project!.videoScale,
+                              scale: _effVideoScale(),
                               child: FittedBox(
                                 fit: _project!.videoFitContain ? BoxFit.contain : BoxFit.cover,
                                 clipBehavior: Clip.hardEdge,
@@ -2209,6 +2423,18 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  /// Live-preview drop shadow derived from the SAME params the export burns
+  /// (text_render.dart), scaled to on-screen px so preview matches the export.
+  Shadow _paramShadow(SubtitleSegment s, double scale) {
+    final ang = s.shadowAngle * math.pi / 180.0;
+    final d = (s.shadowDistance / 100.0) * s.effectiveSize * scale;
+    return Shadow(
+      color: Color(s.shadowColor).withOpacity(s.shadowOpacity.clamp(0.0, 1.0)),
+      blurRadius: s.shadowBlur.clamp(0.0, 1.0) * s.effectiveSize * scale * 0.4,
+      offset: Offset(math.cos(ang) * d, math.sin(ang) * d),
+    );
+  }
+
   Widget _subOverlay(SubtitleSegment s, double w, double h, double scale, double t) {
     final selected = identical(_selected, s);
     final text = Container(
@@ -2234,9 +2460,14 @@ class _EditorScreenState extends State<EditorScreen> {
           fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
           letterSpacing: s.letterSpacing * scale,
           height: s.lineHeight,
+          // WYSIWYG shadow: derive from the same params the export burns, so
+          // preview == exported PNG (and it shows even alongside a stroke).
           shadows: s.strokeWidth > 0
-              ? [for (final o in const [Offset(-1, -1), Offset(1, -1), Offset(1, 1), Offset(-1, 1)]) Shadow(color: Color(s.strokeColor), offset: o * (s.strokeWidth * scale).clamp(0.5, 4))]
-              : (s.shadow ? const [Shadow(color: Colors.black87, blurRadius: 6, offset: Offset(1.5, 1.5))] : const [Shadow(color: Colors.black54, blurRadius: 3)]),
+              ? [
+                  if (s.shadow) _paramShadow(s, scale),
+                  for (final o in const [Offset(-1, -1), Offset(1, -1), Offset(1, 1), Offset(-1, 1)]) Shadow(color: Color(s.strokeColor), offset: o * (s.strokeWidth * scale).clamp(0.5, 4)),
+                ]
+              : (s.shadow ? [_paramShadow(s, scale)] : const [Shadow(color: Colors.black54, blurRadius: 3)]),
         ),
       ),
     );
@@ -2255,6 +2486,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _gRot = s.rotation;
           },
           onScaleUpdate: (d) => setState(() {
+            if (s.locked) return; // locked layer: no move/scale/rotate
             if (!_gestureSnapped) {
               _snapshot();
               _gestureSnapped = true;
@@ -2290,12 +2522,14 @@ class _EditorScreenState extends State<EditorScreen> {
             );
           }),
         ),
-        if (selected) ...[
+        if (selected && !s.locked) ...[
           Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
           Positioned(right: -11, top: -11, child: _cornerBtn(Icons.edit_rounded, () => _startTyping(s))),
           Positioned(left: -11, bottom: -11, child: _cornerBtn(Icons.copy_rounded, _duplicateSelected)),
           Positioned(right: -11, bottom: -11, child: _resizeHandle(s, w, h, rotate: true)),
         ],
+        if (selected && s.locked)
+          Positioned(right: -11, top: -11, child: _cornerBtn(Icons.lock_rounded, () => _toggleLock(s))),
       ]),
     );
   }
@@ -2339,6 +2573,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 : _project!.logoRotation;
       },
       onPanUpdate: (d) => setState(() {
+        if (_layerLocked(target)) return; // locked layer: ignore resize/rotate
         if (!_gestureSnapped) {
           _snapshot();
           _gestureSnapped = true;
@@ -2397,6 +2632,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _gRot = p.logoRotation;
           },
           onScaleUpdate: (d) => setState(() {
+            if (p.logoLocked) return; // locked logo: no move/scale/rotate
             if (!_gestureSnapped) {
               _snapshot();
               _gestureSnapped = true;
@@ -2425,10 +2661,12 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
           ),
         ),
-        if (selected) ...[
+        if (selected && !p.logoLocked) ...[
           Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
           Positioned(right: -11, bottom: -11, child: _resizeHandle('logo', w, h, rotate: true)),
         ],
+        if (selected && p.logoLocked)
+          Positioned(right: -11, top: -11, child: _cornerBtn(Icons.lock_rounded, () => _toggleLock('logo'))),
         ]),
       ),
     );
@@ -2451,6 +2689,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _gRot = st.rotation;
           },
           onScaleUpdate: (d) => setState(() {
+            if (st.locked) return; // locked layer: no move/scale/rotate
             if (!_gestureSnapped) {
               _snapshot();
               _gestureSnapped = true;
@@ -2492,11 +2731,13 @@ class _EditorScreenState extends State<EditorScreen> {
             );
           }),
         ),
-        if (selected) ...[
+        if (selected && !st.locked) ...[
           Positioned(left: -11, top: -11, child: _cornerBtn(Icons.close_rounded, _deleteSelected)),
           Positioned(left: -11, bottom: -11, child: _cornerBtn(Icons.copy_rounded, _duplicateSelected)),
           Positioned(right: -11, bottom: -11, child: _resizeHandle(st, w, h, rotate: true)),
         ],
+        if (selected && st.locked)
+          Positioned(right: -11, top: -11, child: _cornerBtn(Icons.lock_rounded, () => _toggleLock(st))),
       ]),
     );
   }
@@ -2521,12 +2762,14 @@ class _EditorScreenState extends State<EditorScreen> {
             const SizedBox(width: 2),
             Text('${_fmt(Duration(milliseconds: (v.position.inMilliseconds - _startMs).clamp(0, _endMs - _startMs)))} / ${_fmt(Duration(milliseconds: _endMs - _startMs))}', style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 12, fontFamily: 'IBMPlexMono')),
             const Spacer(),
-            // Compact icon-only action buttons — never truncate, always fit.
-            _actionIcon('Layers', Icons.layers_rounded, _openLayers),
-            const SizedBox(width: 4),
-            _actionIcon(_project!.aspect.label, Icons.crop_rounded, _pickAspect),
-            const SizedBox(width: 4),
-            _actionIcon('Trim', Icons.content_cut_rounded, () => setState(() => _trimMode = !_trimMode), on: _trimMode),
+            // Client §4: transport row carries Undo · Redo · Select · Delete.
+            _actionIcon('Undo', Icons.undo_rounded, _undo.isEmpty ? null : _undoAction),
+            const SizedBox(width: 2),
+            _actionIcon('Redo', Icons.redo_rounded, _redo.isEmpty ? null : _redoAction),
+            const SizedBox(width: 2),
+            _actionIcon('Select', Icons.check_box_outlined, () => _openLayers(startInSelect: true)),
+            const SizedBox(width: 2),
+            _actionIcon('Delete', Icons.delete_outline_rounded, _selected == null ? null : _deleteSelected, danger: true),
           ]),
         );
       },
@@ -2534,20 +2777,31 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   /// Compact labelled icon button for the transport row (icon over a tiny label).
-  Widget _actionIcon(String label, IconData icon, VoidCallback onTap, {bool on = false}) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 52,
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          decoration: BoxDecoration(color: on ? _kAccent : Colors.transparent, borderRadius: BorderRadius.circular(10)),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 19, color: on ? Colors.white : AppColors.ink),
-            const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 9.5, fontWeight: FontWeight.w500)),
-          ]),
-        ),
-      );
+  /// A null [onTap] renders a disabled (greyed) state; [danger] tints red.
+  Widget _actionIcon(String label, IconData icon, VoidCallback? onTap, {bool on = false, bool danger = false}) {
+    final disabled = onTap == null;
+    final fg = on
+        ? Colors.white
+        : disabled
+            ? AppColors.inkGhost
+            : danger
+                ? AppColors.errText
+                : AppColors.ink;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 46,
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        decoration: BoxDecoration(color: on ? _kAccent : Colors.transparent, borderRadius: BorderRadius.circular(10)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 19, color: fg),
+          const SizedBox(height: 2),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: fg, fontSize: 9.5, fontWeight: FontWeight.w500)),
+        ]),
+      ),
+    );
+  }
 
   String _fmt(Duration d) => '${d.inMinutes.remainder(60)}:${(d.inSeconds.remainder(60)).toString().padLeft(2, '0')}';
 
@@ -2555,115 +2809,135 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _timeline() {
     final dur = _duration;
     final p = _project!;
-    final hasLayers = p.subtitles.isNotEmpty || p.stickers.isNotEmpty;
-    // Height adapts: base track always, + a lane for text, + a lane for stickers.
-    final laneCount = (p.subtitles.isNotEmpty ? 1 : 0) + (p.stickers.isNotEmpty ? 1 : 0);
-    final trackH = 26.0;
-    final laneH = 20.0;
-    final totalH = 8 + trackH + (laneCount * (laneH + 4)) + 8;
+    final hasLayers = p.subtitles.isNotEmpty || p.stickers.isNotEmpty || p.logoPath != null;
+    // Multi-track (CapCut-style): base video filmstrip on top, then ONE ROW PER
+    // overlay layer (each text / sticker / logo its own track, top layer first).
+    final layers = <Object>[
+      for (final s in p.subtitles) s,
+      for (final s in p.stickers) s,
+      if (p.logoPath != null) 'logo',
+    ]..sort((a, b) => _layerZ(b).compareTo(_layerZ(a)));
+    const trackH = 26.0;
+    const rowH = 22.0;
+    const gap = 5.0;
+    final contentH = trackH + gap + layers.length * (rowH + gap);
+    final viewH = (contentH + 16).clamp(58.0, 196.0); // +16 = container 8+8 vertical pad
     return Container(
       color: AppColors.surfaceHover,
       padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-      height: totalH.clamp(50.0, 130.0),
+      height: viewH,
       child: LayoutBuilder(builder: (context, c) {
         final w = c.maxWidth;
+        final avail = c.maxHeight;
         double x(double sec) => dur <= 0 ? 0 : (sec / dur) * w;
         double sec(double px) => dur <= 0 ? 0 : (px / w) * dur;
         return ValueListenableBuilder<VideoPlayerValue>(
           valueListenable: _vc!,
           builder: (context, v, _) {
             final ph = x(v.position.inMilliseconds / 1000.0);
-            double laneTop = trackH + 4;
-            final textTop = laneTop;
-            if (p.subtitles.isNotEmpty) laneTop += laneH + 4;
-            final stkTop = laneTop;
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              // In trim mode the parent must NOT seek — otherwise a tap/drag near a
-              // handle steals the gesture and the trim feels broken.
-              onTapDown: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx)),
-              onHorizontalDragUpdate: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx.clamp(0, w))),
-              child: Stack(clipBehavior: Clip.none, children: [
-                // ---- base video track (filmstrip look) ----
-                Positioned(
-                  left: 0, right: 0, top: 0, height: trackH,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: Container(
-                      decoration: const BoxDecoration(color: AppColors.bgAlt),
-                      child: Row(children: [
-                        for (int i = 0; i < 10; i++)
-                          Expanded(child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                            decoration: const BoxDecoration(border: Border(right: BorderSide(color: AppColors.line))),
-                            child: Center(child: Icon(Icons.movie_creation_outlined, size: 12, color: AppColors.inkGhost.withOpacity(0.5))),
-                          )),
-                      ]),
-                    ),
+            final stack = Stack(clipBehavior: Clip.none, children: [
+              // ---- base video track (filmstrip look) ----
+              Positioned(
+                left: 0, right: 0, top: 0, height: trackH,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: Container(
+                    decoration: const BoxDecoration(color: AppColors.bgAlt),
+                    child: Row(children: [
+                      for (int i = 0; i < 10; i++)
+                        Expanded(child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
+                          decoration: const BoxDecoration(border: Border(right: BorderSide(color: AppColors.line))),
+                          child: Center(child: Icon(Icons.movie_creation_outlined, size: 12, color: AppColors.inkGhost.withOpacity(0.5))),
+                        )),
+                    ]),
                   ),
                 ),
-                // trimmed-out dim regions (over the base track)
-                if (p.trimStart > 0) Positioned(left: 0, width: x(p.trimStart), top: 0, height: trackH, child: _dim()),
-                if (p.outEnd < dur) Positioned(left: x(p.outEnd), right: 0, top: 0, height: trackH, child: _dim()),
-                // empty hint (sits ON the base track so it never overflows below)
-                if (!hasLayers)
-                  Positioned(
-                    left: 0, right: 0, top: 0, height: trackH,
-                    child: IgnorePointer(
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
-                          child: const Text('Tap Add text, Emoji or Sticker to begin', style: TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
-                        ),
+              ),
+              // trimmed-out dim regions (over the base track)
+              if (p.trimStart > 0) Positioned(left: 0, width: x(p.trimStart), top: 0, height: trackH, child: _dim()),
+              if (p.outEnd < dur) Positioned(left: x(p.outEnd), right: 0, top: 0, height: trackH, child: _dim()),
+              // empty hint (sits ON the base track so it never overflows below)
+              if (!hasLayers)
+                Positioned(
+                  left: 0, right: 0, top: 0, height: trackH,
+                  child: IgnorePointer(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
+                        child: const Text('Tap Add text, Emoji or Sticker to begin', style: TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
                       ),
                     ),
                   ),
-                // ---- text lane ----
-                for (final s in p.subtitles)
-                  Positioned(
-                    left: x(s.start), width: (x(s.end) - x(s.start)).clamp(30, w), top: textTop, height: laneH,
-                    child: _timelineBlock(
-                      label: s.text.isEmpty ? 'Text' : s.text,
-                      icon: Icons.title_rounded,
-                      selected: identical(_selected, s),
-                      color: AppColors.brand,
-                      onTap: () => setState(() => _selected = s),
-                      onDrag: (dx) => setState(() {
-                        final len = s.end - s.start;
-                        s.start = (s.start + sec(dx)).clamp(0, dur - len);
-                        s.end = s.start + len;
-                      }),
-                    ),
-                  ),
-                // ---- sticker/emoji lane ----
-                for (final s in p.stickers)
-                  Positioned(
-                    left: x(s.start), width: (x((s.end >= 9998 ? dur : s.end)) - x(s.start)).clamp(30, w), top: stkTop, height: laneH,
-                    child: _timelineBlock(
-                      label: s.emoji != null ? '${s.emoji}  Emoji' : 'Sticker',
-                      icon: s.emoji != null ? null : Icons.auto_awesome_motion_rounded,
-                      selected: identical(_selected, s),
-                      color: const Color(0xFF7B61FF),
-                      onTap: () => setState(() => _selected = s),
-                      onDrag: (dx) => setState(() {
-                        final end = s.end >= 9998 ? dur : s.end;
-                        final len = end - s.start;
-                        s.start = (s.start + sec(dx)).clamp(0, dur - len);
-                        s.end = s.start + len;
-                      }),
-                    ),
-                  ),
-                // playhead across the whole timeline
-                Positioned(left: ph.clamp(0, w) - 1, top: -2, bottom: -2, child: IgnorePointer(child: Container(width: 2, color: AppColors.ink))),
-                Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle)))),
-                // trim handles LAST so they sit above the playhead and stay grabbable
-                if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
-              ]),
+                ),
+              // ---- one track ROW per layer (top layer first) ----
+              for (int i = 0; i < layers.length; i++)
+                _trackRow(layers[i], trackH + gap + i * (rowH + gap), rowH, w, dur, x, sec),
+              // playhead spanning the whole stack
+              Positioned(left: ph.clamp(0, w) - 1, top: -2, height: contentH + 4, child: IgnorePointer(child: Container(width: 2, color: AppColors.ink))),
+              Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle)))),
+              // trim handles LAST so they sit above the playhead and stay grabbable
+              if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
+            ]);
+            final content = SizedBox(height: contentH, width: w, child: stack);
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              // In trim mode the parent must NOT seek — otherwise a tap/drag near a
+              // handle steals the gesture and the trim feels broken. onTapUp (not
+              // onTapDown) fires only when the parent's tap actually WINS the arena,
+              // so a press-hold / hesitant drag-start on a layer block never seeks.
+              onTapUp: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx)),
+              onHorizontalDragUpdate: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx.clamp(0, w))),
+              // Many layers → scroll vertically inside the fixed viewport. The vertical
+              // scroller only claims vertical drags, so horizontal drags still seek and
+              // per-block horizontal drags still move/trim their layer. Clip.none so the
+              // playhead knob / trim bars / time bubble (negative tops) aren't clipped.
+              child: contentH > avail
+                  ? SingleChildScrollView(scrollDirection: Axis.vertical, clipBehavior: Clip.none, child: content)
+                  : content,
             );
           },
         );
       }),
+    );
+  }
+
+  /// One timeline track ROW for a single overlay layer (text/sticker/logo). The
+  /// layer's block is positioned by time; drag = move, edge grips = duration.
+  /// A locked layer (or the logo, which has no time window) ignores drag/resize.
+  Widget _trackRow(Object it, double top, double rowH, double w, double dur, double Function(double) x, double Function(double) sec) {
+    final isLogo = it == 'logo';
+    final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
+    final locked = _layerLocked(it);
+    double st, en;
+    if (isLogo) { st = 0; en = dur; }
+    else if (it is SubtitleSegment) { st = it.start; en = it.end; }
+    else { final s = it as StickerOverlay; st = s.start; en = s.end >= 9998 ? dur : s.end; }
+    final left = x(st).clamp(0.0, w);
+    final width = (x(en) - x(st)).clamp(28.0, w);
+    final canTime = !isLogo && !locked; // logo has no time window; locked = no move
+    return Positioned(
+      left: 0, right: 0, top: top, height: rowH,
+      child: Stack(clipBehavior: Clip.none, children: [
+        // faint lane background so the track reads even where the block isn't
+        Positioned.fill(child: IgnorePointer(child: DecoratedBox(
+          decoration: BoxDecoration(color: AppColors.bgAlt.withOpacity(0.45), borderRadius: BorderRadius.circular(6))))),
+        Positioned(
+          left: left, width: width, top: 0, bottom: 0,
+          child: _timelineBlock(
+            label: _layerName(it),
+            icon: _layerIcon(it),
+            selected: selected,
+            color: _layerColor(it),
+            locked: locked,
+            onTap: () => setState(() => _selected = isLogo ? 'logo' : it),
+            onDrag: canTime ? (d) => setState(() => _dragLayerTime(it, sec(d), dur)) : (_) {},
+            onResizeLeft: canTime ? (d) => setState(() => _resizeLayerStart(it, sec(d), dur)) : null,
+            onResizeRight: canTime ? (d) => setState(() => _resizeLayerEnd(it, sec(d), dur)) : null,
+          ),
+        ),
+      ]),
     );
   }
 
@@ -2675,14 +2949,20 @@ class _EditorScreenState extends State<EditorScreen> {
     Color? color,
     required VoidCallback onTap,
     required void Function(double) onDrag,
+    void Function(double)? onResizeLeft,
+    void Function(double)? onResizeRight,
+    bool locked = false,
   }) {
-    return GestureDetector(
+    // A block is time-draggable only if it isn't locked AND actually has a time
+    // window to move (resize grips present). The full-clip logo has neither.
+    final draggable = !locked && (onResizeLeft != null || onResizeRight != null);
+    final body = GestureDetector(
       onTap: onTap,
-      onHorizontalDragStart: (_) => _snapshot(), // fires once per drag → move is undoable
-      onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
+      onHorizontalDragStart: draggable ? (_) => _snapshot() : null, // fires once per drag → move is undoable
+      onHorizontalDragUpdate: draggable ? (d) => onDrag(d.delta.dx) : null,
       child: Container(
         alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 7),
+        padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 7),
         decoration: BoxDecoration(
           gradient: gradient,
           color: color,
@@ -2691,12 +2971,31 @@ class _EditorScreenState extends State<EditorScreen> {
           boxShadow: selected ? [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4)] : null,
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (locked) ...[const Icon(Icons.lock, size: 10, color: Colors.white), const SizedBox(width: 3)],
           if (icon != null) ...[Icon(icon, size: 12, color: Colors.white), const SizedBox(width: 4)],
           Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700))),
         ]),
       ),
     );
+    // When selected, show drag-to-trim grips at each edge so the user can set how
+    // long the layer shows — "jaise video length" (client §2). Delta-based so the
+    // gesture survives the block repositioning on each rebuild.
+    return Stack(fit: StackFit.expand, clipBehavior: Clip.none, children: [
+      body,
+      if (selected && onResizeLeft != null) Positioned(left: 0, top: 0, bottom: 0, child: _trimGrip(onResizeLeft)),
+      if (selected && onResizeRight != null) Positioned(right: 0, top: 0, bottom: 0, child: _trimGrip(onResizeRight)),
+    ]);
   }
+
+  Widget _trimGrip(void Function(double) onDrag) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (_) => _snapshot(),
+        onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
+        child: Container(
+          width: 16, alignment: Alignment.center,
+          child: Container(width: 4, height: 14, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 2)])),
+        ),
+      );
 
   Widget _dim() => DecoratedBox(decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(7)));
 
@@ -2887,6 +3186,39 @@ class _EditorScreenState extends State<EditorScreen> {
       ]);
     }
     final hasSel = _selected != null;
+    // Locked layer: hide EVERY editing surface (text panel, sticker/logo tools,
+    // Adjust sheets) — offer only Unlock, matching the on-canvas lock badge. This
+    // keeps the lock contract airtight (canvas + transport were already gated).
+    if (hasSel && _layerLocked(_selected!)) {
+      return Container(
+        decoration: const BoxDecoration(
+          color: _kPanel,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          border: Border(top: BorderSide(color: AppColors.line)),
+        ),
+        padding: EdgeInsets.fromLTRB(14, 10, 10, 10 + MediaQuery.of(context).viewPadding.bottom),
+        child: Row(children: [
+          const Icon(Icons.lock_rounded, size: 18, color: AppColors.inkMuted),
+          const SizedBox(width: 10),
+          const Expanded(child: Text('Layer locked — unlock to edit', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13.5))),
+          TextButton.icon(
+            onPressed: () => _toggleLock(_selected!),
+            icon: const Icon(Icons.lock_open_rounded, size: 18),
+            label: const Text('Unlock'),
+            style: TextButton.styleFrom(foregroundColor: AppColors.brand),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () => setState(() => _selected = null),
+            child: Container(
+              width: 40, height: 40,
+              decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
+              child: const Icon(Icons.check_rounded, size: 20, color: Colors.white),
+            ),
+          ),
+        ]),
+      );
+    }
     // Light tool deck (warm-paper chrome). Selection ends by tapping the canvas or the check.
     return Container(
       decoration: const BoxDecoration(
@@ -2896,24 +3228,20 @@ class _EditorScreenState extends State<EditorScreen> {
       ),
       padding: EdgeInsets.fromLTRB(10, 6, 10, 6 + MediaQuery.of(context).viewPadding.bottom),
       child: !hasSel
-          // PROJECT tools — 8-tile 4-column grid, compact (short tiles, no scroll)
-          ? GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 4,
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 6,
-              childAspectRatio: 2.1,
-              children: [
-                _projTile(Icons.title_rounded, 'Text', _addSubtitle),
-                _projTile(Icons.image_outlined, 'Logo', _pickLogo, onLongPress: _openBrandKit),
-                _projTile(Icons.crop_rounded, 'Ratio & trim', _pickAspect),
-                _projTile(Icons.emoji_emotions_outlined, 'Stickers', _openEmojiPicker),
-                _projTile(Icons.alternate_email_rounded, 'Handle', _addUsername),
-                _projTile(Icons.campaign_rounded, 'CTA', _addCta),
-                _projTile(Icons.movie_filter_rounded, 'Outro', _addEndingScreen),
-                _projTile(Icons.layers_rounded, 'Layers', _openLayers),
-              ],
+          // PROJECT tools — ONE clean row (client §4): Text · Trim · Split ·
+          // Aspect · Transform · Layers. Add-tools (Logo/Stickers/Handle/CTA/
+          // Outro/Brand) live under Layers → "Add".
+          ? SizedBox(
+              height: 60,
+              child: Row(children: [
+                _barTile(Icons.title_rounded, 'Text', _addSubtitle),
+                _barTile(Icons.content_cut_rounded, 'Trim', () => setState(() => _trimMode = !_trimMode), on: _trimMode),
+                _barTile(Icons.call_split_rounded, 'Split', _splitAtPlayhead),
+                _barTile(Icons.crop_rounded, _project!.aspect.isOriginal ? 'Aspect' : _project!.aspect.label, _pickAspect, on: !_project!.aspect.isOriginal),
+                _barTile(Icons.open_with_rounded, 'Transform', _openTransform,
+                    on: _project!.videoScale != 1.0 || _project!.videoDx != 0 || _project!.videoDy != 0),
+                _barTile(Icons.layers_rounded, 'Layers', _openLayers),
+              ]),
             )
           : _selected is SubtitleSegment
               // §4.1 Text property panel with inline sub-tabs
@@ -2944,7 +3272,7 @@ class _EditorScreenState extends State<EditorScreen> {
     const ink = AppColors.ink, mut = AppColors.inkMuted, line = AppColors.line, brand = _kAccent;
     const tile = _kChip;
     Widget subTab(String label, int i) {
-      final on = _textTab == i;
+      final on = _textTab.clamp(0, 2) == i;
       return GestureDetector(
         onTap: () => setState(() => _textTab = i),
         child: Container(
@@ -2968,10 +3296,9 @@ class _EditorScreenState extends State<EditorScreen> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              subTab('Style', 0), const SizedBox(width: 7),
-              subTab('Advanced', 1), const SizedBox(width: 7),
-              subTab('Timing', 2), const SizedBox(width: 7),
-              subTab('Presets', 3),
+              subTab('Font', 0), const SizedBox(width: 7),
+              subTab('Styling', 1), const SizedBox(width: 7),
+              subTab('Advance', 2),
             ]),
           ),
         ),
@@ -2986,11 +3313,10 @@ class _EditorScreenState extends State<EditorScreen> {
       ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: 210),
         child: SingleChildScrollView(
-          child: switch (_textTab) {
-            0 => _textStyle(s, ink, mut, tile, line, brand),
-            1 => _textAdvanced(s, mut, tile, line, brand),
-            2 => _textTiming(s, ink, mut, tile, line, brand),
-            _ => _textPresetsTab(s, ink, tile, line, brand),
+          child: switch (_textTab.clamp(0, 2)) {
+            0 => _textFont(s, ink, mut, tile, line, brand),
+            1 => _textStyling(s, ink, mut, tile, line, brand),
+            _ => _textAdvance(s, mut, tile, line, brand),
           },
         ),
       ),
@@ -3027,136 +3353,221 @@ class _EditorScreenState extends State<EditorScreen> {
         SizedBox(width: 44, child: Text(display, textAlign: TextAlign.right, style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 11, color: AppColors.ink))),
       ]);
 
-  // ---- Style tab: font · B/I · size · colours · align ----
-  Widget _textStyle(SubtitleSegment s, Color ink, Color mut, Color tile, Color line, Color brand) {
+  // A horizontal row of colour swatches (shadow / stroke / background fill).
+  Widget _swatchRow(int current, ValueChanged<int> onPick, Color brand, Color line, {bool bg = false}) {
+    final swatches = bg
+        ? const [0x80000000, 0xFF000000, 0xFFFFFFFF, 0xFF0E9E6E, 0xFFFFC400, 0xFF2D7FF9, 0xFFDC2626]
+        : const [0xFF000000, 0xFFFFFFFF, 0xFF0E9E6E, 0xFFDC2626, 0xFF2D7FF9, 0xFFD89A3C, 0xFFFFC400];
+    return SizedBox(
+      height: 28,
+      child: ListView(scrollDirection: Axis.horizontal, children: [
+        for (final c in swatches)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onPick(c),
+              child: Container(
+                width: 28, height: 28,
+                decoration: BoxDecoration(color: Color(c), borderRadius: BorderRadius.circular(7), border: Border.all(color: current == c ? brand : line, width: current == c ? 2.5 : 1)),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+
+  // A shadow preset chip (client §5 images 5 & 6): one tap turns the shadow on
+  // with an exact opacity / blur / distance / angle set.
+  Widget _shadowPresetBtn(SubtitleSegment s, String label, double op, double blur, double dist, double angle, Color tile, Color line, Color brand) {
+    final on = s.shadow && (s.shadowOpacity - op).abs() < 0.02 && (s.shadowBlur - blur).abs() < 0.02 && (s.shadowDistance - dist).abs() < 0.5 && (s.shadowAngle - angle).abs() < 1;
+    return GestureDetector(
+      onTap: () => _mutate(() {
+        s.shadow = true;
+        s.shadowOpacity = op; s.shadowBlur = blur; s.shadowDistance = dist; s.shadowAngle = angle;
+        s.shadowColor = 0xFF000000;
+      }),
+      child: Container(
+        height: 38, alignment: Alignment.center,
+        decoration: BoxDecoration(color: on ? brand : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: on ? brand : line)),
+        child: Text(label, style: TextStyle(fontSize: 12.5, color: on ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  // ---- FONT tab (client §3): family selection + size + alignment ----
+  Widget _textFont(SubtitleSegment s, Color ink, Color mut, Color tile, Color line, Color brand) {
     Widget bi(String t, bool on, VoidCallback tap, {bool italic = false}) => GestureDetector(
           onTap: tap,
           child: Container(
-            width: 44, height: 40, alignment: Alignment.center,
-            decoration: BoxDecoration(color: on ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: on ? brand : line)),
+            width: 44, height: 42, alignment: Alignment.center,
+            decoration: BoxDecoration(color: on ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? brand : line)),
             child: Text(t, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontStyle: italic ? FontStyle.italic : FontStyle.normal, color: on ? brand : ink)),
           ),
         );
-    const swatches = [0xFFFFFFFF, 0xFF000000, 0xFF0E9E6E, 0xFFD89A3C, 0xFFDC2626, 0xFF2D7FF9, 0xFFFFC400, 0xFF9B5DE5];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 40, padding: const EdgeInsets.symmetric(horizontal: 11), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: line)), child: Row(children: [Text(s.fontFamily ?? 'Default', style: TextStyle(fontFamily: s.fontFamily, fontSize: 13, color: ink)), const Spacer(), const Icon(Icons.expand_more_rounded, size: 18, color: AppColors.mut)])))),
+        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 42, padding: const EdgeInsets.symmetric(horizontal: 12), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: line)), child: Row(children: [Text('Aa', style: TextStyle(fontFamily: s.fontFamily, fontSize: 17, color: ink, fontWeight: FontWeight.w700)), const SizedBox(width: 10), Expanded(child: Text(s.fontFamily ?? 'Default', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: s.fontFamily, fontSize: 14, color: ink))), const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.mut)])))),
         const SizedBox(width: 7),
         bi('B', s.bold, () => _mutate(() => s.bold = !s.bold)),
         const SizedBox(width: 7),
         bi('I', s.italic, () => _mutate(() => s.italic = !s.italic), italic: true),
       ]),
-      const SizedBox(height: 11),
+      const SizedBox(height: 14),
       _lightSlider('Size', s.scale, 0.4, 4.0, (v) => setState(() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } s.scale = v; }), display: '${(s.fontSize * s.scale).round()}', labelW: 40),
-      const SizedBox(height: 8),
-      Row(children: [
-        const SizedBox(width: 40, child: Text('Colour', style: TextStyle(fontSize: 12, color: AppColors.mut))),
-        Expanded(child: SizedBox(height: 30, child: ListView(scrollDirection: Axis.horizontal, children: [
-          for (final c in swatches) Padding(padding: const EdgeInsets.only(right: 8), child: GestureDetector(onTap: () => _mutate(() => s.color = c), child: Container(width: 30, height: 30, decoration: BoxDecoration(color: Color(c), borderRadius: BorderRadius.circular(8), border: Border.all(color: s.color == c ? brand : line, width: s.color == c ? 2 : 1))))),
-          GestureDetector(onTap: () => _quickColor(s), child: Container(width: 30, height: 30, alignment: Alignment.center, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: line)), child: const Icon(Icons.add_rounded, size: 16, color: AppColors.mut))),
-        ]))),
-      ]),
-      const SizedBox(height: 11),
+      const SizedBox(height: 14),
       Row(children: [
         for (final a in TextAlignH.values) ...[
           Expanded(child: GestureDetector(
             onTap: () => _mutate(() => s.align = a),
-            child: Container(height: 40, alignment: Alignment.center, decoration: BoxDecoration(color: s.align == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.align == a ? brand : line)), child: Icon(_alignIcon(a), size: 18, color: s.align == a ? brand : ink)),
+            child: Container(height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: s.align == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: s.align == a ? brand : line)), child: Icon(_alignIcon(a), size: 19, color: s.align == a ? brand : ink)),
           )),
-          if (a != TextAlignH.right) const SizedBox(width: 7),
+          if (a != TextAlignH.right) const SizedBox(width: 8),
         ],
       ]),
     ]);
   }
 
-  // ---- Advanced tab: stroke · shadow(toggle) · box(toggle) · opacity · letter · line · rotation ----
-  Widget _textAdvanced(SubtitleSegment s, Color mut, Color tile, Color line, Color brand) {
+  // ---- STYLING tab (client §3+§5): presets · colour · shadow · stroke · background ----
+  Widget _textStyling(SubtitleSegment s, Color ink, Color mut, Color tile, Color line, Color brand) {
     void snap() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } }
+    const swatches = [0xFFFFFFFF, 0xFF000000, 0xFF0E9E6E, 0xFFD89A3C, 0xFFDC2626, 0xFF2D7FF9, 0xFFFFC400, 0xFF9B5DE5];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _lightSlider('Stroke', s.strokeWidth, 0, 12, (v) => setState(() { snap(); s.strokeWidth = v; }), display: s.strokeWidth.toStringAsFixed(0)),
-      const SizedBox(height: 8),
-      _lightSlider('Opacity', s.opacity, 0.1, 1.0, (v) => setState(() { snap(); s.opacity = v; }), display: '${(s.opacity * 100).round()}%'),
-      const SizedBox(height: 8),
-      _lightSlider('Letter', s.letterSpacing, -3, 12, (v) => setState(() { snap(); s.letterSpacing = v; }), display: s.letterSpacing.toStringAsFixed(1)),
-      const SizedBox(height: 8),
-      _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
-      const SizedBox(height: 11),
-      // toggles on their own row (equal-height buttons align cleanly)
+      // Preset "looks" (font+colour+bg+stroke+anim in one tap)
+      const Text('Presets', style: TextStyle(fontSize: 11.5, color: AppColors.mut, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 7),
+      SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal, children: [
+        for (final tpl in _styleTemplates)
+          Padding(padding: const EdgeInsets.only(right: 8), child: GestureDetector(
+            onTap: () => _applyStyle(s, tpl),
+            child: Container(
+              width: 90, alignment: Alignment.center, padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.bgAlt, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.fontFamily == tpl['font'] ? brand : line, width: s.fontFamily == tpl['font'] ? 2 : 1)),
+              child: Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: tpl['font'] as String?, color: Color(tpl['color'] as int), fontWeight: FontWeight.w700, fontSize: 13)),
+            ),
+          )),
+      ])),
+      const SizedBox(height: 12),
+      // Colour
+      Row(children: [
+        const SizedBox(width: 62, child: Text('Colour', style: TextStyle(fontSize: 12, color: AppColors.mut))),
+        Expanded(child: SizedBox(height: 30, child: ListView(scrollDirection: Axis.horizontal, children: [
+          for (final c in swatches) Padding(padding: const EdgeInsets.only(right: 8), child: GestureDetector(onTap: () => _mutate(() => s.color = c), child: Container(width: 30, height: 30, decoration: BoxDecoration(color: Color(c), borderRadius: BorderRadius.circular(8), border: Border.all(color: s.color == c ? brand : line, width: s.color == c ? 2 : 1))))),
+          GestureDetector(onTap: () => _quickColor(s), child: Container(width: 30, height: 30, alignment: Alignment.center, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: line)), child: const Icon(Icons.add_rounded, size: 16, color: AppColors.mut))),
+        ]))),
+      ]),
+      const SizedBox(height: 14),
+      // Shadow — enable + the two client presets
       Row(children: [
         Expanded(child: _textFootBtn(s.shadow ? 'Shadow ✓' : 'Shadow', s.shadow ? brand : tile, s.shadow ? brand : line, s.shadow ? Colors.white : AppColors.ink, () => _mutate(() => s.shadow = !s.shadow))),
         const SizedBox(width: 8),
-        Expanded(child: _textFootBtn(s.bgEnabled ? 'Box ✓' : 'Box', s.bgEnabled ? brand : tile, s.bgEnabled ? brand : line, s.bgEnabled ? Colors.white : AppColors.ink, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
+        Expanded(child: _shadowPresetBtn(s, 'Soft', 1.0, 0.5, 0.0, 45, tile, line, brand)),
+        const SizedBox(width: 8),
+        Expanded(child: _shadowPresetBtn(s, 'Drop', 0.65, 0.0, 8.0, -45, tile, line, brand)),
       ]),
-      const SizedBox(height: 8),
-      // labelled X/Y position fields on their own row → X and Y align
+      if (s.shadow) ...[
+        const SizedBox(height: 8),
+        _lightSlider('Opacity', s.shadowOpacity, 0.0, 1.0, (v) => setState(() { snap(); s.shadowOpacity = v; }), display: '${(s.shadowOpacity * 100).round()}%'),
+        _lightSlider('Blur', s.shadowBlur, 0.0, 1.0, (v) => setState(() { snap(); s.shadowBlur = v; }), display: '${(s.shadowBlur * 100).round()}%'),
+        _lightSlider('Distance', s.shadowDistance, 0.0, 20.0, (v) => setState(() { snap(); s.shadowDistance = v; }), display: s.shadowDistance.toStringAsFixed(0)),
+        _lightSlider('Angle', s.shadowAngle, -180.0, 180.0, (v) => setState(() { snap(); s.shadowAngle = v; }), display: '${s.shadowAngle.round()}°'),
+        const SizedBox(height: 6),
+        Row(children: [const SizedBox(width: 62, child: Text('Shadow', style: TextStyle(fontSize: 12, color: AppColors.mut))), Expanded(child: _swatchRow(s.shadowColor, (c) => _mutate(() => s.shadowColor = c), brand, line))]),
+      ],
+      const SizedBox(height: 14),
+      // Stroke
+      _lightSlider('Stroke', s.strokeWidth, 0, 12, (v) => setState(() { snap(); s.strokeWidth = v; }), display: s.strokeWidth.toStringAsFixed(0)),
+      if (s.strokeWidth > 0) Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [const SizedBox(width: 62, child: Text('Stroke', style: TextStyle(fontSize: 12, color: AppColors.mut))), Expanded(child: _swatchRow(s.strokeColor, (c) => _mutate(() => s.strokeColor = c), brand, line))])),
+      const SizedBox(height: 14),
+      // Background (renamed from "Box" per client §5) + its fill colour
+      Row(children: [
+        Expanded(child: _textFootBtn(s.bgEnabled ? 'Background ✓' : 'Background', s.bgEnabled ? brand : tile, s.bgEnabled ? brand : line, s.bgEnabled ? Colors.white : AppColors.ink, () => _mutate(() => s.bgEnabled = !s.bgEnabled))),
+      ]),
+      if (s.bgEnabled) Padding(padding: const EdgeInsets.only(top: 8), child: Row(children: [const SizedBox(width: 62, child: Text('Fill', style: TextStyle(fontSize: 12, color: AppColors.mut))), Expanded(child: _swatchRow(s.bgColor, (c) => _mutate(() => s.bgColor = c), brand, line, bg: true))])),
+      const SizedBox(height: 16),
+      const Divider(height: 1, color: AppColors.line),
+      const SizedBox(height: 12),
+      // Fine tuning + Motion — moved here so the Advance tab stays position+scale ONLY (client §3).
+      const Text('Fine tuning', style: TextStyle(fontSize: 11.5, color: AppColors.mut, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 6),
+      _lightSlider('Rotate', s.rotation * 180 / math.pi, -180, 180, (v) => setState(() { snap(); s.rotation = v * math.pi / 180; }), display: '${(s.rotation * 180 / math.pi).round()}°'),
+      _lightSlider('Opacity', s.opacity, 0.1, 1.0, (v) => setState(() { snap(); s.opacity = v; }), display: '${(s.opacity * 100).round()}%'),
+      _lightSlider('Letter', s.letterSpacing, -3, 12, (v) => setState(() { snap(); s.letterSpacing = v; }), display: s.letterSpacing.toStringAsFixed(1)),
+      _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
+      const SizedBox(height: 12),
+      const Text('Motion', style: TextStyle(fontSize: 11.5, color: AppColors.mut, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 7),
+      Row(children: [
+        _animChip(s, 'None', OverlayAnim.none, tile, line, brand), const SizedBox(width: 6),
+        _animChip(s, 'Fade', OverlayAnim.fade, tile, line, brand), const SizedBox(width: 6),
+        _animChip(s, 'Pop', OverlayAnim.popIn, tile, line, brand), const SizedBox(width: 6),
+        _animChip(s, 'Slide', OverlayAnim.slideUp, tile, line, brand), const SizedBox(width: 6),
+        _animChip(s, 'Zoom', OverlayAnim.zoomIn, tile, line, brand),
+      ]),
+    ]);
+  }
+
+  Widget _animChip(SubtitleSegment s, String label, OverlayAnim a, Color tile, Color line, Color brand) => Expanded(
+        child: GestureDetector(
+          onTap: () => _mutate(() => s.anim = a),
+          child: Container(height: 36, alignment: Alignment.center, decoration: BoxDecoration(color: s.anim == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.anim == a ? brand : line)), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: s.anim == a ? brand : AppColors.ink))),
+        ),
+      );
+
+  // ---- ADVANCE tab (client §3): ONLY text position + scale ----
+  Widget _textAdvance(SubtitleSegment s, Color mut, Color tile, Color line, Color brand) {
+    void snap() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: _NumFieldLight(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dx = (v / 100).clamp(0.0, 1.0)))),
         const SizedBox(width: 8),
         Expanded(child: _NumFieldLight(label: 'Y %', value: s.dy * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dy = (v / 100).clamp(0.0, 1.0)))),
       ]),
+      const SizedBox(height: 12),
+      _lightSlider('Scale', s.scale, 0.4, 4.0, (v) => setState(() { snap(); s.scale = v; }), display: '${(s.scale * 100).round()}%'),
+      const SizedBox(height: 8),
+      const Text('Position and scale only. Colour, shadow, stroke, motion & fine typography live in the Styling tab.',
+          style: TextStyle(fontSize: 11, color: AppColors.inkFaint, height: 1.3)),
     ]);
   }
 
-  // ---- Timing tab: start/end fields + animation quick-select ----
-  Widget _textTiming(SubtitleSegment s, Color ink, Color mut, Color tile, Color line, Color brand) {
-    final dz = _duration <= 0 ? 9999.0 : _duration;
-    Widget anim(String label, OverlayAnim a) => Expanded(
+  /// One cell of the single-row project toolbar (client §4). Expanded so the six
+  /// tools split the width evenly; icon over a tiny label, brand-fill when active.
+  Widget _barTile(IconData icon, String label, VoidCallback onTap, {bool on = false}) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
           child: GestureDetector(
-            onTap: () => _mutate(() => s.anim = a),
-            child: Container(height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: s.anim == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.anim == a ? brand : line)), child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: s.anim == a ? brand : ink))),
-          ),
-        );
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [
-        Expanded(child: _NumFieldLight(label: 'Starts (s)', value: s.start, min: 0, max: dz, decimals: 1, onChanged: (v) => _mutate(() => s.start = v.clamp(0.0, s.end - 0.2)))),
-        const SizedBox(width: 9),
-        Expanded(child: _NumFieldLight(label: 'Ends (s)', value: s.end, min: 0, max: dz, decimals: 1, onChanged: (v) => _mutate(() => s.end = v.clamp(s.start + 0.2, dz)))),
-      ]),
-      const SizedBox(height: 11),
-      Row(children: [
-        anim('None', OverlayAnim.none), const SizedBox(width: 7),
-        anim('Fade', OverlayAnim.fade), const SizedBox(width: 7),
-        anim('Pop', OverlayAnim.popIn), const SizedBox(width: 7),
-        anim('Type', OverlayAnim.typewriter),
-      ]),
-    ]);
-  }
-
-  // ---- Presets tab: horizontal preset strip ----
-  Widget _textPresetsTab(SubtitleSegment s, Color ink, Color tile, Color line, Color brand) {
-    return Wrap(spacing: 8, runSpacing: 8, children: [
-      for (final tpl in _styleTemplates)
-        GestureDetector(
-          onTap: () => _applyStyle(s, tpl),
-          child: Container(
-            width: 100, height: 52, alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.ink,
-              borderRadius: BorderRadius.circular(9),
-              border: Border.all(color: s.fontFamily == tpl['font'] ? brand : line, width: s.fontFamily == tpl['font'] ? 2 : 1),
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              decoration: BoxDecoration(
+                color: on ? AppColors.brand : _kChip,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: on ? AppColors.brand : AppColors.line),
+              ),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, color: on ? Colors.white : AppColors.ink, size: 20),
+                const SizedBox(height: 4),
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 10, fontWeight: FontWeight.w500)),
+              ]),
             ),
-            child: Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: tpl['font'] as String?, color: Color(tpl['color'] as int), fontWeight: FontWeight.w700, fontSize: 13)),
           ),
         ),
-    ]);
-  }
+      );
 
-  /// A 64px project-tool tile (§4.1 PROJECT grid): icon over label on a dark tile.
-  Widget _projTile(IconData icon, String label, VoidCallback onTap, {bool on = false, VoidCallback? onLongPress}) => GestureDetector(
+  /// A tile for the Layers → Add grid (secondary add-tools that used to crowd the
+  /// bottom toolbar). Fixed square so the grid stays tidy.
+  Widget _addTile(IconData icon, String label, VoidCallback onTap, {bool on = false}) => GestureDetector(
         onTap: onTap,
-        onLongPress: onLongPress,
-        child: Container(
-          decoration: BoxDecoration(
-            color: on ? AppColors.brand : _kChip,
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: on ? AppColors.brand : AppColors.line),
+        behavior: HitTestBehavior.opaque,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 50, height: 50, alignment: Alignment.center,
+            decoration: BoxDecoration(color: on ? AppColors.brand : _kChip, borderRadius: BorderRadius.circular(14), border: Border.all(color: on ? AppColors.brand : AppColors.line)),
+            child: Icon(icon, color: on ? Colors.white : AppColors.ink, size: 22),
           ),
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, color: on ? Colors.white : AppColors.ink, size: 18),
-            const SizedBox(height: 4),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 10.5, fontWeight: FontWeight.w500)),
-          ]),
-        ),
+          const SizedBox(height: 5),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
+        ]),
       );
 
   IconData _alignIcon(TextAlignH a) => switch (a) {
@@ -3221,6 +3632,94 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       );
 
+  /// Transform tool (client §1): explicit controls to SCALE (down or up) and
+  /// POSITION the video inside the frame, plus the frame background for any gap.
+  /// Mirrors the canvas pinch/drag but discoverable and precise. WYSIWYG on export.
+  Future<void> _openTransform() async {
+    final p = _project!;
+    var snapped = false;
+    void snap() { if (!snapped) { _snapshot(); snapped = true; } }
+    Widget posSlider(String label, double value, double lim, ValueChanged<double> onChanged) {
+      final enabled = lim > 0.0001;
+      final l = enabled ? lim : 0.5;
+      return Row(children: [
+        SizedBox(width: 96, child: Text(label, style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 13))),
+        Expanded(
+          child: SliderTheme(
+            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: AppColors.line, trackHeight: 4, overlayColor: _kAccent.withOpacity(0.15), thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7.5, elevation: 1.5)),
+            child: Slider(value: value.clamp(-l, l), min: -l, max: l, onChanged: enabled ? onChanged : null),
+          ),
+        ),
+        SizedBox(width: 46, child: Text('${(value * 100).round()}%', textAlign: TextAlign.right, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w500, fontSize: 12, fontFamily: 'IBMPlexMono'))),
+      ]);
+    }
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.bg,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => StatefulBuilder(builder: (context, setSheet) {
+        final lim = _videoPanLimit(p.videoScale);
+        final changed = p.videoScale != 1.0 || p.videoDx != 0 || p.videoDy != 0 || p.videoFitContain;
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Center(child: _Grabber()),
+                const Text('Transform', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text('Scale and position the video inside the frame.', style: TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+                const SizedBox(height: 14),
+                // Scale — now goes BELOW 1× (client: scale the video down).
+                _fadeRowGeneric('Scale', p.videoScale, 0.25, 4.0, (v) {
+                  snap();
+                  setSheet(() {
+                    p.videoScale = v;
+                    final l = _videoPanLimit(v);
+                    p.videoDx = p.videoDx.clamp(-l, l);
+                    p.videoDy = p.videoDy.clamp(-l, l);
+                    setState(() {});
+                  });
+                }, suffix: 'x'),
+                posSlider('Position X', p.videoDx, lim, (v) { snap(); setSheet(() { p.videoDx = v; setState(() {}); }); }),
+                posSlider('Position Y', p.videoDy, lim, (v) { snap(); setSheet(() { p.videoDy = v; setState(() {}); }); }),
+                if (lim <= 0.0001)
+                  const Padding(padding: EdgeInsets.only(top: 2), child: Text('Zoom in or scale down to reposition.', style: TextStyle(color: AppColors.inkFaint, fontSize: 11, fontFamily: 'IBMPlexMono'))),
+                const SizedBox(height: 14),
+                // Fit vs Fill + the background fill shown behind a scaled-down / letterboxed video.
+                Row(children: [
+                  _fitChip('Fill', !p.videoFitContain, () { _mutate(() => p.videoFitContain = false); setSheet(() {}); }),
+                  const SizedBox(width: 10),
+                  _fitChip('Fit', p.videoFitContain, () { _mutate(() => p.videoFitContain = true); setSheet(() {}); }),
+                  const Spacer(),
+                  const Text('BG', style: TextStyle(color: AppColors.inkMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 8),
+                  _bgSwatch(0xFF000000, p.videoBgColor == 0xFF000000, () { _mutate(() => p.videoBgColor = 0xFF000000); setSheet(() {}); }),
+                  const SizedBox(width: 8),
+                  _bgSwatch(0xFFFFFFFF, p.videoBgColor == 0xFFFFFFFF, () { _mutate(() => p.videoBgColor = 0xFFFFFFFF); setSheet(() {}); }),
+                ]),
+                if (changed) ...[
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () { _mutate(() { p.videoScale = 1.0; p.videoDx = 0; p.videoDy = 0; p.videoFitContain = false; }); setSheet(() {}); },
+                      icon: const Icon(Icons.restart_alt_rounded, size: 18, color: _kAccent),
+                      label: const Text('Reset', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+              ]),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   Future<void> _pickAspect() async {
     final p = _project!;
     await showModalBottomSheet(
@@ -3229,17 +3728,15 @@ class _EditorScreenState extends State<EditorScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(builder: (context, setSheet) {
-        var vidSnapped = false;
-        void snapVid() { if (!vidSnapped) { _snapshot(); vidSnapped = true; } }
         return SafeArea(
           child: SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Center(child: _Grabber()),
-                const Text('Ratio & fit', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
+                const Text('Aspect ratio', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 4),
-                Text('Pick a ratio, then pinch/drag the video to scale & position it.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+                Text('Pick a ratio & fit. Use Transform to scale and position the video.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
                 const SizedBox(height: 14),
                 // Ratio pills
                 Wrap(spacing: 9, runSpacing: 9, children: [
@@ -3273,29 +3770,6 @@ class _EditorScreenState extends State<EditorScreen> {
                   ],
                 ]),
                 const SizedBox(height: 18),
-                // Video scale + reposition (pan is easiest by dragging on the canvas)
-                _fadeRowGeneric('Video zoom', p.videoScale, 1.0, 4.0, (v) {
-                  snapVid();
-                  setSheet(() {
-                    p.videoScale = v;
-                    final lim = ((1 - 1 / v) / 2).clamp(0.0, 0.5);
-                    p.videoDx = p.videoDx.clamp(-lim, lim);
-                    p.videoDy = p.videoDy.clamp(-lim, lim);
-                    setState(() {});
-                  });
-                }, suffix: 'x'),
-                if (p.videoScale > 1.001 || p.videoDx.abs() > 0.001 || p.videoDy.abs() > 0.001) ...[
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () { _mutate(() { p.videoScale = 1.0; p.videoDx = 0; p.videoDy = 0; }); setSheet(() {}); },
-                      icon: const Icon(Icons.restart_alt_rounded, size: 18, color: _kAccent),
-                      label: const Text('Reset video position', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
                 SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
               ]),
             ),

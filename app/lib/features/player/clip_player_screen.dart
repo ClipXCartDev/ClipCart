@@ -73,7 +73,9 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   final Map<int, VideoPlayerController> _ctrls = {};
   final Map<int, bool> _loading = {};
   final Set<String> _faved = {}; // clip ids saved this session (optimistic)
-  bool _muted = true;
+  // Client: audio should play by default (not muted). Only the CURRENT clip is
+  // audible — neighbours stay muted via the `i == _current` gate in _sync/_ensure.
+  bool _muted = false;
   int _gen = 0; // bumps whenever we tear controllers down; stale async _ensure bail on mismatch
   Map<String, dynamic>? _sub; // active subscription (drives editable / credit count) or null
 
@@ -521,7 +523,9 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               SizedBox(
                 width: btnW, height: 50,
                 child: FilledButton(
-                  onPressed: editable ? () => _showCreditSheet(clip) : () => context.push('/plans'),
+                  onPressed: editable
+                      ? () => _showCreditSheet(clip)
+                      : () async { await context.push('/plans'); if (mounted) _loadSub(); },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.brand,
                     padding: EdgeInsets.zero,

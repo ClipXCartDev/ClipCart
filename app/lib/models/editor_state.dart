@@ -74,7 +74,13 @@ class SubtitleSegment {
     this.bold = true,
     this.italic = false,
     this.shadow = false,
+    this.shadowColor = 0xFF000000,
+    this.shadowOpacity = 1.0,
+    this.shadowBlur = 0.5,
+    this.shadowDistance = 0.0,
+    this.shadowAngle = 45.0,
     this.opacity = 1.0,
+    this.locked = false,
   });
 
   String text;
@@ -102,8 +108,16 @@ class SubtitleSegment {
   double lineHeight; // line-height multiplier
   bool bold;
   bool italic;
-  bool shadow; // soft drop shadow
+  bool shadow; // soft drop shadow (enabled flag)
+  // Drop-shadow parameters (client §5 shadow presets). Distance is a 0..20 value
+  // rendered as (distance/100 * size)px offset; blur is a 0..1 fraction of size.
+  int shadowColor; // ARGB shadow colour
+  double shadowOpacity; // 0..1
+  double shadowBlur; // 0..1 (fraction of font size → blur radius)
+  double shadowDistance; // 0..20 (→ offset px = distance/100 * size)
+  double shadowAngle; // degrees (offset direction)
   double opacity; // 0..1 layer opacity (multiplies fade/anim opacity)
+  bool locked; // when true the layer can't be moved/scaled/resized/deleted
 
   double get effectiveSize => fontSize * scale;
   Color get uiColor => Color(color);
@@ -126,7 +140,9 @@ class SubtitleSegment {
         bgEnabled: bgEnabled, bgColor: bgColor, align: align, z: z, hidden: hidden,
         fadeIn: fadeIn, fadeOut: fadeOut, anim: anim,
         letterSpacing: letterSpacing, lineHeight: lineHeight, bold: bold, italic: italic, shadow: shadow,
-        opacity: opacity,
+        shadowColor: shadowColor, shadowOpacity: shadowOpacity, shadowBlur: shadowBlur,
+        shadowDistance: shadowDistance, shadowAngle: shadowAngle,
+        opacity: opacity, locked: locked,
       );
 
   Map<String, dynamic> toJson() => {
@@ -134,7 +150,9 @@ class SubtitleSegment {
         'c': color, 'fs': fontSize, 'dx': dx, 'dy': dy, 'sc': scale, 'rot': rotation,
         'sw': strokeWidth, 'scol': strokeColor, 'bg': bgEnabled, 'bgc': bgColor, 'al': align.index, 'z': z, 'hid': hidden,
         'fi': fadeIn, 'fo': fadeOut, 'an': anim.index,
-        'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow, 'op': opacity,
+        'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow,
+        'shc': shadowColor, 'sho': shadowOpacity, 'shb': shadowBlur, 'shd': shadowDistance, 'sha': shadowAngle,
+        'op': opacity, 'lk': locked,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -150,7 +168,13 @@ class SubtitleSegment {
         anim: OverlayAnim.values[(j['an'] as int?) ?? 0],
         letterSpacing: (j['ls'] as num?)?.toDouble() ?? 0, lineHeight: (j['lh'] as num?)?.toDouble() ?? 1.15,
         bold: (j['bo'] as bool?) ?? true, italic: (j['it'] as bool?) ?? false, shadow: (j['sh'] as bool?) ?? false,
+        shadowColor: (j['shc'] as int?) ?? 0xFF000000,
+        shadowOpacity: (j['sho'] as num?)?.toDouble() ?? 1.0,
+        shadowBlur: (j['shb'] as num?)?.toDouble() ?? 0.5,
+        shadowDistance: (j['shd'] as num?)?.toDouble() ?? 0.0,
+        shadowAngle: (j['sha'] as num?)?.toDouble() ?? 45.0,
         opacity: (j['op'] as num?)?.toDouble() ?? 1.0,
+        locked: (j['lk'] as bool?) ?? false,
       );
 }
 
@@ -241,6 +265,7 @@ class StickerOverlay {
     this.fadeOut = 0,
     this.baseWidthFrac = 0.22,
     this.anim = OverlayAnim.none,
+    this.locked = false,
   });
 
   String path; // transparent PNG on disk
@@ -254,6 +279,7 @@ class StickerOverlay {
   double fadeIn, fadeOut; // seconds
   double baseWidthFrac; // base width as fraction of canvas before scale
   OverlayAnim anim;
+  bool locked; // when true the layer can't be moved/scaled/resized/deleted
 
   double opacityAt(double t) {
     var a = 1.0;
@@ -269,12 +295,12 @@ class StickerOverlay {
 
   StickerOverlay copy() => StickerOverlay(
         path: path, emoji: emoji, start: start, end: end, dx: dx, dy: dy,
-        scale: scale, rotation: rotation, z: z, hidden: hidden, fadeIn: fadeIn, fadeOut: fadeOut, baseWidthFrac: baseWidthFrac, anim: anim,
+        scale: scale, rotation: rotation, z: z, hidden: hidden, fadeIn: fadeIn, fadeOut: fadeOut, baseWidthFrac: baseWidthFrac, anim: anim, locked: locked,
       );
 
   Map<String, dynamic> toJson() => {
         'p': path, 'em': emoji, 's': start, 'e': end, 'dx': dx, 'dy': dy,
-        'sc': scale, 'rot': rotation, 'z': z, 'hid': hidden, 'fi': fadeIn, 'fo': fadeOut, 'bw': baseWidthFrac, 'an': anim.index,
+        'sc': scale, 'rot': rotation, 'z': z, 'hid': hidden, 'fi': fadeIn, 'fo': fadeOut, 'bw': baseWidthFrac, 'an': anim.index, 'lk': locked,
       };
 
   factory StickerOverlay.fromJson(Map<String, dynamic> j) => StickerOverlay(
@@ -286,6 +312,7 @@ class StickerOverlay {
         fadeIn: (j['fi'] as num?)?.toDouble() ?? 0, fadeOut: (j['fo'] as num?)?.toDouble() ?? 0,
         baseWidthFrac: (j['bw'] as num?)?.toDouble() ?? 0.22,
         anim: OverlayAnim.values[(j['an'] as int?) ?? 0],
+        locked: (j['lk'] as bool?) ?? false,
       );
 }
 
@@ -330,6 +357,7 @@ class EditorProject {
     this.logoRotation = 0.0,
     this.logoZ = 1000,
     this.logoHidden = false,
+    this.logoLocked = false,
     this.trimStart = 0.0,
     this.trimEnd,
     this.duration = 0.0,
@@ -361,6 +389,7 @@ class EditorProject {
   double logoRotation; // radians
   double logoZ; // stacking order
   bool logoHidden; // layer visibility
+  bool logoLocked; // when true the logo can't be moved/scaled/deleted
   double originalVolume; // 0..1 volume of the clip's own audio
   // §4.0 feedback 6 — music imported from the device, mixed under the clip audio.
   String? musicPath; // added music track (null = none)
@@ -396,7 +425,7 @@ class EditorProject {
         'subs': subtitles.map((s) => s.toJson()).toList(),
         'stk': stickers.map((s) => s.toJson()).toList(),
         'logoPath': logoPath, 'logoDx': logoDx, 'logoDy': logoDy,
-        'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden,
+        'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden, 'logoLocked': logoLocked,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
         'originalVolume': originalVolume,
         'musicPath': musicPath, 'musicVolume': musicVolume, 'musicStart': musicStart, 'musicFadeOut': musicFadeOut,
@@ -436,6 +465,7 @@ class EditorProject {
     logoRotation = (s['logoRotation'] as num?)?.toDouble() ?? 0.0;
     logoZ = (s['logoZ'] as num?)?.toDouble() ?? 1000;
     logoHidden = (s['logoHidden'] as bool?) ?? false;
+    logoLocked = (s['logoLocked'] as bool?) ?? false;
     trimStart = (s['trimStart'] as num?)?.toDouble() ?? 0.0;
     trimEnd = (s['trimEnd'] as num?)?.toDouble();
     aspect = AspectOption.all[((s['aspect'] as int?) ?? 0).clamp(0, AspectOption.all.length - 1)];

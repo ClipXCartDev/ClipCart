@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -19,6 +20,26 @@ class TextRenderService {
   static Future<String> renderToPng(SubtitleSegment s, int index) async {
     final size = s.effectiveSize.clamp(8.0, 400.0);
     final text = s.text.isEmpty ? 'Text' : s.text;
+    // Parametric drop shadow (client §5). Offset by distance/angle, softened by
+    // blur, at the user's colour+opacity. Painted as its own pass below so it
+    // works with or without a stroke — matches the live preview exactly.
+    List<Shadow>? shadows;
+    double shadowExtent = 0; // how far the shadow reaches past the text (px)
+    if (s.shadow) {
+      final ang = s.shadowAngle * math.pi / 180.0;
+      final dist = (s.shadowDistance / 100.0) * size;
+      final blurR = (s.shadowBlur.clamp(0.0, 1.0)) * size * 0.4;
+      shadows = [
+        Shadow(
+          color: Color(s.shadowColor).withOpacity(s.shadowOpacity.clamp(0.0, 1.0)),
+          blurRadius: blurR,
+          offset: Offset(math.cos(ang) * dist, math.sin(ang) * dist),
+        ),
+      ];
+      // Reserve canvas room for the offset + blur spread (~3σ) so the shadow is
+      // never hard-clipped by the PNG bounds (client §5 big-shadow presets).
+      shadowExtent = dist.abs() + blurR * 3;
+    }
     final style = TextStyle(
       fontFamily: s.fontFamily,
       color: Color(s.color),
@@ -27,9 +48,9 @@ class TextRenderService {
       fontStyle: s.italic ? FontStyle.italic : FontStyle.normal,
       letterSpacing: s.letterSpacing,
       height: s.lineHeight,
-      shadows: (s.shadow && s.strokeWidth <= 0)
-          ? [Shadow(color: const Color(0xCC000000), blurRadius: size * 0.12, offset: Offset(size * 0.03, size * 0.03))]
-          : null,
+      // A stroke pass draws the outline; keep the parametric shadow on the fill
+      // text so a shadow+stroke combo renders both.
+      shadows: shadows,
     );
     final fill = TextPainter(
       text: TextSpan(text: text, style: style),
@@ -39,7 +60,7 @@ class TextRenderService {
 
     final padX = s.bgEnabled ? size * 0.36 : size * 0.14;
     final padY = s.bgEnabled ? size * 0.18 : size * 0.10;
-    final margin = s.strokeWidth * 1.5 + 8;
+    final margin = s.strokeWidth * 1.5 + 8 + shadowExtent;
     final w = (fill.width + padX * 2 + margin * 2).ceil();
     final h = (fill.height + padY * 2 + margin * 2).ceil();
 
@@ -63,6 +84,9 @@ class TextRenderService {
               ..strokeWidth = s.strokeWidth * 2
               ..strokeJoin = StrokeJoin.round
               ..color = Color(s.strokeColor),
+            // Clear shadows on the stroke pass so the shadow isn't composited
+            // twice (the fill pass below already carries it).
+            shadows: const [],
           ),
         ),
         textAlign: _ta(s.align),
@@ -70,8 +94,10 @@ class TextRenderService {
       )..layout(maxWidth: size * 24);
       strokePainter.paint(canvas, off);
     } else {
-      // subtle shadow for legibility when no stroke and no bg
-      if (!s.bgEnabled) {
+      // Subtle auto legibility shadow ONLY when the user hasn't set an explicit
+      // shadow and there's no stroke/bg — otherwise the parametric shadow above
+      // (baked into `style.shadows`) is the single source of truth.
+      if (!s.bgEnabled && !s.shadow) {
         final shadow = TextPainter(
           text: TextSpan(text: text, style: style.copyWith(color: Colors.black54)),
           textAlign: _ta(s.align),

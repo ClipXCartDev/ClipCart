@@ -128,6 +128,128 @@ class PlansScreen extends StatelessWidget {
       );
 }
 
+// ════════════════════════ Membership gate (client §7) ════════════════════════
+
+/// Routes `/plans` by subscription status so an ACTIVE member lands on Manage,
+/// not the buy paywall (client bug: "membership active hone pe bhi purchase bolta").
+class PlansRouter extends StatefulWidget {
+  const PlansRouter({super.key});
+  @override
+  State<PlansRouter> createState() => _PlansRouterState();
+}
+
+class _PlansRouterState extends State<PlansRouter> {
+  late Future<Map<String, dynamic>?> _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  // Keep the error (don't swallow to null): a null result means "genuinely no
+  // plan" → paywall, but a THROW means unknown → show a retry, never the paywall
+  // (else a transient network blip tells an active member to purchase again).
+  void _load() => setState(() => _sub = context.read<BillingService>().subscription());
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _sub,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(backgroundColor: AppColors.bg, body: Center(child: CircularProgressIndicator(color: AppColors.brand)));
+        }
+        if (snap.hasError) {
+          return Scaffold(
+            backgroundColor: AppColors.bg,
+            body: SafeArea(
+              child: Column(children: [
+                _navBar(context, 'Subscription'),
+                Expanded(
+                  child: Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text("Couldn't check your subscription.", style: T.body),
+                      const SizedBox(height: 8),
+                      TextButton(onPressed: _load, child: const Text('Retry', style: TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, color: AppColors.brand))),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          );
+        }
+        final sub = snap.data;
+        final active = (sub?['status']?.toString())?.toLowerCase() == 'active';
+        return active ? ManageSubscriptionScreen(sub: sub!) : const PlansScreen();
+      },
+    );
+  }
+}
+
+/// Active-member management — shows the live plan + a single "change / renew"
+/// path, instead of the "Subscribe to edit and export" paywall.
+class ManageSubscriptionScreen extends StatelessWidget {
+  const ManageSubscriptionScreen({super.key, required this.sub});
+  final Map<String, dynamic> sub;
+
+  @override
+  Widget build(BuildContext context) {
+    final planName = (sub['plan_name'] ?? sub['plan'] ?? 'Pro').toString();
+    final until = (sub['expires_at'] ?? sub['active_until'] ?? sub['current_period_end'])?.toString();
+    final unlimited = sub.containsKey('edit_credits') && sub['edit_credits'] == null;
+    final credits = unlimited ? 'Unlimited' : ((sub['edit_credits'] ?? sub['credits_left'])?.toString() ?? '—');
+    String fmt(String? s) {
+      if (s == null) return '—';
+      final d = DateTime.tryParse(s);
+      return d == null ? s : _fmtDate(d);
+    }
+    Widget stat(String k, String v) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(k, style: T.caption),
+          const SizedBox(height: 6),
+          Text(v, style: const TextStyle(fontFamily: kMono, fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.ink)),
+        ]);
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        child: Column(children: [
+          _navBar(context, 'Your subscription'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              children: [
+                DesignCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Container(width: 44, height: 44, alignment: Alignment.center, decoration: const BoxDecoration(color: AppColors.okBg, shape: BoxShape.circle), child: const Icon(Icons.verified_rounded, color: AppColors.okIcon, size: 22)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(planName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kSans, fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                        const SizedBox(height: 4),
+                        const Text('Active membership', style: T.bodySmall),
+                      ])),
+                      StatusPill.ok('Active'),
+                    ]),
+                    const SizedBox(height: 18),
+                    Row(children: [Expanded(child: stat('Edit credits', credits)), Expanded(child: stat('Active until', fmt(until)))]),
+                  ]),
+                ),
+                const SizedBox(height: 14),
+                const InfoPanel('Plans do not auto-renew. Pay again any time to extend your access by another 30 days.'),
+              ],
+            ),
+          ),
+          _footer(children: [
+            PrimaryBtn('Change or renew plan', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlansListScreen()))),
+            const SizedBox(height: 6),
+            GhostBtn('Done', onTap: () => Navigator.of(context).maybePop()),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+
 // ══════════════════════════════ §08 Plans ════════════════════════════════════
 
 /// The plan list — real plans fetched from BillingService, one selectable card

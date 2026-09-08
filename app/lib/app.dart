@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -57,6 +58,15 @@ class _ClipCartAppState extends State<ClipCartApp> {
   @override
   void initState() {
     super.initState();
+    // Dark app → light status-bar + nav-bar icons everywhere (screens without an
+    // AppBar don't get the appBarTheme overlay, so set it globally too).
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: AppColors.bg,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ));
     final auth = context.read<AuthController>();
     _router = GoRouter(
       initialLocation: '/splash',
@@ -99,7 +109,8 @@ class _ClipCartAppState extends State<ClipCartApp> {
             return _fadeScalePage(s, EditorScreen(clip: clip, title: clip?.title));
           },
         ),
-        GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansScreen())),
+        // Gate: active members see Manage; free users see the paywall (client §7).
+        GoRoute(path: '/plans', pageBuilder: (c, s) => _fadeScalePage(s, const PlansRouter())),
         GoRoute(path: '/devices', pageBuilder: (c, s) => _fadeScalePage(s, const DevicesScreen())),
         GoRoute(path: '/support', pageBuilder: (c, s) => _fadeScalePage(s, const SupportScreen())),
         GoRoute(path: '/notifications', pageBuilder: (c, s) => _fadeScalePage(s, const NotificationsScreen())),
@@ -114,9 +125,10 @@ class _ClipCartAppState extends State<ClipCartApp> {
     return MaterialApp.router(
       title: 'ClipCart',
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      theme: buildTheme(),
+      darkTheme: buildTheme(),
+      themeMode: ThemeMode.dark, // ClipCart is a dark-themed app
+
       routerConfig: _router,
     );
   }

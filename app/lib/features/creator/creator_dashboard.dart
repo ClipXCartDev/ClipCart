@@ -88,7 +88,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return Container(
                     height: 176,
-                    decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.surface)),
+                    decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.surface)),
                     child: const Center(child: CircularProgressIndicator(color: Colors.white)),
                   );
                 }
@@ -106,7 +106,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                 final available = (e?['available'] as num?)?.toDouble() ?? 0;
                 return Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.surface)),
+                  decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.surface)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -124,7 +124,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
                         width: double.infinity,
                         height: 48,
                         child: FilledButton.icon(
-                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.ink, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.sm))),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.brand, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.sm))),
                           onPressed: available > 0 ? () => _requestPayout(available) : null,
                           icon: const Icon(Icons.payments_rounded, size: 18),
                           label: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -226,7 +226,7 @@ class _PayoutScreenState extends State<_PayoutScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(R.surface)),
+            decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.surface)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('AVAILABLE BALANCE', style: TextStyle(color: Colors.white70, fontFamily: kMono, fontWeight: FontWeight.w500, fontSize: 11, letterSpacing: 1)),
               const SizedBox(height: 4),

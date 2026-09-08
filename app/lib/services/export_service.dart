@@ -20,6 +20,10 @@ class ExportResult {
 /// transparent PNG that is scaled, rotated and time-gated — perfectly WYSIWYG
 /// with the editor canvas. Optional trim + aspect-ratio crop.
 class ExportService {
+  /// Cover-crop overscan factor — matches the editor preview so the exported
+  /// frame is WYSIWYG and no 1px seam shows on the aspect-crop edge.
+  static const double _overscan = 1.012;
+
   /// [onProgress] receives 0.0..1.0 during the render (from real FFmpeg frame
   /// statistics — honest progress, no fake bar). It may not reach exactly 1.0.
   Future<ExportResult> export(EditorProject p, {void Function(double)? onProgress}) async {
@@ -58,33 +62,54 @@ class ExportService {
     // crop back to the aspect box at the panned offset. Center pan (0,0) = cover.
     final cropChain = StringBuffer();
     final ar = p.aspect.ratio;
-    final vz = p.videoScale.clamp(1.0, 4.0);
+    // videoScale now goes BELOW 1.0 (client: "scale down the video") — a value
+    // under 1 shrinks the video inside the frame and pads the gap with the bg
+    // colour; a value of 1+ zooms/crops. Range clamped 0.25..4.0.
+    final vz = p.videoScale.clamp(0.25, 4.0);
     final panX = p.videoDx.clamp(-0.5, 0.5);
     final panY = p.videoDy.clamp(-0.5, 0.5);
+    final bg = _ffColor(p.videoBgColor);
+    // A hair of overscan on a cover-crop kills the 1px black seam that showed on
+    // the frame edge after an aspect change (client bug 1). Only applied when
+    // NOT scaling down (vz>=1) and only under an aspect crop — never on Original.
+    final effVz = vz >= 1.0 ? vz * _overscan : vz;
     if (ar != null && p.videoFitContain) {
       // FIT mode: letterbox the whole video onto a bg fill of the target aspect.
       // Build a box sized to the aspect (based on the input's larger dimension),
       // scale the video to fit inside it (× videoScale), pad to the box centre.
-      final bg = _ffColor(p.videoBgColor);
       // target box: width = max(iw, ih*ar), height = width/ar → contains the source
       cropChain.write("scale=w='iw*${_f(vz)}':h='ih*${_f(vz)}',");
+      // Pan is a fraction of the FULL output box (matches the preview's dx*w
+      // translate), not of the empty slack — otherwise export under-pans (WYSIWYG).
       cropChain.write("pad=w='max(iw\\,ih*${_f(ar)})':h='max(iw\\,ih*${_f(ar)})/${_f(ar)}'"
-          ":x='(ow-iw)/2+(ow-iw)*${_f(panX)}':y='(oh-ih)/2+(oh-ih)*${_f(panY)}':color=$bg,setsar=1");
+          ":x='(ow-iw)/2+ow*${_f(panX)}':y='(oh-ih)/2+oh*${_f(panY)}':color=$bg,setsar=1");
     } else if (ar != null) {
-      // FILL mode: cover-crop to the target aspect
+      // FILL mode: cover-crop to the target aspect, then apply the user's zoom/pan.
       cropChain.write("crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})'");
-      if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
-        // 2) zoom (scale the cropped box up), 3) re-crop to the box at the pan offset
+      if (vz < 1.0) {
+        // SCALE DOWN: shrink the cropped frame and pad back to the box with bg.
+        // Pan = ow*panX (fraction of the frame) to match the preview's dx*w shift.
         cropChain.write(",scale=iw*${_f(vz)}:ih*${_f(vz)}");
-        cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
-            ":'(iw-ow)*(0.5-${_f(panX)})':'(ih-oh)*(0.5-${_f(panY)})'");
+        cropChain.write(",pad=w=iw/${_f(vz)}:h=ih/${_f(vz)}"
+            ":x='(ow-iw)/2+ow*${_f(panX)}':y='(oh-ih)/2+oh*${_f(panY)}':color=$bg");
+      } else {
+        // ZOOM/COVER (+overscan): scale up then re-crop to the box at the pan offset.
+        // Crop offset shifts the visible region by ow*panX to match the preview.
+        cropChain.write(",scale=iw*${_f(effVz)}:ih*${_f(effVz)}");
+        cropChain.write(",crop=iw/${_f(effVz)}:ih/${_f(effVz)}"
+            ":'(iw-ow)/2-ow*${_f(panX)}':'(ih-oh)/2-oh*${_f(panY)}'");
       }
       cropChain.write(',setsar=1');
+    } else if (vz < 1.0) {
+      // Original ratio, scaled DOWN: pad the shrunk frame back to source size.
+      cropChain.write("scale=iw*${_f(vz)}:ih*${_f(vz)}");
+      cropChain.write(",pad=w=iw/${_f(vz)}:h=ih/${_f(vz)}"
+          ":x='(ow-iw)/2+ow*${_f(panX)}':y='(oh-ih)/2+oh*${_f(panY)}':color=$bg,setsar=1");
     } else if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
-      // no aspect change but user zoomed/panned the native frame
+      // Original ratio, zoomed/panned in the native frame (no overscan on Original).
       cropChain.write("scale=iw*${_f(vz)}:ih*${_f(vz)}");
       cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
-          ":'(iw-ow)*(0.5-${_f(panX)})':'(ih-oh)*(0.5-${_f(panY)})',setsar=1");
+          ":'(iw-ow)/2-ow*${_f(panX)}':'(ih-oh)/2-oh*${_f(panY)}',setsar=1");
     } else {
       cropChain.write('null');
     }
@@ -191,8 +216,11 @@ class ExportService {
     // already correct (crop above), so we scale the short edge and let the long edge
     // follow. Guard: never UPSCALE past the source (min with iw/ih).
     final shortEdge = p.resolution.shortEdge;
-    fc.write("[$cur]scale=w='if(gt(iw\\,ih)\\,-2\\,min($shortEdge\\,iw))':"
-        "h='if(gt(iw\\,ih)\\,min($shortEdge\\,ih)\\,-2)':flags=bicubic[vout]");
+    // Both output dims MUST be even for libx264/yuv420p. The long edge uses -2
+    // (auto-even); the short edge is even-rounded too — a scale-down pad can make
+    // the short edge odd (iw/vz), which otherwise aborts the encode.
+    fc.write("[$cur]scale=w='if(gt(iw\\,ih)\\,-2\\,2*floor(min($shortEdge\\,iw)/2))':"
+        "h='if(gt(iw\\,ih)\\,2*floor(min($shortEdge\\,ih)/2)\\,-2)':flags=bicubic[vout]");
 
     // ---- audio: the clip's own audio only (music feature removed per client) ----
     const audioMap = '0:a?'; // passthrough original (silent if the clip has none)

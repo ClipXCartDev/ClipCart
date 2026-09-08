@@ -1,11 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
-import '../../state/auth_controller.dart';
 import 'support_chat_screen.dart';
 
 /// §25 Help & support — a query-first support hub: a dark CTA to open a new
@@ -50,7 +47,7 @@ class _SupportScreenState extends State<SupportScreen> {
                 ListCard(children: const [
                   _FaqItem(
                     q: 'Why does my export have no sound?',
-                    a: 'Some source clips arrive without an audio track. Add music from the editor’s Music tool, or check the clip’s original volume isn’t turned down.',
+                    a: 'Some source clips arrive without an audio track, so the export is silent. Check the clip plays with sound in the player before editing.',
                   ),
                   _FaqItem(
                     q: 'How do edit credits work?',
@@ -87,16 +84,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   ),
                 ]),
 
-                // ── account security ───────────────────────────────────────
-                const FieldLabel('Account security'),
-                ListCard(children: [
-                  ListRowTile(
-                    icon: Icons.lock_outline_rounded,
-                    label: 'Change password',
-                    onTap: _openChangePassword,
-                  ),
-                ]),
-
+                // Change password lives in Account → Settings now (client §7).
                 const SizedBox(height: 22),
                 const Center(
                   child: Text('Support hours: Mon–Sat, 10:00–19:00 IST', style: T.caption),
@@ -109,9 +97,6 @@ class _SupportScreenState extends State<SupportScreen> {
     );
   }
 
-  void _openChangePassword() {
-    showAppSheet(context, (_) => const _ChangePasswordSheet());
-  }
 }
 
 // ── nav row ──────────────────────────────────────────────────────────────────
@@ -252,78 +237,4 @@ class _RowAction extends StatelessWidget {
           ),
         ),
       );
-}
-
-// ── change password sheet (preserves the real changePassword wiring) ─────────
-
-class _ChangePasswordSheet extends StatefulWidget {
-  const _ChangePasswordSheet();
-  @override
-  State<_ChangePasswordSheet> createState() => _ChangePasswordSheetState();
-}
-
-class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
-  final _current = TextEditingController();
-  final _next = TextEditingController();
-  bool _busy = false;
-  String? _pwError, _pwOk;
-
-  @override
-  void dispose() {
-    _current.dispose();
-    _next.dispose();
-    super.dispose();
-  }
-
-  Future<void> _updatePassword() async {
-    setState(() {
-      _pwError = null;
-      _pwOk = null;
-    });
-    if (_next.text.length < 8) {
-      setState(() => _pwError = 'New password must be at least 8 characters.');
-      return;
-    }
-    setState(() => _busy = true);
-    try {
-      await context.read<AuthController>().auth.changePassword(_current.text, _next.text);
-      if (!mounted) return;
-      setState(() {
-        _pwOk = 'Password updated.';
-        _current.clear();
-        _next.clear();
-      });
-    } on DioException catch (e) {
-      final detail = e.response?.data is Map ? (e.response!.data['detail']?.toString()) : null;
-      setState(() => _pwError = detail ?? 'Could not update password.');
-    } catch (_) {
-      setState(() => _pwError = 'Could not update password.');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-      const Text('Change password', style: T.section),
-      const SizedBox(height: 4),
-      const Text('At least 8 characters. You stay signed in on this device.', style: T.bodySmall),
-      const SizedBox(height: 16),
-      TextField(controller: _current, obscureText: true, decoration: const InputDecoration(hintText: 'Current password')),
-      const SizedBox(height: 10),
-      TextField(controller: _next, obscureText: true, decoration: const InputDecoration(hintText: 'New password')),
-      if (_pwError != null) ...[
-        const SizedBox(height: 10),
-        Text(_pwError!, style: const TextStyle(fontFamily: kSans, color: AppColors.errText, fontSize: 12.5, fontWeight: FontWeight.w600)),
-      ],
-      if (_pwOk != null) ...[
-        const SizedBox(height: 10),
-        Text(_pwOk!, style: const TextStyle(fontFamily: kSans, color: AppColors.okText, fontSize: 12.5, fontWeight: FontWeight.w600)),
-      ],
-      const SizedBox(height: 16),
-      PrimaryBtn('Update password', loading: _busy, onTap: _updatePassword),
-      const SizedBox(height: 4),
-    ]);
-  }
 }

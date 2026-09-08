@@ -11,6 +11,23 @@ class CatalogService {
   CatalogService(this.api);
   final ApiClient api;
 
+  // ── lightweight in-memory cache ────────────────────────────────────────────
+  // Categories rarely change; clip queries are cached briefly so switching tabs
+  // (Home ↔ Explore) or coming back is instant instead of re-hitting the network
+  // and flashing an empty state (client: "refresh pe bahut delay + no clip found").
+  List<Map<String, dynamic>>? _catCache;
+  DateTime? _catAt;
+  final Map<String, (DateTime, List<Clip>)> _clipCache = {};
+  static const _catTtl = Duration(minutes: 5);
+  static const _clipTtl = Duration(seconds: 45);
+
+  /// Drop all cached catalog data (called on pull-to-refresh for fresh results).
+  void clearCache() {
+    _catCache = null;
+    _catAt = null;
+    _clipCache.clear();
+  }
+
   /// Access-gated download of the base clip, cached on disk so repeat opens are instant.
   Future<String> downloadClipFile(String clipId) async {
     final dir = await getTemporaryDirectory();
@@ -63,7 +80,13 @@ class CatalogService {
     bool? featured,
     int limit = 20,
     int offset = 0,
+    bool force = false,
   }) async {
+    final key = 'q=$q|c=$category|a=$access|f=$featured|s=$sort|l=$limit|o=$offset';
+    if (!force) {
+      final hit = _clipCache[key];
+      if (hit != null && DateTime.now().difference(hit.$1) < _clipTtl) return hit.$2;
+    }
     final r = await api.dio.get('/clips', queryParameters: {
       if (q != null && q.isNotEmpty) 'q': q,
       if (category != null) 'category': category,
@@ -73,9 +96,11 @@ class CatalogService {
       'limit': limit,
       'offset': offset,
     });
-    return ((r.data['items']) as List)
+    final items = ((r.data['items']) as List)
         .map((e) => Clip.fromJson(e as Map<String, dynamic>))
         .toList();
+    _clipCache[key] = (DateTime.now(), items);
+    return items;
   }
 
   Future<Clip> getClip(String slug) async {
@@ -83,9 +108,15 @@ class CatalogService {
     return Clip.fromJson(r.data as Map<String, dynamic>);
   }
 
-  Future<List<Map<String, dynamic>>> categories() async {
+  Future<List<Map<String, dynamic>>> categories({bool force = false}) async {
+    if (!force && _catCache != null && _catAt != null && DateTime.now().difference(_catAt!) < _catTtl) {
+      return _catCache!;
+    }
     final r = await api.dio.get('/categories');
-    return (r.data as List).cast<Map<String, dynamic>>();
+    final cats = (r.data as List).cast<Map<String, dynamic>>();
+    _catCache = cats;
+    _catAt = DateTime.now();
+    return cats;
   }
 
   Future<void> favorite(String clipId) => api.dio.post('/clips/$clipId/favorite');

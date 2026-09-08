@@ -280,7 +280,10 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _body() {
-    if (_loading) return const SkeletonGrid(count: 9);
+    // Show the skeleton not just on first boot but whenever a (re)load is in
+    // flight with nothing yet — otherwise a category switch / pull-to-refresh
+    // briefly cleared the grid and flashed "No clips found" (client bug).
+    if (_loading || (_loadingMore && _grid.isEmpty)) return const SkeletonGrid(count: 9);
     if (_error != null) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -299,7 +302,7 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
     return RefreshIndicator(
-      onRefresh: _reload,
+      onRefresh: () async { _cs.clearCache(); await _reload(); },
       color: AppColors.brand,
       child: GridView.builder(
         controller: _scroll,

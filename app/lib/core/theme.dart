@@ -1,45 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-/// ClipCart design system — CLIPCART_DESIGN_SPEC.md (mobile v3).
-/// Violet brand · warm-paper canvas · Instrument Sans (UI) + IBM Plex Mono (data).
-/// There is NO dark theme. The only dark surfaces are the Account plan card and
-/// the Home subscription banner (`ink` #221F19), used as deliberate contrast blocks.
+/// ClipCart design system — CLIPCART_DESIGN_SPEC.md (mobile v3), DARK theme.
+/// Vivid violet brand · deep near-black violet canvas · Instrument Sans (UI) +
+/// IBM Plex Mono (data). Token NAMES are kept from the old light palette so every
+/// screen re-themes automatically; only the VALUES changed to dark equivalents.
 /// DO NOT introduce a colour that is not in §1.
 class AppColors {
   // ── §1.1 brand ──────────────────────────────────────────────────────────
-  static const brand = Color(0xFF684FC8);        // primary
-  static const brandPressed = Color(0xFF553CB0); // pressed / hover
-  static const brandTint = Color(0xFFEFEEFF);    // info panels, active layer row, icon chips
-  static const brandTintDeep = Color(0xFFE2DFFA);// pressed state of tinted surfaces
-  static const brandInk = Color(0xFF4A3E7A);     // text on brandTint
-  static const brandBorder = Color(0xFFDAD5F5);  // border of unread / brand-tinted cards
-  static const brandLight = Color(0xFF9B87E8);   // brand on the darkest surfaces
+  static const brand = Color(0xFF7B5CF0);        // primary — vivid violet that pops on dark
+  static const brandPressed = Color(0xFF6A4BDE); // pressed / hover
+  static const brandTint = Color(0xFF241E3A);    // info panels, active layer row, icon chips (dark violet tint)
+  static const brandTintDeep = Color(0xFF2E2648);// pressed state of tinted surfaces
+  static const brandInk = Color(0xFFCBBEF7);     // light violet text on brandTint
+  static const brandBorder = Color(0xFF3A3168);  // border of unread / brand-tinted cards
+  static const brandLight = Color(0xFF9B87E8);   // lighter violet accent
 
-  // ── §1.2 neutrals (warm paper, not grey) ────────────────────────────────
-  static const bg = Color(0xFFFCFAF6);           // screen background
-  static const bgAlt = Color(0xFFEFECE5);        // segmented track, chips, thumb placeholders
-  static const surface = Color(0xFFFFFFFF);      // cards, fields, list containers
-  static const surfaceHover = Color(0xFFF7F5F1); // row hover, icon buttons
-  static const surfaceHover2 = Color(0xFFF1EEE8);// search field, circular icon buttons
-  static const line = Color(0xFFE4E1DB);         // all 1px borders and dividers
-  static const lineStrong = Color(0xFFD8D4CC);   // dashed borders, sheet grabber
-  static const ink = Color(0xFF221F19);          // primary text, dark contrast cards
-  static const inkMuted = Color(0xFF6F6B64);     // secondary text, labels
-  static const inkFaint = Color(0xFF8B857C);     // tertiary text, placeholders
-  static const inkGhost = Color(0xFFA8A29A);     // timestamps, disabled
-  static const chevron = Color(0xFFC4BFB6);      // row chevrons
+  // ── §1.2 neutrals (dark, warm-neutral with a hint of violet) ────────────
+  static const bg = Color(0xFF0D0B16);           // screen background (deep near-black violet)
+  static const bgAlt = Color(0xFF1B1826);        // segmented track, chips, thumb placeholders
+  static const surface = Color(0xFF17141F);      // cards, fields, list containers
+  static const surfaceHover = Color(0xFF1E1A28); // row hover, icon buttons
+  static const surfaceHover2 = Color(0xFF221E2E);// search field, circular icon buttons
+  static const line = Color(0xFF2C2838);         // all 1px borders and dividers
+  static const lineStrong = Color(0xFF3C3750);   // dashed borders, sheet grabber
+  static const ink = Color(0xFFF2F0F7);          // primary text (near-white on dark)
+  static const inkMuted = Color(0xFFAAA4B8);     // secondary text, labels
+  static const inkFaint = Color(0xFF847E92);     // tertiary text, placeholders
+  static const inkGhost = Color(0xFF615C70);     // timestamps, disabled
+  static const chevron = Color(0xFF565164);      // row chevrons
 
-  // ── §1.3 status ─────────────────────────────────────────────────────────
-  static const okBg = Color(0xFFE6F4EA), okText = Color(0xFF1B6334), okIcon = Color(0xFF258343);
-  static const warnBg = Color(0xFFFDF0E0), warnText = Color(0xFF8F5410), warnIcon = Color(0xFFD88018);
-  static const goldBg = Color(0xFFFCF2DD), goldText = Color(0xFF7A560F);
-  static const errBg = Color(0xFFFBE9E9), errText = Color(0xFFC2272D), errTextDark = Color(0xFF8E1D22);
+  // ── §1.3 status (dark fills, luminous text — same hues) ─────────────────
+  static const okBg = Color(0xFF13301F), okText = Color(0xFF74E29C), okIcon = Color(0xFF52CE87);
+  static const warnBg = Color(0xFF33260F), warnText = Color(0xFFF0BA64), warnIcon = Color(0xFFE0A040);
+  static const goldBg = Color(0xFF2E2611), goldText = Color(0xFFE8C87A);
+  static const errBg = Color(0xFF331719), errText = Color(0xFFF17B82), errTextDark = Color(0xFFF5A2A7);
   static const goldAccent = Color(0xFFEBAA2D);   // paywall star tile
   static const greenDot = Color(0xFF5FBE7E);     // autosave / online indicator
 
-  // ── media / dark chrome (§1.4) ──────────────────────────────────────────
+  // ── media / chrome (§1.4) ───────────────────────────────────────────────
   static const mediaPlaceholder = Color(0xFF241F45);
-  static const scrimModal = Color(0x52221F19);   // rgba(34,31,25,.32) modal scrim
+  static const scrimModal = Color(0x99000000);   // modal scrim (darker for dark theme)
 
   // ── back-compat aliases (existing widgets keep compiling) ───────────────
   static const brandHover = brandPressed;
@@ -49,9 +50,10 @@ class AppColors {
   static const gold = goldAccent, goldIcon = goldText;
   static const paper = bg;
   static const accent = brand, accent2 = brandLight, accentInk = brandPressed;
-  static const dark = Color(0xFF15120F), dark2 = Color(0xFF27241F), dark3 = Color(0xFF38342D);
+  // Raised dark panels (kept dark in both worlds) + light copy for the violet cards.
+  static const dark = Color(0xFF120F1C), dark2 = Color(0xFF1E1A2A), dark3 = Color(0xFF2C2838);
   static const bgDark = dark, surfaceDark = dark2;
-  static const inkDark = Color(0xFFF4F1EB), mutDark = Color(0xFF9E9890), lineDark = dark3;
+  static const inkDark = Color(0xFFF4F1EB), mutDark = Color(0xFFB9B2C6), lineDark = dark3;
 }
 
 /// §3.1 corner radius.
@@ -127,11 +129,14 @@ const coralGradient = brandGradient;
 ThemeData buildTheme([Brightness brightness = Brightness.light]) {
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.brand,
-    brightness: Brightness.light,
+    brightness: Brightness.dark,
     primary: AppColors.brand,
+    onPrimary: Colors.white,
     secondary: AppColors.brandLight,
     surface: AppColors.surface,
+    onSurface: AppColors.ink,
     error: AppColors.errText,
+    onError: Colors.white,
   );
 
   return ThemeData(
@@ -150,6 +155,12 @@ ThemeData buildTheme([Brightness brightness = Brightness.light]) {
       scrolledUnderElevation: 0,
       centerTitle: false,
       titleTextStyle: T.pageTitle,
+      // Dark app → light (white) status-bar icons.
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

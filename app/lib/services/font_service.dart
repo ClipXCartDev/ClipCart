@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -42,9 +43,61 @@ class FontService extends ChangeNotifier {
   final List<CustomFont> builtins = []; // bundled defaults (loaded once)
   String? _defaultFontPath;
   bool _builtinsLoaded = false;
+  bool _userFontsLoaded = false;
 
   /// All fonts a user can pick from: bundled first, then their uploads.
   List<CustomFont> get all => [...builtins, ...fonts];
+
+  /// On-disk manifest of the user's imported fonts, so they persist across
+  /// launches (the bug: imports lived only in memory and vanished on restart).
+  Future<File> _manifestFile() async {
+    final dir = await getApplicationSupportDirectory();
+    final f = File('${dir.path}/fonts/user_fonts.json');
+    f.parent.createSync(recursive: true);
+    return f;
+  }
+
+  /// Re-registers every previously-imported font (reads the manifest, loads each
+  /// .ttf/.otf back into a FontLoader) so imported families render after a
+  /// restart. Idempotent; drops manifest entries whose file no longer exists.
+  Future<void> loadUserFonts() async {
+    if (_userFontsLoaded) return;
+    _userFontsLoaded = true;
+    try {
+      final mf = await _manifestFile();
+      if (!mf.existsSync()) return;
+      final raw = jsonDecode(await mf.readAsString());
+      if (raw is! List) return;
+      var changed = false;
+      for (final e in raw) {
+        if (e is! Map) continue;
+        final name = e['name'] as String?;
+        final family = e['family'] as String?;
+        final path = e['path'] as String?;
+        if (name == null || family == null || path == null) continue;
+        if (fonts.any((f) => f.family == family)) continue; // already registered
+        final file = File(path);
+        if (!file.existsSync()) { changed = true; continue; } // prune missing
+        try {
+          final bytes = await file.readAsBytes();
+          final loader = FontLoader(family)..addFont(Future.value(ByteData.view(Uint8List.fromList(bytes).buffer)));
+          await loader.load();
+          fonts.add(CustomFont(name: name, family: family, path: path));
+        } catch (_) {/* skip a bad font file */}
+      }
+      if (changed) await _writeManifest();
+    } catch (_) {/* malformed manifest — ignore */}
+    notifyListeners();
+  }
+
+  Future<void> _writeManifest() async {
+    try {
+      final mf = await _manifestFile();
+      await mf.writeAsString(jsonEncode([
+        for (final f in fonts) {'name': f.name, 'family': f.family, 'path': f.path},
+      ]));
+    } catch (_) {/* best-effort persistence */}
+  }
 
   /// Loads every bundled font: copies the asset to disk (for FFmpeg) and
   /// registers its family for live preview (FontLoader). Idempotent.
@@ -68,6 +121,8 @@ class FontService extends ChangeNotifier {
       } catch (_) {/* asset missing — skip */}
     }
     notifyListeners();
+    // Bring back any fonts the user imported in a previous session.
+    await loadUserFonts();
   }
 
   /// Copies the bundled default font to disk once; returns its path.
@@ -114,6 +169,7 @@ class FontService extends ChangeNotifier {
 
     final font = CustomFont(name: picked.name, family: family, path: path);
     fonts.add(font);
+    await _writeManifest(); // persist so the import survives a restart
     notifyListeners();
     return font;
   }
