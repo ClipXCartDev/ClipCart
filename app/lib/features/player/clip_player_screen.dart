@@ -531,7 +531,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       onTap = _viewExports;
     } else if (charged) {
       title = 'Edit in progress';
-      sub = 'Continue where you left off — no extra credit';
+      sub = 'Resume your edit — no extra credit';
       label = 'Continue';
       onTap = () => _openEditor(clip);
     } else if (!editable) {

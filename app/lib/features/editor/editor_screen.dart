@@ -2287,7 +2287,10 @@ class _EditorScreenState extends State<EditorScreen> {
                   if (_error != null && widget.clip != null)
                     SizedBox(width: 220, child: PrimaryButton(label: 'Retry', icon: Icons.refresh, onPressed: _retry)),
                   if (_error != null && widget.clip != null) const SizedBox(height: 10),
-                  SizedBox(width: 220, child: PrimaryButton(label: 'Choose video', icon: Icons.video_library, onPressed: _pickClip)),
+                  // "Choose video" only when there is nothing to load (no catalog clip) or
+                  // loading failed — not while a catalog clip is mid-download.
+                  if (widget.clip == null || _error != null)
+                    SizedBox(width: 220, child: PrimaryButton(label: 'Choose video', icon: Icons.video_library, onPressed: _pickClip)),
                 ]),
         ),
       );
