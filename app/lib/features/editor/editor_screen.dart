@@ -49,6 +49,7 @@ class _EditorScreenState extends State<EditorScreen> {
   EditorProject? _project;
   String? _defaultFont;
   bool _busy = false;
+  bool _finalized = false; // exported: the clip is final — no more autosaves/drafts
   String? _error;
 
   Object? _selected; // SubtitleSegment | 'logo' | null
@@ -198,6 +199,17 @@ class _EditorScreenState extends State<EditorScreen> {
           }
           _error = null;
           break;
+        } on DioException catch (e) {
+          // 402 = the gate said no (no credits left / subscribe) — a retry can't fix it
+          final d = e.response?.data;
+          final detail = d is Map ? d['detail'] : null;
+          if (e.response?.statusCode == 402) {
+            _error = detail is Map && detail['message'] != null
+                ? detail['message'].toString()
+                : 'Subscribe to edit this clip.';
+            break;
+          }
+          _error = 'Could not load the clip. Check your connection and retry.';
         } catch (_) {
           _error = 'Could not load the clip. Check your connection and retry.';
         }
@@ -210,7 +222,7 @@ class _EditorScreenState extends State<EditorScreen> {
   /// Editor tab and can be resumed. Returns true on success.
   Future<bool> _saveProject() async {
     final p = _project;
-    if (p == null) return false;
+    if (p == null || _finalized) return false;
     try {
       // one stable file per clip → editing the same clip never duplicates.
       _projectId ??= widget.clip != null ? 'clip_${widget.clip!.id}' : 'proj_${DateTime.now().microsecondsSinceEpoch}';
@@ -353,7 +365,7 @@ class _EditorScreenState extends State<EditorScreen> {
   /// final save on the way out and pop. Always safe to leave.
   Future<bool> _confirmDiscard() async {
     _autosaveTimer?.cancel();
-    if (_hasEdits && !_busy) await _saveProject();
+    if (_hasEdits && !_busy && !_finalized) await _saveProject();
     return true;
   }
 
@@ -361,8 +373,9 @@ class _EditorScreenState extends State<EditorScreen> {
   /// draft store ~1.2s later. No spinner, no button.
   void _scheduleAutosave() {
     _autosaveTimer?.cancel();
+    if (_finalized) return;
     _autosaveTimer = Timer(const Duration(milliseconds: 1200), () async {
-      if (!mounted || _project == null || _busy) return;
+      if (!mounted || _project == null || _busy || _finalized) return;
       final ok = await _saveProject();
       if (ok && mounted) setState(() => _lastSaved = DateTime.now());
     });
@@ -2150,17 +2163,18 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     try {
       final res = await ExportService().export(_project!, onProgress: (v) => progress.value = v);
-      // Only charge the monthly quota / creator download AFTER a successful
-      // render, so a failed FFmpeg render never costs the user a quota slot.
-      // For a picked local file (clip == null) there is nothing to record.
+      // The credit was already spent on open. A successful render now makes the
+      // clip FINAL for this customer (server + on-device draft) — one edit, one
+      // export, no second history. A failed render leaves the draft intact.
+      // A picked local file (clip == null) has nothing to finalize.
       if (widget.clip != null) {
         try {
-          await context.read<CatalogService>().recordExport(widget.clip!.id);
+          await context.read<CatalogService>().finalizeExport(widget.clip!.id);
         } on DioException catch (e) {
           final detail = e.response?.data is Map ? (e.response!.data['detail']) : null;
-          final msg = e.response?.statusCode == 402
-              ? (detail is Map && detail['message'] != null ? detail['message'].toString() : 'Subscribe to export this clip')
-              : 'Could not record this export.';
+          final msg = detail is Map && detail['message'] != null
+              ? detail['message'].toString()
+              : 'Could not confirm this export with the server.';
           closeProgress();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -2169,23 +2183,33 @@ class _EditorScreenState extends State<EditorScreen> {
           }
           return;
         }
+        _finalized = true;
+        _autosaveTimer?.cancel();
+        final pid = _projectId;
+        if (pid != null) {
+          try { await context.read<ProjectStore>().delete(pid); } catch (_) {}
+        }
       }
       closeProgress();
       if (mounted) {
-        showDialog(
+        await showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (_) => AlertDialog(
             backgroundColor: AppColors.surface,
             title: const Text('Exported', style: TextStyle(color: AppColors.ink)),
             content: Text(
-              res.savedToGallery
-                  ? 'Saved to your Gallery (ClipCart album).\nShare it to Instagram from there.'
-                  : 'Saved on device:\n${res.path}',
+              (res.savedToGallery
+                      ? 'Saved to your Gallery (ClipCart album) and My Clips.'
+                      : 'Saved on device:\n${res.path}') +
+                  (widget.clip != null ? '\n\nThis clip is now final — it can\'t be re-edited.' : ''),
               style: const TextStyle(color: AppColors.inkMuted),
             ),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
           ),
         );
+        // a final clip has nothing left to edit — return to the player
+        if (widget.clip != null && mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
       }
     } catch (e) {
       closeProgress();

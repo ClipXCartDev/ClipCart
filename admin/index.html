@@ -353,10 +353,19 @@ async function closeThread(){if(!SUP_THREAD)return;try{await api('/support/admin
 async function vUsers(){
   main('<h2>Users</h2><div id="t">Loading…</div>');
   try{const rows=await api('/admin/users');
-    document.getElementById('t').innerHTML=table(['Name','Email','Role','Joined'],rows.map(u=>[
-      h(u.name),h(u.email),`<span class="pill ${u.role==='admin'?'ok':(u.role==='editor'?'gold':'neutral')}">${h(u.role)}</span>`,h((u.created_at||'').split('T')[0])
+    document.getElementById('t').innerHTML=table(['Name','Email','Role','Joined',''],rows.map(u=>[
+      h(u.name),h(u.email),`<span class="pill ${u.role==='admin'?'ok':(u.role==='editor'?'gold':'neutral')}">${h(u.role)}</span>`,h((u.created_at||'').split('T')[0]),
+      `<button class="btn sm sec" onclick="grantPlan('${encodeURIComponent(u.id)}','${encodeURIComponent(u.email)}')">Grant plan</button>`
     ]));
   }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+// Comp a plan to a user (support / promo / testing) -- expires their current one first.
+async function grantPlan(id,email){
+  id=decodeURIComponent(id);email=decodeURIComponent(email);
+  const slug=prompt('Plan slug for '+email+' (basic / professional):','professional');if(!slug)return;
+  const days=parseInt(prompt('For how many days?','30')||'0',10);if(!(days>0))return;
+  try{const r=await api('/admin/users/'+id+'/grant','POST',{plan_slug:slug.trim(),days});alert('Granted '+r.plan+' to '+r.user+' until '+r.expires_at.split('T')[0]);}
+  catch(e){alert(e.message);}
 }
 
 function table(cols,rows,meta){

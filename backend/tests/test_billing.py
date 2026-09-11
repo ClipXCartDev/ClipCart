@@ -122,6 +122,63 @@ def test_monthly_quota(client, db, monkeypatch):
     co = client.post(API + "/billing/checkout", json={"plan_id": plan["id"]}, headers=_auth(cust)).json()
     _webhook(client, co["order_id"])
 
+    other = _approved_clip(client, editor, admin, access="free")
+
     assert client.post(f"{API}/clips/{free}/download", headers=_auth(cust)).status_code == 201
-    r = client.post(f"{API}/clips/{free}/download", headers=_auth(cust))
+    # the same clip again is NOT a second purchase (one credit per clip) ...
+    assert client.post(f"{API}/clips/{free}/download", headers=_auth(cust)).status_code == 201
+    # ... but a different clip needs a credit the period no longer has
+    r = client.post(f"{API}/clips/{other}/download", headers=_auth(cust))
     assert r.status_code == 402 and r.json()["detail"]["code"] == "quota_exceeded"
+
+
+def test_one_credit_per_clip_and_final(client, db, monkeypatch):
+    """One edit == one purchase: opening a clip charges once, reopening is free,
+    exporting makes it final, and credits count within the paid period."""
+    monkeypatch.setattr(settings, "BINANCE_PAY_SECRET", SECRET)
+    editor = _mk(client, db, "e@x.com", Role.editor)
+    admin = _mk(client, db, "a@x.com", Role.admin)
+    cust = _mk(client, db, "c@x.com")
+    uu = client.post(API + "/creator/upload-url", json={"filename": "a.mp4", "content_type": "video/mp4"}, headers=_auth(editor)).json()
+    a = client.post(API + "/creator/clips", json={"title": "A", "access": "free", "base_clip_path": uu["key"]}, headers=_auth(editor)).json()["id"]
+    b = client.post(API + "/creator/clips", json={"title": "B", "access": "free", "base_clip_path": uu["key"]}, headers=_auth(editor)).json()["id"]
+    for cid in (a, b):
+        client.post(f"{API}/admin/clips/{cid}/approve", headers=_auth(admin))
+    plan = _plan(client, admin, name="Basic", price=4, export_limit=1)
+    co = client.post(API + "/billing/checkout", json={"plan_id": plan["id"]}, headers=_auth(cust)).json()
+    _webhook(client, co["order_id"])
+
+    st = client.get(f"{API}/clips/{a}/edit-state", headers=_auth(cust)).json()
+    assert st == {"charged": False, "exported": False, "exported_at": None, "credits_left": 1, "subscribed": True}
+
+    # first open charges the single credit ...
+    r1 = client.post(f"{API}/clips/{a}/download-url", headers=_auth(cust)).json()
+    assert r1["charged"] is True and r1["credits_left"] == 0 and r1["downloads"] == 1
+    # ... reopening the same clip is free (no second row, no second download count)
+    r2 = client.post(f"{API}/clips/{a}/download-url", headers=_auth(cust)).json()
+    assert r2["charged"] is False and r2["credits_left"] == 0 and r2["downloads"] == 1
+    assert client.get(API + "/billing/subscription", headers=_auth(cust)).json()["edit_credits"] == 0
+    # another clip needs another credit -> exhausted
+    r3 = client.post(f"{API}/clips/{b}/download-url", headers=_auth(cust))
+    assert r3.status_code == 402 and r3.json()["detail"]["code"] == "quota_exceeded"
+
+    # export -> final; idempotent; still openable for the paid clip
+    assert client.post(f"{API}/clips/{b}/finalize", headers=_auth(cust)).status_code == 409
+    f1 = client.post(f"{API}/clips/{a}/finalize", headers=_auth(cust)).json()
+    assert f1["charged"] and f1["exported"] and f1["exported_at"]
+    f2 = client.post(f"{API}/clips/{a}/finalize", headers=_auth(cust)).json()
+    assert f2["exported_at"] == f1["exported_at"]
+    assert client.post(f"{API}/clips/{a}/download-url", headers=_auth(cust)).json()["exported"] is True
+
+
+def test_admin_grant_plan(client, db):
+    admin = _mk(client, db, "a@x.com", Role.admin)
+    cust = _mk(client, db, "c@x.com")
+    _plan(client, admin, name="Professional")
+    uid = client.get(API + "/auth/me", headers=_auth(cust)).json()["id"]
+    r = client.post(f"{API}/admin/users/{uid}/grant", json={"plan_slug": "professional", "days": 7}, headers=_auth(admin))
+    assert r.status_code == 200 and r.json()["plan"] == "professional"
+    sub = client.get(API + "/billing/subscription", headers=_auth(cust)).json()
+    assert sub["status"] == "active" and sub["plan_name"] == "Professional" and sub["edit_credits"] is None
+    # customers can't grant
+    assert client.post(f"{API}/admin/users/{uid}/grant", json={"plan_slug": "professional"}, headers=_auth(cust)).status_code == 403

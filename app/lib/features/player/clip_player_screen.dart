@@ -12,6 +12,7 @@ import '../../core/ui_kit.dart';
 import '../../models/clip.dart';
 import '../../services/billing_service.dart';
 import '../../services/catalog_service.dart';
+import '../home/home_shell.dart';
 
 /// Deep-link entry (/clip/:slug): fetch one clip, show it in the player.
 class ClipPlayerScreen extends StatelessWidget {
@@ -78,6 +79,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   bool _muted = false;
   int _gen = 0; // bumps whenever we tear controllers down; stale async _ensure bail on mismatch
   Map<String, dynamic>? _sub; // active subscription (drives editable / credit count) or null
+  // per-clip edit state from the server (charged / exported / credits_left)
+  final Map<String, Map<String, dynamic>> _edit = {};
 
   // ── plan / credit state ────────────────────────────────────────────────────
   bool get _editable => (_sub?['status']?.toString())?.toLowerCase() == 'active';
@@ -90,6 +93,30 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     if (v is num) return v.toInt();
     if (v is String) return int.tryParse(v);
     return null;
+  }
+
+  /// Fetch this clip's edit state (cached per clip; `force` after an edit session).
+  Future<void> _loadEditState(Clip clip, {bool force = false}) async {
+    if (!force && _edit.containsKey(clip.id)) return;
+    try {
+      final s = await context.read<CatalogService>().editState(clip.id);
+      if (mounted) setState(() => _edit[clip.id] = s);
+    } catch (_) {
+      // unknown → fall back to the subscription-only view
+    }
+  }
+
+  int? _clipCredits(Clip clip) {
+    final v = _edit[clip.id]?['credits_left'];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return _creditsLeft;
+  }
+
+  /// Leave the player and land on My Clips (the exported video lives there).
+  void _viewExports() {
+    homeTab.value = 3;
+    if (context.canPop()) context.pop();
   }
 
   Future<void> _loadSub() async {
@@ -128,6 +155,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     _pc = PageController(initialPage: _current);
     WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
     _loadSub();
+    if (widget.clips.isNotEmpty) _loadEditState(widget.clips[_current]);
     // seed the heart state from the server so an already-saved clip shows filled
     // (prevents a silent unsave when the user taps a heart that was wrongly empty).
     context.read<CatalogService>().favoriteIds().then((ids) {
@@ -212,6 +240,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     if (mounted) {
       _sync();
       _loadSub(); // refresh the credit count after an edit session
+      _loadEditState(clip, force: true); // charged / exported may have changed
     }
   }
 
@@ -272,6 +301,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           onPageChanged: (i) {
             setState(() => _current = i); // refresh chrome for the new page at once
             _sync();
+            _loadEditState(widget.clips[i]);
           },
           itemBuilder: (context, i) => _page(widget.clips[i], i),
         ),
@@ -487,8 +517,39 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   Widget _bottomBar(Clip clip) {
     final editable = _editable;
-    final title = editable ? 'Ready to edit' : 'Preview only';
-    final sub = editable ? 'Opening the editor uses 1 credit' : 'Subscribe to edit and export';
+    final st = _edit[clip.id];
+    final charged = st?['charged'] == true;
+    final exported = st?['exported'] == true;
+    final credits = _clipCredits(clip);
+    // One edit == one purchase: the button reflects exactly where this clip is.
+    final String title, sub, label;
+    final VoidCallback onTap;
+    if (exported) {
+      title = 'Exported · final';
+      sub = 'This clip was edited and exported';
+      label = 'View';
+      onTap = _viewExports;
+    } else if (charged) {
+      title = 'Edit in progress';
+      sub = 'Continue where you left off — no extra credit';
+      label = 'Continue';
+      onTap = () => _openEditor(clip);
+    } else if (!editable) {
+      title = 'Preview only';
+      sub = 'Subscribe to edit and export';
+      label = 'Unlock';
+      onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(); _loadEditState(clip, force: true); } };
+    } else if (credits != null && credits <= 0) {
+      title = 'No credits left';
+      sub = 'Renew your plan to edit more clips';
+      label = 'Renew';
+      onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(); _loadEditState(clip, force: true); } };
+    } else {
+      title = 'Ready to edit';
+      sub = 'Opening the editor uses 1 credit';
+      label = 'Edit';
+      onTap = () => _showCreditSheet(clip);
+    }
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
@@ -523,15 +584,13 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               SizedBox(
                 width: btnW, height: 50,
                 child: FilledButton(
-                  onPressed: editable
-                      ? () => _showCreditSheet(clip)
-                      : () async { await context.push('/plans'); if (mounted) _loadSub(); },
+                  onPressed: onTap,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.brand,
+                    backgroundColor: exported ? AppColors.ink : AppColors.brand,
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
                   ),
-                  child: Text(editable ? 'Edit' : 'Unlock', style: const TextStyle(fontFamily: kSans, fontSize: 15.5, fontWeight: FontWeight.w600)),
+                  child: Text(label, style: const TextStyle(fontFamily: kSans, fontSize: 15.5, fontWeight: FontWeight.w600)),
                 ),
               ),
             ]);
@@ -543,7 +602,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
 
   // ── §11 credit confirm ──────────────────────────────────────────────────────
   void _showCreditSheet(Clip clip) {
-    final left = _creditsLeft;
+    final left = _clipCredits(clip);
     final leftLabel = left == null ? 'Unlimited' : '$left';
     final afterLabel = left == null ? 'Unlimited' : '${left > 0 ? left - 1 : 0}';
     showAppSheet(context, (ctx) {

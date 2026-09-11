@@ -11,7 +11,9 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import Category, Clip, ClipStatus, Download, Favorite, User
 from app.schemas.catalog import CategoryOut, ClipListOut, ClipOut, DownloadOut
-from app.services.billing import assert_can_export
+from datetime import datetime, timezone
+
+from app.services.billing import assert_can_export, credits_left, current_subscription, paid_edit
 from app.services.catalog import SORTS, browse_query, clip_to_out
 from app.services.storage import storage
 
@@ -154,6 +156,29 @@ def record_download(
     return {"recorded": True, "downloads": clip.downloads}
 
 
+def _edit_state(db: Session, user: User, clip: Clip) -> dict:
+    sub = current_subscription(db, user)
+    paid = paid_edit(db, user, clip, sub)
+    return {
+        "charged": paid is not None,
+        "exported": bool(paid is not None and paid.exported_at is not None),
+        "exported_at": paid.exported_at if paid is not None else None,
+        "credits_left": credits_left(db, user, sub),
+        "subscribed": sub is not None,
+    }
+
+
+@router.get("/clips/{clip_id}/edit-state")
+def edit_state(
+    clip_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Where this customer stands with this clip: not charged yet / paid and in
+    progress / exported (final). Drives the player's Edit / Continue / View button."""
+    return _edit_state(db, user, _approved_clip(db, clip_id))
+
+
 @router.post("/clips/{clip_id}/download-url")
 def download_url(
     clip_id: uuid.UUID,
@@ -161,15 +186,48 @@ def download_url(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Access-gated presigned GET URL for the base clip + records the export."""
+    """Access-gated presigned GET URL for the base clip. Charges ONE credit the
+    first time this customer opens this clip in the period; reopening the same
+    clip returns the URL without charging again (one edit == one purchase)."""
     clip = _approved_clip(db, clip_id)
-    assert_can_export(db, user, clip)
+    paid = assert_can_export(db, user, clip)
     if not clip.base_clip_path:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Clip has no uploaded file")
-    db.add(Download(user_id=user.id, clip_id=clip_id, resolution=resolution))
-    clip.downloads += 1
-    db.commit()
-    return {"url": storage.presign_download(clip.base_clip_path), "downloads": clip.downloads}
+    charged = paid is None
+    if charged:
+        paid = Download(user_id=user.id, clip_id=clip_id, resolution=resolution)
+        db.add(paid)
+        clip.downloads += 1
+        db.commit()
+        db.refresh(paid)
+    return {
+        "url": storage.presign_download(clip.base_clip_path),
+        "downloads": clip.downloads,
+        "charged": charged,
+        "exported": paid.exported_at is not None,
+        "credits_left": credits_left(db, user, current_subscription(db, user)),
+    }
+
+
+@router.post("/clips/{clip_id}/finalize")
+def finalize_edit(
+    clip_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Mark the paid edit as exported: the clip is now final for this customer
+    (no re-edit, no second draft). Idempotent."""
+    clip = _approved_clip(db, clip_id)
+    paid = paid_edit(db, user, clip, current_subscription(db, user))
+    if paid is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "not_charged", "message": "Open the clip in the editor first."},
+        )
+    if paid.exported_at is None:
+        paid.exported_at = datetime.now(timezone.utc)
+        db.commit()
+    return _edit_state(db, user, clip)
 
 
 @router.post("/clips/{clip_id}/preview-url")

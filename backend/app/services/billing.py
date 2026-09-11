@@ -116,18 +116,50 @@ def activate_from_payment(
     return sub
 
 
-def _exports_this_month(db: Session, user: User) -> int:
+def _period_start(sub: Subscription | None) -> datetime:
+    """Credits belong to the subscription period that paid for them (30 days from
+    the pay date), so usage is counted from `started_at` -- not the calendar
+    month. Without a subscription fall back to the calendar month."""
+    if sub is not None:
+        return sub.started_at
     now = datetime.now(timezone.utc)
-    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def credits_used(db: Session, user: User, sub: Subscription | None = None) -> int:
+    """Edits charged in the current period. One Download row == one credit."""
     return db.scalar(
         select(func.count()).select_from(Download).where(
-            Download.user_id == user.id, Download.created_at >= start
+            Download.user_id == user.id, Download.created_at >= _period_start(sub)
         )
     ) or 0
 
 
-def assert_can_export(db: Session, user: User, clip: Clip) -> None:
-    """Gate exports: Pro clips need an active subscription; enforce monthly quota."""
+def credits_left(db: Session, user: User, sub: Subscription | None) -> int | None:
+    """Remaining credits this period; None = unlimited plan (or no plan)."""
+    if sub is None or sub.plan.export_limit is None:
+        return None
+    return max(0, sub.plan.export_limit - credits_used(db, user, sub))
+
+
+def paid_edit(db: Session, user: User, clip: Clip, sub: Subscription | None) -> Download | None:
+    """The Download row that already paid for this clip in the current period.
+    A clip is charged ONCE: reopening a draft never costs a second credit."""
+    return db.scalar(
+        select(Download)
+        .where(
+            Download.user_id == user.id,
+            Download.clip_id == clip.id,
+            Download.created_at >= _period_start(sub),
+        )
+        .order_by(Download.created_at.desc())
+    )
+
+
+def assert_can_export(db: Session, user: User, clip: Clip) -> Download | None:
+    """Gate edits/exports: Pro clips need an active subscription; enforce the
+    period quota. Returns the existing paid row when this clip was already
+    charged this period (callers must NOT charge again), else None."""
     sub = current_subscription(db, user)
 
     if clip.access == Access.pro and sub is None:
@@ -136,13 +168,17 @@ def assert_can_export(db: Session, user: User, clip: Clip) -> None:
             detail={"code": "subscription_required", "message": "Subscribe to export Pro clips."},
         )
 
+    paid = paid_edit(db, user, clip, sub)
+    if paid is not None:
+        return paid
+
     if sub is not None and sub.plan.export_limit is not None:
-        used = _exports_this_month(db, user)
-        if used >= sub.plan.export_limit:
+        if credits_used(db, user, sub) >= sub.plan.export_limit:
             raise HTTPException(
                 status.HTTP_402_PAYMENT_REQUIRED,
                 detail={
                     "code": "quota_exceeded",
-                    "message": f"Monthly export limit ({sub.plan.export_limit}) reached.",
+                    "message": f"No edit credits left in this period ({sub.plan.export_limit} used).",
                 },
             )
+    return None

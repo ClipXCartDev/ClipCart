@@ -31,6 +31,12 @@ class PlanCreate(BaseModel):
     sort_order: int = 0
 
 
+class GrantIn(BaseModel):
+    """Admin comp: activate `plan_slug` for a user for `days` (support / promos)."""
+    plan_slug: str = Field(min_length=1, max_length=60)
+    days: int = Field(default=30, ge=1, le=3650)
+
+
 class PlanUpdate(BaseModel):
     name: str | None = None
     price_usd: float | None = None

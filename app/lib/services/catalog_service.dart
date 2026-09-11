@@ -48,28 +48,41 @@ class CatalogService {
   }
 
   /// Download the FULL-QUALITY raw base clip for EDITING (not the 720p reels
-  /// preview) — editing + export must be high quality. Free (no quota/record);
-  /// the gate is on export. Atomic (tmp → rename) so a failed download never
-  /// leaves a corrupt cache. `fresh: true` forces a re-download.
+  /// preview) — editing + export must be high quality.
+  ///
+  /// One edit == one purchase: the server charges ONE credit the first time this
+  /// clip is opened in the period and never again for the same clip, so the
+  /// gate is always consulted first (a cached file must not bypass it). Throws
+  /// DioException 402 (subscribe / no credits left) when not allowed. Atomic
+  /// (tmp → rename) so a failed download never leaves a corrupt cache.
+  /// `fresh: true` forces a re-download.
   Future<String> editClipFile(String clipId, {bool fresh = false}) async {
+    final r = await api.dio.post('/clips/$clipId/download-url');
+    final url = RuntimeConfig.absolute(r.data['url'] as String);
     final dir = await getTemporaryDirectory();
     final path = '${dir.path}/base_$clipId.mp4';
     final f = File(path);
     if (fresh && await f.exists()) await f.delete();
     if (!fresh && await f.exists() && await f.length() > 0) return path;
-    final r = await api.dio.post('/clips/$clipId/preview-url');
-    // 'raw' = full-quality original; 'url' = 720p preview (reels). Editor uses raw.
-    final url = RuntimeConfig.absolute((r.data['raw'] ?? r.data['url']) as String);
     final tmp = '$path.tmp';
     await Dio().download(url, tmp);
     await File(tmp).rename(path);
     return path;
   }
 
-  /// Gate + record one export (Pro-access + monthly quota). Call on export, not on
-  /// editor open. Throws DioException (402 = subscribe / quota) if not allowed.
-  Future<void> recordExport(String clipId) async {
-    await api.dio.post('/clips/$clipId/download-url');
+  /// Where the signed-in customer stands with this clip:
+  /// `charged` (credit already spent → reopening is free), `exported` (final),
+  /// `credits_left` (null = unlimited), `subscribed`.
+  Future<Map<String, dynamic>> editState(String clipId) async {
+    final r = await api.dio.get('/clips/$clipId/edit-state');
+    return Map<String, dynamic>.from(r.data as Map);
+  }
+
+  /// Mark the paid edit as exported — the clip is final for this customer.
+  /// Idempotent. Throws DioException 409 if the clip was never opened.
+  Future<Map<String, dynamic>> finalizeExport(String clipId) async {
+    final r = await api.dio.post('/clips/$clipId/finalize');
+    return Map<String, dynamic>.from(r.data as Map);
   }
 
   Future<List<Clip>> listClips({

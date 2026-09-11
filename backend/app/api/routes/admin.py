@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -23,7 +23,7 @@ from app.models import (
     SubStatus,
     User,
 )
-from app.schemas.billing import PlanCreate, PlanOut, PlanUpdate
+from app.schemas.billing import GrantIn, PlanCreate, PlanOut, PlanUpdate
 from app.schemas.catalog import CategoryCreate, CategoryOut, ClipOut, ReviewIn
 from app.schemas.payout import PayoutOut
 from app.services.catalog import clip_to_out
@@ -192,6 +192,35 @@ def list_users(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> 
         {"id": str(u.id), "name": u.name, "email": u.email, "role": u.role.value, "created_at": u.created_at.isoformat()}
         for u in rows
     ]
+
+
+@router.post("/users/{user_id}/grant")
+def grant_subscription(
+    user_id: uuid.UUID,
+    body: GrantIn,
+    _: User = Depends(admin_only),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Comp / manually activate a plan for a user (support, testing, promos).
+    Expires any active subscription first so exactly one is live."""
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    plan = db.scalar(select(Plan).where(Plan.slug == body.plan_slug))
+    if plan is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Plan not found")
+    now = datetime.now(timezone.utc)
+    for s in db.scalars(select(Subscription).where(
+        Subscription.user_id == target.id, Subscription.status == SubStatus.active
+    )).all():
+        s.status = SubStatus.expired
+    sub = Subscription(
+        user_id=target.id, plan_id=plan.id, status=SubStatus.active,
+        started_at=now, expires_at=now + timedelta(days=body.days),
+    )
+    db.add(sub)
+    db.commit()
+    return {"user": target.email, "plan": plan.slug, "expires_at": sub.expires_at.isoformat()}
 
 
 @router.get("/stats")
