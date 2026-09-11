@@ -294,7 +294,7 @@ class _SearchScreenState extends State<SearchScreen> {
     // Show the skeleton not just on first boot but whenever a (re)load is in
     // flight with nothing yet — otherwise a category switch / pull-to-refresh
     // briefly cleared the grid and flashed "No clips found" (client bug).
-    if (_loading || (_loadingMore && _grid.isEmpty)) return const SkeletonGrid(count: 9);
+    if (_loading || (_loadingMore && _grid.isEmpty)) return const SkeletonGrid(count: 9, aspect: 9 / 13); // same shape as the real grid
     if (_error != null) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [

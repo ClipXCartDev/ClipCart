@@ -17,10 +17,21 @@ class BillingService {
   }
 
   /// null when the user has no active subscription.
-  Future<Map<String, dynamic>?> subscription() async {
+  Map<String, dynamic>? _subCache;
+  DateTime? _subAt;
+  static const _subTtl = Duration(seconds: 45);
+
+  /// Forget the cached subscription (after checkout / plan change).
+  void invalidate() { _subCache = null; _subAt = null; }
+
+  Future<Map<String, dynamic>?> subscription({bool force = false}) async {
+    // Home already fetched it; the player/account reuse it instantly instead of
+    // flashing the logged-out state while a second request is in flight.
+    if (!force && _subAt != null && DateTime.now().difference(_subAt!) < _subTtl) return _subCache;
     final r = await api.dio.get('/billing/subscription');
-    if (r.data == null) return null;
-    return Map<String, dynamic>.from(r.data as Map);
+    _subAt = DateTime.now();
+    _subCache = r.data == null ? null : Map<String, dynamic>.from(r.data as Map);
+    return _subCache;
   }
 
   Future<List<Map<String, dynamic>>> payments() async {

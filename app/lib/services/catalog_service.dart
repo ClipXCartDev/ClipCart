@@ -56,15 +56,26 @@ class CatalogService {
   /// DioException 402 (subscribe / no credits left) when not allowed. Atomic
   /// (tmp → rename) so a failed download never leaves a corrupt cache.
   /// `fresh: true` forces a re-download.
-  Future<String> editClipFile(
+  /// Spend the edit credit for this clip (server charges once per clip per
+  /// period; reopening is free). Nothing is downloaded here. Throws
+  /// DioException 402 (subscribe / no credits left) when not allowed.
+  Future<Map<String, dynamic>> chargeEdit(String clipId) async {
+    final r = await api.dio.post('/clips/$clipId/download-url');
+    return Map<String, dynamic>.from(r.data as Map);
+  }
+
+  /// The small 720p preview the EDITOR works on (a few MB, cached). The
+  /// full-res original never sits on the phone during an edit session — it is
+  /// fetched only for the render and deleted right after (content safety).
+  Future<String> previewFile(
     String clipId, {
     bool fresh = false,
     void Function(int received, int total)? onProgress,
   }) async {
-    final r = await api.dio.post('/clips/$clipId/download-url');
+    final r = await api.dio.post('/clips/$clipId/preview-url');
     final url = RuntimeConfig.absolute(r.data['url'] as String);
     final dir = await getTemporaryDirectory();
-    final path = '${dir.path}/base_$clipId.mp4';
+    final path = '${dir.path}/prev_$clipId.mp4';
     final f = File(path);
     if (fresh && await f.exists()) await f.delete();
     if (!fresh && await f.exists() && await f.length() > 0) return path;
@@ -72,6 +83,35 @@ class CatalogService {
     await Dio().download(url, tmp, onReceiveProgress: onProgress);
     await File(tmp).rename(path);
     return path;
+  }
+
+  /// Full-quality original for ONE render. Always a fresh copy in app-private
+  /// storage; the caller deletes it as soon as the export finishes.
+  Future<String> rawFileForExport(String clipId, {void Function(int received, int total)? onProgress}) async {
+    final r = await api.dio.post('/clips/$clipId/download-url');
+    final url = RuntimeConfig.absolute(r.data['url'] as String);
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/render_$clipId.mp4';
+    final tmp = '$path.tmp';
+    if (File(tmp).existsSync()) File(tmp).deleteSync();
+    await Dio().download(url, tmp, onReceiveProgress: onProgress);
+    if (File(path).existsSync()) File(path).deleteSync();
+    await File(tmp).rename(path);
+    return path;
+  }
+
+  /// Remove any original-quality files left behind (older builds cached them
+  /// as base_*.mp4; a killed render leaves render_*.mp4). Previews are kept.
+  Future<void> purgeRenderCache() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      for (final f in dir.listSync().whereType<File>()) {
+        final n = f.uri.pathSegments.last;
+        if (n.startsWith('base_') || n.startsWith('render_') || n.endsWith('.tmp')) {
+          try { f.deleteSync(); } catch (_) {}
+        }
+      }
+    } catch (_) {}
   }
 
   /// Where the signed-in customer stands with this clip:

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:ffmpeg_kit_flutter_new/statistics.dart';
 import 'package:gal/gal.dart';
@@ -26,8 +27,40 @@ class ExportService {
 
   /// [onProgress] receives 0.0..1.0 during the render (from real FFmpeg frame
   /// statistics — honest progress, no fake bar). It may not reach exactly 1.0.
-  Future<ExportResult> export(EditorProject p, {void Function(double)? onProgress}) async {
+  /// Short edge of the source's video stream, or null if it can't be probed.
+  static Future<int?> _shortEdge(String path) async {
+    try {
+      final session = await FFprobeKit.getMediaInformation(path);
+      for (final st in session.getMediaInformation()?.getStreams() ?? const []) {
+        if (st.getType() == 'video') {
+          final w = st.getWidth(), h = st.getHeight();
+          if (w != null && h != null && w > 0 && h > 0) return w < h ? w : h;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// A copy of [s] with every absolute-pixel value scaled by [k] — the text PNG
+  /// is rasterised at the ORIGINAL's resolution, not the preview's, so it stays
+  /// crisp and the same relative size the user saw.
+  static SubtitleSegment _scaled(SubtitleSegment s, double k) => s.copy()
+    ..fontSize = s.fontSize * k
+    ..strokeWidth = s.strokeWidth * k
+    ..letterSpacing = s.letterSpacing * k;
+
+  /// [sourcePath] overrides the project's base clip (the editor authors on the
+  /// 720p preview; export supplies the full-res original fetched just for the
+  /// render). Coordinates are fractions and survive the swap; pixel sizes are
+  /// scaled by the probed short-edge ratio.
+  Future<ExportResult> export(EditorProject p, {void Function(double)? onProgress, String? sourcePath}) async {
     final off = p.trimStart;
+    final src = sourcePath ?? p.baseClipPath;
+    double k = 1.0;
+    if (p.authoredShort > 0) {
+      final short = await _shortEdge(src);
+      if (short != null && short > 0) k = short / p.authoredShort;
+    }
 
     // Audio is mapped as an OPTIONAL original stream (`0:a?`) so a silent clip
     // simply produces a video with no audio track — no probe needed. Music was
@@ -48,7 +81,7 @@ class ExportService {
       final s = p.subtitles[i];
       if (s.hidden || !inWindow(s.start, s.end)) continue;
       texts.add(s);
-      textPaths.add(await TextRenderService.renderToPng(s, i));
+      textPaths.add(await TextRenderService.renderToPng(k == 1.0 ? s : _scaled(s, k), i));
     }
     final hasLogo = p.logoPath != null && !p.logoHidden && File(p.logoPath!).existsSync();
     final stickers = p.stickers.where((s) => !s.hidden && inWindow(s.start, s.end) && File(s.path).existsSync()).toList();
@@ -127,7 +160,7 @@ class ExportService {
     // apostrophes, unicode (emoji filenames) etc. never break the command.
     final parts = <String>['-y'];
     if (p.trimStart > 0.01) parts.addAll(['-ss', _f(p.trimStart, 3)]);
-    parts.addAll(['-i', p.baseClipPath]);
+    parts.addAll(['-i', src]);
     int idx = 1;
     int? logoIdx;
     if (hasLogo) {

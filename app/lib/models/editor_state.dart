@@ -361,6 +361,7 @@ class EditorProject {
     this.trimStart = 0.0,
     this.trimEnd,
     this.duration = 0.0,
+    this.authoredShort = 0.0,
     this.aspect = AspectOption.original,
     this.originalVolume = 1.0,
     this.musicPath,
@@ -399,6 +400,10 @@ class EditorProject {
   double trimStart; // seconds
   double? trimEnd; // seconds (null = clip end)
   double duration; // full clip duration seconds
+  /// Short edge (px) of the frame the user edited on. The editor works on the
+  /// 720p preview; export renders on the full-res original, so every absolute
+  /// pixel value (font size, stroke, spacing) is scaled by raw/authored. 0 = unknown.
+  double authoredShort;
   AspectOption aspect;
   bool watermarkOn; // burn the app watermark (Pro can turn it off)
   // Video pan/zoom INSIDE the aspect frame (like CapCut). videoScale multiplies
@@ -481,6 +486,7 @@ class EditorProject {
         'baseClipPath': baseClipPath,
         'defaultFontPath': defaultFontPath,
         'duration': duration,
+        'authoredShort': authoredShort,
       };
 
   factory EditorProject.fromProjectJson(Map<String, dynamic> j) {
@@ -488,6 +494,7 @@ class EditorProject {
       baseClipPath: j['baseClipPath'] as String,
       defaultFontPath: (j['defaultFontPath'] as String?) ?? '',
       duration: (j['duration'] as num?)?.toDouble() ?? 0.0,
+      authoredShort: (j['authoredShort'] as num?)?.toDouble() ?? 0.0,
     );
     // trimStart/logo* fields in restore() are non-null-asserted; provide safe
     // defaults for any missing key so an older/partial payload still loads.

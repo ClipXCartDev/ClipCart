@@ -50,8 +50,7 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _defaultFont;
   bool _busy = false;
   bool _finalized = false; // exported: the clip is final — no more autosaves/drafts
-  double? _dlProgress; // 0..1 while the full-HD base clip downloads (null = not downloading)
-  int _dlTotalBytes = 0;
+  double? _dlProgress; // 0..1 while the small preview is fetched (null = not fetching)
 
   void _onDownload(int received, int total) {
     if (!mounted) return;
@@ -59,7 +58,7 @@ class _EditorScreenState extends State<EditorScreen> {
     // throttle rebuilds to whole-percent steps
     final prev = _dlProgress == null ? -1 : (_dlProgress! * 100).floor();
     final next = frac == null ? -1 : (frac * 100).floor();
-    if (next != prev || total != _dlTotalBytes) setState(() { _dlProgress = frac; _dlTotalBytes = total; });
+    if (next != prev) setState(() => _dlProgress = frac);
   }
   String? _error;
 
@@ -157,7 +156,7 @@ class _EditorScreenState extends State<EditorScreen> {
         // Re-fetch the base clip file if the cached path is gone (app reinstall / cache clear).
         var basePath = restored.baseClipPath;
         if (!File(basePath).existsSync() && saved.clipId != null) {
-          basePath = await context.read<CatalogService>().editClipFile(saved.clipId!, onProgress: _onDownload);
+          basePath = await context.read<CatalogService>().previewFile(saved.clipId!, onProgress: _onDownload);
           _dlProgress = null;
         }
         await _load(basePath);
@@ -166,6 +165,7 @@ class _EditorScreenState extends State<EditorScreen> {
           restored.baseClipPath = _project!.baseClipPath;
           restored.defaultFontPath = _project!.defaultFontPath;
           restored.duration = _project!.duration;
+          if (restored.authoredShort <= 0) restored.authoredShort = _project!.authoredShort;
           setState(() => _project = restored);
         }
         _error = null;
@@ -184,11 +184,16 @@ class _EditorScreenState extends State<EditorScreen> {
       final stableId = 'clip_$clipId';
       List<SavedProject> existing = const [];
       try { existing = (await store.list()).where((p) => p.clipId == clipId).toList(); } catch (_) {}
+      cs.purgeRenderCache(); // never leave an original-quality file behind
       // attempt 0 uses any cache; attempt 1 forces a fresh re-download (recovers
       // from a corrupt/partial cache or a transient failure).
       for (var attempt = 0; attempt < 2; attempt++) {
         try {
-          final path = await cs.editClipFile(clipId, fresh: attempt > 0, onProgress: _onDownload);
+          // Content safety: the credit is charged here, but the editor works on the
+          // small 720p preview. The full-res original is fetched ONLY for the
+          // render (inside _export) and deleted the moment it finishes.
+          await cs.chargeEdit(clipId);
+          final path = await cs.previewFile(clipId, fresh: attempt > 0, onProgress: _onDownload);
           _dlProgress = null;
           await _load(path);
           if (existing.isNotEmpty) {
@@ -198,6 +203,7 @@ class _EditorScreenState extends State<EditorScreen> {
             restored.baseClipPath = _project!.baseClipPath;
             restored.defaultFontPath = _project!.defaultFontPath;
             restored.duration = _project!.duration;
+            if (restored.authoredShort <= 0) restored.authoredShort = _project!.authoredShort;
             setState(() => _project = restored);
           } else if (widget.clip!.overlays != null) {
             // First time editing this clip: load the creator's overlays over the
@@ -278,7 +284,14 @@ class _EditorScreenState extends State<EditorScreen> {
     setState(() {
       _vc = c;
       final dur = c.value.duration.inMilliseconds / 1000.0;
-      _project = EditorProject(baseClipPath: path, defaultFontPath: _defaultFont ?? '', duration: dur);
+      final sz = c.value.size;
+      _project = EditorProject(
+        baseClipPath: path,
+        defaultFontPath: _defaultFont ?? '',
+        duration: dur,
+        // the frame the user lays text out on — export scales px values to the original
+        authoredShort: sz.width > 0 && sz.height > 0 ? (sz.width < sz.height ? sz.width : sz.height) : 0.0,
+      );
       _error = null;
       _undo.clear();
       _redo.clear();
@@ -480,6 +493,19 @@ class _EditorScreenState extends State<EditorScreen> {
 
   /// Client-required overlay presets. All reuse SubtitleSegment (styled text that
   /// exports through the same PNG-overlay path) so they're fully editable after.
+  /// Logo = the page's name as a text mark (top corner, whole clip). Meme pages
+  /// stamp their handle/name, not an image — so the Logo tool is text.
+  void _addLogoText() {
+    _snapshot();
+    final seg = SubtitleSegment(
+      text: '@yourpage', start: 0, end: _duration <= 0 ? 3 : _duration,
+      fontSize: 30, dx: 0.20, dy: 0.07, bold: true, shadow: true,
+      color: 0xFFFFFFFF, z: _topZ(),
+    );
+    setState(() { _project!.subtitles.add(seg); _selected = seg; });
+    _startTyping(seg);
+  }
+
   void _addUsername() {
     _snapshot();
     final seg = SubtitleSegment(
@@ -839,7 +865,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   children: [
                     for (final t in <(IconData, String, VoidCallback, bool)>[
                       (Icons.title_rounded, 'Text', () { Navigator.pop(context); _addSubtitle(); }, false),
-                      (Icons.image_outlined, 'Logo', () { Navigator.pop(context); _pickLogo(); }, false),
+                      (Icons.verified_outlined, 'Logo', () { Navigator.pop(context); _addLogoText(); }, false),
                       (Icons.emoji_emotions_outlined, 'Emoji', () { Navigator.pop(context); _openEmojiPicker(); }, false),
                       (Icons.auto_awesome_motion, 'Sticker', () { Navigator.pop(context); _pickSticker(); }, false),
                       (Icons.alternate_email_rounded, 'Handle', () { Navigator.pop(context); _addUsername(); }, false),
@@ -2135,6 +2161,7 @@ class _EditorScreenState extends State<EditorScreen> {
     // dialog itself (never the editor screen), and block the Android back button.
     final rootNav = Navigator.of(context, rootNavigator: true);
     final progress = ValueNotifier<double>(0.0);
+    final phase = ValueNotifier<String>('Preparing your video…');
     var dialogOpen = true;
     showDialog(
       context: context,
@@ -2145,7 +2172,10 @@ class _EditorScreenState extends State<EditorScreen> {
         child: AlertDialog(
           backgroundColor: AppColors.surface,
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Rendering your video…', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600)),
+            ValueListenableBuilder<String>(
+              valueListenable: phase,
+              builder: (_, t, __) => Text(t, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600)),
+            ),
             const SizedBox(height: 14),
             ValueListenableBuilder<double>(
               valueListenable: progress,
@@ -2174,8 +2204,23 @@ class _EditorScreenState extends State<EditorScreen> {
         rootNav.pop();
       }
     }
+    String? renderSrc; // full-res original, app-private, lives only for this render
     try {
-      final res = await ExportService().export(_project!, onProgress: (v) => progress.value = v);
+      // One honest bar for the whole job: fetching the original for the render
+      // fills the first 30% (never named as a download), the render the rest.
+      const fetchShare = 0.3;
+      if (widget.clip != null) {
+        renderSrc = await context.read<CatalogService>().rawFileForExport(
+          widget.clip!.id,
+          onProgress: (r, t) { if (t > 0) progress.value = (fetchShare * r / t).clamp(0.01, fetchShare); },
+        );
+        phase.value = 'Rendering your video…';
+      } else {
+        phase.value = 'Rendering your video…';
+      }
+      final base = widget.clip != null ? fetchShare : 0.0;
+      final res = await ExportService().export(_project!, sourcePath: renderSrc,
+          onProgress: (v) => progress.value = base + (1 - base) * v);
       // My Clips shows the clip's name, not a timestamp: write it beside the file.
       final exportTitle = (widget.title ?? widget.clip?.title ?? widget.resume?.name ?? '').trim();
       if (exportTitle.isNotEmpty && res.path.endsWith('.mp4')) {
@@ -2229,13 +2274,25 @@ class _EditorScreenState extends State<EditorScreen> {
         // a final clip has nothing left to edit — return to the player
         if (widget.clip != null && mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
       }
+    } on DioException catch (e) {
+      closeProgress();
+      final d = e.response?.data;
+      final detail = d is Map ? d['detail'] : null;
+      final msg = detail is Map && detail['message'] != null
+          ? detail['message'].toString()
+          : 'Could not fetch the original. Check your connection and try again.';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
       closeProgress();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {
+      // the original never outlives the render
+      if (renderSrc != null) { try { File(renderSrc).deleteSync(); } catch (_) {} }
+      context.read<CatalogService>().purgeRenderCache();
       progress.dispose();
+      phase.dispose();
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -2255,30 +2312,20 @@ class _EditorScreenState extends State<EditorScreen> {
                     // honest progress while the full-quality base clip downloads
                     // (these are 15-80 MB originals — a bare spinner read as "stuck")
                     SizedBox(
-                      width: 64, height: 64,
-                      child: Stack(alignment: Alignment.center, children: [
-                        CircularProgressIndicator(
-                          value: _dlProgress,
-                          strokeWidth: 4,
-                          color: _kAccent,
-                          backgroundColor: _dlProgress == null ? null : AppColors.line,
-                        ),
-                        if (_dlProgress != null)
-                          Text('${(_dlProgress! * 100).round()}%',
-                              style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                      ]),
+                      width: 56, height: 56,
+                      child: CircularProgressIndicator(
+                        value: _dlProgress,
+                        strokeWidth: 4,
+                        color: _kAccent,
+                        backgroundColor: _dlProgress == null ? null : AppColors.line,
+                      ),
                     ),
                     const SizedBox(height: 18),
                   ],
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Text(
-                      _error ??
-                          (_dlProgress == null
-                              ? 'Preparing your clip in full HD…'
-                              : 'Downloading full-HD clip'
-                                  '${_dlTotalBytes > 0 ? ' · ${(_dlTotalBytes / 1048576).toStringAsFixed(0)} MB' : ''}'
-                                  '\nOnly once — it stays on this phone'),
+                      _error ?? 'Preparing your clip…',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppColors.inkMuted, height: 1.45),
                     ),
@@ -2300,6 +2347,10 @@ class _EditorScreenState extends State<EditorScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
+        // Back peels one layer of UI first (typing → panel/selection) and only
+        // leaves the editor when nothing is open — the standard editor expectation.
+        if (_typing) { _doneTyping(); return; }
+        if (_selected != null) { setState(() => _selected = null); return; }
         if (await _confirmDiscard() && mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
@@ -3253,7 +3304,7 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.text_fields, 'Text', _addSubtitle),
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
-        _tool(Icons.image_outlined, 'Logo', _pickLogo),
+        _tool(Icons.verified_outlined, 'Logo', _addLogoText),
         _tool(Icons.layers_rounded, layerCount > 0 ? 'Layers ($layerCount)' : 'Layers', _openLayers, active: layerCount > 0),
         _tool(Icons.more_horiz_rounded, 'More', _openMoreTools),
       ]);
@@ -3382,9 +3433,11 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       ]),
       const SizedBox(height: 12),
-      // sub-tab content (fixed-ish height, scrolls if needed)
-      ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 210),
+      // sub-tab content: a FIXED height so Font ↔ Styling ↔ Advance never move
+      // the canvas, timeline or the footer buttons under the user's finger
+      // (QA recording: the panel grew on Styling and a tap landed on Delete).
+      SizedBox(
+        height: 210,
         child: SingleChildScrollView(
           child: switch (_textTab.clamp(0, 2)) {
             0 => _textFont(s, ink, mut, tile, line, brand),

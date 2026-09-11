@@ -7,9 +7,11 @@ import 'clip_card.dart' show masonryAspect;
 /// A shimmering masonry skeleton that matches the gallery tile shape — shown
 /// while clips load so the layout feels present instantly (premium vs a spinner).
 class SkeletonGrid extends StatelessWidget {
-  const SkeletonGrid({super.key, this.count = 12, this.padding});
+  const SkeletonGrid({super.key, this.count = 12, this.padding, this.aspect});
   final int count;
   final EdgeInsets? padding;
+  /// Fixed tile aspect (e.g. 9/13) for screens with a uniform grid; null = masonry.
+  final double? aspect;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +23,18 @@ class SkeletonGrid extends StatelessWidget {
       baseColor: base,
       highlightColor: hi,
       period: const Duration(milliseconds: 1100),
-      child: MasonryGridView.count(
+      child: aspect != null
+          ? GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: padding ?? const EdgeInsets.all(3),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3, mainAxisSpacing: 3, crossAxisSpacing: 3, childAspectRatio: aspect!),
+              itemCount: count,
+              itemBuilder: (context, i) => DecoratedBox(
+                decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(10)),
+              ),
+            )
+          : MasonryGridView.count(
         physics: const NeverScrollableScrollPhysics(),
         padding: padding ?? const EdgeInsets.all(8),
         crossAxisCount: 3,

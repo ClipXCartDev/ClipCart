@@ -81,6 +81,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   Map<String, dynamic>? _sub; // active subscription (drives editable / credit count) or null
   // per-clip edit state from the server (charged / exported / credits_left)
   final Map<String, Map<String, dynamic>> _edit = {};
+  final Set<String> _stateLoading = {}; // clip ids whose edit-state is in flight
+  bool _subLoading = true; // first subscription fetch in flight → never flash "Unlock"
 
   // ── plan / credit state ────────────────────────────────────────────────────
   bool get _editable => (_sub?['status']?.toString())?.toLowerCase() == 'active';
@@ -98,11 +100,17 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   /// Fetch this clip's edit state (cached per clip; `force` after an edit session).
   Future<void> _loadEditState(Clip clip, {bool force = false}) async {
     if (!force && _edit.containsKey(clip.id)) return;
+    if (_stateLoading.contains(clip.id)) return;
+    _stateLoading.add(clip.id);
+    if (mounted) setState(() {});
     try {
       final s = await context.read<CatalogService>().editState(clip.id);
       if (mounted) setState(() => _edit[clip.id] = s);
     } catch (_) {
       // unknown → fall back to the subscription-only view
+    } finally {
+      _stateLoading.remove(clip.id);
+      if (mounted) setState(() {});
     }
   }
 
@@ -119,11 +127,12 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     if (context.canPop()) context.pop();
   }
 
-  Future<void> _loadSub() async {
+  Future<void> _loadSub({bool force = false}) async {
     try {
-      final s = await context.read<BillingService>().subscription();
-      if (mounted) setState(() => _sub = s);
+      final s = await context.read<BillingService>().subscription(force: force);
+      if (mounted) setState(() { _sub = s; _subLoading = false; });
     } catch (_) {
+      if (mounted) setState(() => _subLoading = false);
       // leave _sub null → "Preview only" / Unlock affordance
     }
   }
@@ -188,6 +197,11 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     // Play the CURRENT clip first — don't make its playback wait on the
     // neighbour prefetch network calls (that caused a 1-2s freeze on swipe).
     await _ensure(_current);
+    // Warm the edit-state of the neighbours so a swipe lands on Edit/Continue/
+    // View instantly instead of a "Checking your plan…" beat (cached per clip).
+    for (final i in [_current, _current - 1, _current + 1]) {
+      if (i >= 0 && i < widget.clips.length) _loadEditState(widget.clips[i]);
+    }
     final cur = _ctrls[_current];
     if (cur != null) {
       cur.setVolume(_muted ? 0 : 1); // only the current clip is audible
@@ -239,7 +253,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     await context.push('/editor', extra: clip);
     if (mounted) {
       _sync();
-      _loadSub(); // refresh the credit count after an edit session
+      _loadSub(force: true); // refresh the credit count after an edit session
       _loadEditState(clip, force: true); // charged / exported may have changed
     }
   }
@@ -410,8 +424,9 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               ),
             ),
           ),
-          // centred 60px play/pause button
-          if (ready)
+          // centred play button — only while PAUSED (Instagram-style). A permanent
+          // white disc over a playing clip read as a stuck overlay in the QA recording.
+          if (ready && !c.value.isPlaying)
             Center(
               child: GestureDetector(
                 onTap: () => setState(() { c.value.isPlaying ? c.pause() : c.play(); }),
@@ -521,10 +536,19 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
     final charged = st?['charged'] == true;
     final exported = st?['exported'] == true;
     final credits = _clipCredits(clip);
+    // Until the plan + this clip's state are known, show a neutral "checking"
+    // row — a Pro member must never see "Unlock" for a second and get bounced
+    // to the plans page.
+    final checking = _subLoading || (editable && st == null && _stateLoading.contains(clip.id));
     // One edit == one purchase: the button reflects exactly where this clip is.
     final String title, sub, label;
-    final VoidCallback onTap;
-    if (exported) {
+    final VoidCallback? onTap;
+    if (checking) {
+      title = 'Checking your plan…';
+      sub = 'One moment';
+      label = '…';
+      onTap = null;
+    } else if (exported) {
       title = 'Exported · final';
       sub = 'This clip was edited and exported';
       label = 'View';
@@ -538,12 +562,12 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       title = 'Preview only';
       sub = 'Subscribe to edit and export';
       label = 'Unlock';
-      onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(); _loadEditState(clip, force: true); } };
+      onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(force: true); _loadEditState(clip, force: true); } };
     } else if (credits != null && credits <= 0) {
       title = 'No credits left';
       sub = 'Renew your plan to edit more clips';
       label = 'Renew';
-      onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(); _loadEditState(clip, force: true); } };
+      onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(force: true); _loadEditState(clip, force: true); } };
     } else {
       title = 'Ready to edit';
       sub = 'Opening the editor uses 1 credit';
@@ -586,8 +610,10 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                 child: FilledButton(
                   onPressed: onTap,
                   style: FilledButton.styleFrom(
-                    backgroundColor: exported ? AppColors.surfaceHover2 : AppColors.brand,
-                    foregroundColor: exported ? AppColors.ink : Colors.white,
+                    backgroundColor: exported || checking ? AppColors.surfaceHover2 : AppColors.brand,
+                    foregroundColor: exported || checking ? AppColors.ink : Colors.white,
+                    disabledBackgroundColor: AppColors.surfaceHover2,
+                    disabledForegroundColor: AppColors.inkMuted,
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
                   ),
