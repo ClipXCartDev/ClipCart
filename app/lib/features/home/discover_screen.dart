@@ -283,7 +283,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 Text(clip.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontFamily: kSans, fontSize: 12, height: 1.3, fontWeight: FontWeight.w500, color: Color(0xFF4A463F))),
+                    style: const TextStyle(fontFamily: kSans, fontSize: 12, height: 1.3, fontWeight: FontWeight.w500, color: AppColors.inkMuted)),
               ]),
             );
           },
