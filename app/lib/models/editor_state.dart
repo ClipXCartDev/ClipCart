@@ -318,17 +318,20 @@ class StickerOverlay {
 
 /// Aspect-ratio target for export (crop/pad). null width = keep source.
 class AspectOption {
-  const AspectOption(this.label, this.w, this.h);
-  final String label;
+  const AspectOption(this.label, this.w, this.h, [this.social]);
+  final String label; // the ratio itself — stays short for the one-row toolbar tile
+  /// The platform-facing name (e.g. "Reel / Story") — a meme-page owner thinks
+  /// in post types, not aspect math. Shown alongside `label` in the picker only.
+  final String? social;
   final int? w;
   final int? h;
   bool get isOriginal => w == null;
   double? get ratio => (w == null || h == null) ? null : w! / h!;
   static const original = AspectOption('Original', null, null);
-  static const portrait = AspectOption('9:16', 9, 16);
-  static const square = AspectOption('1:1', 1, 1);
-  static const vertical45 = AspectOption('4:5', 4, 5);
-  static const landscape = AspectOption('16:9', 16, 9);
+  static const portrait = AspectOption('9:16', 9, 16, 'Reel / Story');
+  static const square = AspectOption('1:1', 1, 1, 'Feed post');
+  static const vertical45 = AspectOption('4:5', 4, 5, 'Feed portrait');
+  static const landscape = AspectOption('16:9', 16, 9, 'Widescreen');
   static const all = [original, portrait, square, vertical45, landscape];
 }
 

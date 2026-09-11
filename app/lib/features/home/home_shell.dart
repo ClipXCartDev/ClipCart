@@ -278,7 +278,29 @@ class _PlanCard extends StatelessWidget {
           const Spacer(),
           EditorPill(active ? 'Manage' : 'Subscribe', onTap: () => context.push('/plans')),
         ]),
+        if (_paceHint(active, credits, until) != null) ...[
+          const SizedBox(height: 10),
+          Text(_paceHint(active, credits, until)!, style: const TextStyle(fontFamily: kSans, fontSize: 11.5, color: AppColors.mutDark)),
+        ],
       ]),
     );
+  }
+
+  /// A plan's two raw numbers (credits left, days left) only matter together —
+  /// on a metered plan, "N credits" alone doesn't say whether that's generous
+  /// or about to run out for someone posting on a daily cadence. Unlimited
+  /// plans and inactive/unparseable states show nothing (there's no pace to give).
+  String? _paceHint(bool active, String? credits, String? until) {
+    if (!active || credits == null || credits == 'Unlimited') return null;
+    final n = int.tryParse(credits);
+    final end = until != null ? DateTime.tryParse(until) : null;
+    if (n == null || end == null) return null;
+    final daysLeft = end.difference(DateTime.now()).inHours / 24;
+    if (daysLeft <= 0) return n > 0 ? 'Plan ends today' : 'No credits left — plan ends today';
+    if (n <= 0) return 'No credits left · renews ${daysLeft.round()}d from now';
+    final perDay = n / daysLeft;
+    return perDay >= 1
+        ? '≈${perDay.round()}/day left to stay on pace'
+        : 'About ${daysLeft.round()} day${daysLeft.round() == 1 ? '' : 's'} of edits left at this pace';
   }
 }
