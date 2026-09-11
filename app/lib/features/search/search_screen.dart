@@ -30,6 +30,10 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Map<String, dynamic>> _cats = [];
   String? _cat;
   String _query = '';
+  // Trending is what everyone else is already using; Newest is the one lever
+  // a page that wants to be FIRST to a clip actually needs. Both are already
+  // supported server-side — this was just never wired to anything.
+  String _sort = 'trending';
   bool _loading = true, _loadingMore = false, _more = true;
   String? _error;
   int _gen = 0; // bumps on every _reload; in-flight page loads with a stale gen are discarded
@@ -81,7 +85,7 @@ class _SearchScreenState extends State<SearchScreen> {
         category: _cat,
         limit: _page,
         offset: _grid.length,
-        sort: 'trending',
+        sort: _sort,
       );
       if (!mounted || gen != _gen) return; // a newer _reload superseded this load
       setState(() {
@@ -118,6 +122,12 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _pickCategory(String? slug) {
     setState(() => _cat = slug);
+    _reload();
+  }
+
+  void _pickSort(String sort) {
+    if (sort == _sort) return;
+    setState(() => _sort = sort);
     _reload();
   }
 
@@ -183,15 +193,24 @@ class _SearchScreenState extends State<SearchScreen> {
           _filterButton(),
         ]),
       ),
-      // category chips — modern & compact (thin pills, brand-fill on select)
-      if (_cats.isNotEmpty)
-        SizedBox(
-          height: 32,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            physics: const BouncingScrollPhysics(),
-            children: [
+      // sort + category chips — modern & compact (thin pills, brand-fill on select).
+      // Sort is always shown (it needs no data to be meaningful); category chips
+      // wait for the category list like before.
+      SizedBox(
+        height: 32,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          physics: const BouncingScrollPhysics(),
+          children: [
+            _SortChip('Trending', Icons.local_fire_department_rounded, selected: _sort == 'trending', onTap: () => _pickSort('trending')),
+            _SortChip('Newest', Icons.bolt_rounded, selected: _sort == 'newest', onTap: () => _pickSort('newest')),
+            if (_cats.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: SizedBox(height: 18, child: VerticalDivider(width: 1, thickness: 1, color: AppColors.line)),
+              ),
+              const SizedBox(width: 4),
               _CatChip('All', selected: _cat == null, onTap: () => _pickCategory(null)),
               for (final c in _cats)
                 _CatChip(
@@ -200,8 +219,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   onTap: () => _pickCategory((c['slug'] as String?) ?? c['name'] as String),
                 ),
             ],
-          ),
+          ],
         ),
+      ),
       Expanded(child: _body()),
     ]);
   }
@@ -377,6 +397,48 @@ class _GridThumb extends StatelessWidget {
               ),
             ),
         ]),
+      ),
+    );
+  }
+}
+
+/// Trending / Newest — the one control a page that wants to be first to a
+/// clip actually needs; both sorts already existed server-side with nothing
+/// on Explore to reach them. Same compact-pill language as the category
+/// chips it sits beside, distinguished by a small leading glyph.
+class _SortChip extends StatelessWidget {
+  const _SortChip(this.label, this.icon, {required this.selected, required this.onTap});
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 7),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 170),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.brand : AppColors.surface,
+            borderRadius: BorderRadius.circular(R.pill),
+            border: Border.all(color: selected ? AppColors.brand : AppColors.line),
+            boxShadow: selected
+                ? [BoxShadow(color: AppColors.brand.withValues(alpha: 0.26), blurRadius: 9, offset: const Offset(0, 3))]
+                : null,
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icon, size: 13, color: selected ? Colors.white : AppColors.inkMuted),
+            const SizedBox(width: 5),
+            Text(label, style: TextStyle(fontFamily: kSans, fontSize: 13, fontWeight: selected ? FontWeight.w600 : FontWeight.w500, color: selected ? Colors.white : AppColors.inkMuted)),
+          ]),
+        ),
       ),
     );
   }

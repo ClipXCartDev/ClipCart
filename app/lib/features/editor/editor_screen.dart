@@ -18,6 +18,7 @@ import '../../services/brand_kit_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
+import '../../services/layout_template_service.dart';
 import '../../services/project_store.dart';
 import '../../services/sticker_service.dart';
 import '../../services/text_render.dart';
@@ -495,14 +496,33 @@ class _EditorScreenState extends State<EditorScreen> {
   /// exports through the same PNG-overlay path) so they're fully editable after.
   /// Logo = the page's name as a text mark (top corner, whole clip). Meme pages
   /// stamp their handle/name, not an image — so the Logo tool is text.
+  /// Finds this project's logo-mark layer (top-left, whole-clip text at the
+  /// fixed logo position) if one exists, else creates it — at most one per
+  /// project. Shared by the Logo tool (blank placeholder, opens for typing)
+  /// and Brand Kit's "Apply brand" (supplies the saved handle/colour/font and
+  /// updates it silently instead of stacking a second mark).
+  SubtitleSegment _logoTextLayer({String? text, int? color, String? fontFamily, String? fontFilePath}) {
+    final existing = _project!.subtitles.where((s) => s.dx == 0.20 && s.dy == 0.07).toList();
+    if (existing.isNotEmpty) {
+      final s = existing.first;
+      if (text != null) s.text = text;
+      if (color != null) s.color = color;
+      if (fontFamily != null) { s.fontFamily = fontFamily; s.fontFilePath = fontFilePath; }
+      return s;
+    }
+    final seg = SubtitleSegment(
+      text: text ?? '@yourpage', start: 0, end: _duration <= 0 ? 3 : _duration,
+      fontSize: 30, dx: 0.20, dy: 0.07, bold: true, shadow: true,
+      color: color ?? 0xFFFFFFFF, fontFamily: fontFamily, fontFilePath: fontFilePath, z: _topZ(),
+    );
+    _project!.subtitles.add(seg);
+    return seg;
+  }
+
   void _addLogoText() {
     _snapshot();
-    final seg = SubtitleSegment(
-      text: '@yourpage', start: 0, end: _duration <= 0 ? 3 : _duration,
-      fontSize: 30, dx: 0.20, dy: 0.07, bold: true, shadow: true,
-      color: 0xFFFFFFFF, z: _topZ(),
-    );
-    setState(() { _project!.subtitles.add(seg); _selected = seg; });
+    final seg = _logoTextLayer();
+    setState(() => _selected = seg);
     _startTyping(seg);
   }
 
@@ -872,6 +892,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       (Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }, false),
                       (Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }, false),
                       (Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }, false),
+                      (Icons.dashboard_customize_rounded, 'Template', () { Navigator.pop(context); _openLayoutTemplates(); }, false),
+                      (Icons.music_note_rounded, 'Music', () { Navigator.pop(context); _openMusicSheet(); }, _project!.musicPath != null),
                       (Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, _project!.watermarkOn),
                     ])
                       Padding(padding: const EdgeInsets.only(right: 14), child: _addTile(t.$1, t.$2, t.$3, on: t.$4)),
@@ -1227,6 +1249,7 @@ class _EditorScreenState extends State<EditorScreen> {
     // leak unsaved color/font/logo edits into the shared service kit. Only Save
     // / Apply commit the copy via bk.saveKit.
     final kit = bk.kit != null ? BrandKit.fromJson(bk.kit!.toJson()) : BrandKit();
+    final handleCtl = TextEditingController(text: kit.handle ?? '');
     await showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.bg,
@@ -1290,27 +1313,24 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
               ]),
               const SizedBox(height: 16),
-              // logo
-              Row(children: [
-                const Text('Logo', style: TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5)),
-                const SizedBox(width: 12),
-                if (kit.logoPath != null) ...[
-                  Container(width: 44, height: 44, decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(8)), clipBehavior: Clip.antiAlias, child: Image.file(File(kit.logoPath!), fit: BoxFit.contain)),
-                  const SizedBox(width: 10),
-                ],
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final res = await FilePicker.platform.pickFiles(type: FileType.image);
-                    if (res != null && res.files.single.path != null) {
-                      final p = await bk.persistLogo(res.files.single.path!);
-                      setSheet(() => kit.logoPath = p);
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line)),
-                  icon: const Icon(Icons.upload_rounded, size: 16),
-                  label: Text(kit.logoPath == null ? 'Add logo' : 'Change'),
+              // logo — a text mark (the page's handle), not an image: matches
+              // how the editor's own Logo tool works everywhere else.
+              const Text('Logo · page handle', style: TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w600, fontSize: 12.5)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: handleCtl,
+                onChanged: (v) => kit.handle = v,
+                style: const TextStyle(color: AppColors.ink, fontSize: 14, fontWeight: FontWeight.w600),
+                decoration: InputDecoration(
+                  hintText: '@yourpage',
+                  hintStyle: const TextStyle(color: AppColors.inkFaint, fontWeight: FontWeight.w600),
+                  filled: true, fillColor: _kChip,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _kAccent, width: 1.5)),
                 ),
-              ]),
+              ),
               const SizedBox(height: 20),
               SizedBox(width: double.infinity, child: PrimaryButton(label: 'Apply brand to clip', icon: Icons.auto_fix_high, onPressed: () async { await bk.saveKit(kit); _applyBrand(kit); if (context.mounted) Navigator.pop(context); })),
             ]),
@@ -1318,6 +1338,7 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       ),
     );
+    handleCtl.dispose();
   }
 
   Future<int?> _pickBrandColor(int current) async {
@@ -1349,12 +1370,138 @@ class _EditorScreenState extends State<EditorScreen> {
         s.color = kit.primary;
         if (kit.fontFamily != null) { s.fontFamily = kit.fontFamily; s.fontFilePath = kit.fontPath; }
       }
-      if (kit.logoPath != null && File(kit.logoPath!).existsSync()) {
-        _project!.logoPath = kit.logoPath;
-        _project!.logoHidden = false;
+      // The page's mark is its handle, stamped as text — same mechanism as the
+      // Logo tool itself, not an image (kit.logoPath is legacy-only, see model).
+      final handle = kit.handle?.trim();
+      if (handle != null && handle.isNotEmpty) {
+        _logoTextLayer(text: handle, color: kit.primary, fontFamily: kit.fontFamily, fontFilePath: kit.fontPath);
       }
     });
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brand applied')));
+  }
+
+  // ---------- layout templates: reuse one clip's caption layout on another ----------
+
+  Future<String?> _promptTemplateName() {
+    final ctl = TextEditingController(text: 'My template');
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Save template', style: TextStyle(color: AppColors.ink)),
+        content: TextField(
+          controller: ctl, autofocus: true,
+          style: const TextStyle(color: AppColors.ink),
+          cursorColor: _kAccent,
+          decoration: const InputDecoration(hintText: 'Template name', hintStyle: TextStyle(color: AppColors.inkFaint), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.line))),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, ctl.text), child: const Text('Save', style: TextStyle(color: _kAccent))),
+        ],
+      ),
+    );
+  }
+
+  /// Copies [tpl]'s text layers onto the CURRENT project. Positions/sizes are
+  /// fractions of the frame, so they hold on any aspect ratio; start/end times
+  /// are clamped into this clip's own length so a template saved from a long
+  /// clip never creates an out-of-range layer on a shorter one. A copy that
+  /// lands exactly on the logo-mark position merges into any logo mark this
+  /// clip already has instead of stacking a second one.
+  void _applyLayoutTemplate(LayoutTemplate tpl) {
+    _snapshot();
+    setState(() {
+      final dur = _project!.outEnd > 0 ? _project!.outEnd : _duration;
+      for (final json in tpl.subtitles) {
+        final src = SubtitleSegment.fromJson(json);
+        if (src.dx == 0.20 && src.dy == 0.07) {
+          _logoTextLayer(text: src.text, color: src.color, fontFamily: src.fontFamily, fontFilePath: src.fontFilePath);
+          continue;
+        }
+        final copy = src.copy();
+        copy.start = copy.start.clamp(0.0, (dur - 0.5).clamp(0.0, dur));
+        copy.end = copy.end.clamp(copy.start + 0.5, dur);
+        copy.z = _topZ();
+        _project!.subtitles.add(copy);
+      }
+    });
+    _scheduleAutosave();
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Applied "${tpl.name}"')));
+  }
+
+  Future<void> _openLayoutTemplates() async {
+    final svc = context.read<LayoutTemplateService>();
+    await svc.ensureLoaded();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Center(child: _Grabber()),
+              const Text('Layout templates', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
+              const SizedBox(height: 4),
+              const Text('Save this clip\'s caption layout once, drop it onto any other clip in a tap.', style: TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _project!.subtitles.isEmpty
+                      ? null
+                      : () async {
+                          final name = await _promptTemplateName();
+                          if (name == null || name.trim().isEmpty) return;
+                          await svc.save(name.trim(), _project!.subtitles.map((s) => s.toJson()).toList());
+                          setSheet(() {});
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Template saved')));
+                        },
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 13)),
+                  icon: const Icon(Icons.save_outlined, size: 17),
+                  label: Text(_project!.subtitles.isEmpty ? 'Add text layers first to save one' : 'Save this layout as a template'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (svc.templates.isEmpty)
+                const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Text('No saved templates yet.', style: TextStyle(color: AppColors.inkFaint, fontSize: 13)))
+              else
+                ...svc.templates.map((t) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Material(
+                        color: _kChip,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () { Navigator.pop(context); _applyLayoutTemplate(t); },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            child: Row(children: [
+                              const Icon(Icons.dashboard_customize_rounded, size: 18, color: _kAccent),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                                  Text(t.name, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14)),
+                                  Text('${t.subtitles.length} layer${t.subtitles.length == 1 ? '' : 's'}', style: const TextStyle(color: AppColors.inkMuted, fontSize: 11.5)),
+                                ]),
+                              ),
+                              GestureDetector(
+                                onTap: () async { await svc.delete(t.name); setSheet(() {}); },
+                                child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.delete_outline_rounded, size: 19, color: AppColors.inkFaint)),
+                              ),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    )),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 
   void _applyStyle(SubtitleSegment s, Map<String, dynamic> t) {
@@ -3238,6 +3385,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 _moreTile(Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }),
                 _moreTile(Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }),
                 _moreTile(Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }),
+                _moreTile(Icons.dashboard_customize_rounded, 'Template', () { Navigator.pop(context); _openLayoutTemplates(); }),
                 _moreTile(_project!.watermarkOn ? Icons.branding_watermark : Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, on: _project!.watermarkOn),
               ],
             ),
@@ -3883,7 +4031,11 @@ class _EditorScreenState extends State<EditorScreen> {
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(color: opt == p.aspect ? _kAccent : AppColors.line),
                         ),
-                        child: Text(opt.label, style: TextStyle(color: opt == p.aspect ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13.5)),
+                        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
+                          Text(opt.social ?? opt.label, style: TextStyle(color: opt == p.aspect ? Colors.white : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 13.5)),
+                          if (opt.social != null)
+                            Text(opt.label, style: TextStyle(color: opt == p.aspect ? Colors.white.withValues(alpha: 0.75) : AppColors.inkMuted, fontSize: 10.5, fontFamily: 'IBMPlexMono')),
+                        ]),
                       ),
                     ),
                 ]),

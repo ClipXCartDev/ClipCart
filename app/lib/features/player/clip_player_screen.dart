@@ -453,6 +453,21 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                     shadows: [Shadow(color: Color(0x80000000), blurRadius: 4, offset: Offset(0, 1))],
                   ),
                 ),
+                // Source line — movie/show + genre, when the clip carries either.
+                // Data was already there and already searchable; this is the only
+                // place it was never actually shown.
+                if ((clip.movieName ?? '').isNotEmpty || (clip.genre ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    [if ((clip.movieName ?? '').isNotEmpty) clip.movieName, if ((clip.genre ?? '').isNotEmpty) clip.genre].join(' · '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: kMono, fontSize: 11, height: 1.0, fontWeight: FontWeight.w500, color: Color(0xCCFFFFFF),
+                      shadows: [Shadow(color: Color(0x80000000), blurRadius: 4, offset: Offset(0, 1))],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 if (ready) _scrubber(c),
               ],
@@ -664,6 +679,10 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
               _creditRow('After opening', afterLabel, AppColors.brand),
             ]),
           ),
+          if (_pacePlayerHint(left) != null) ...[
+            const SizedBox(height: 10),
+            Text(_pacePlayerHint(left)!, style: const TextStyle(fontFamily: kSans, fontSize: 12, color: AppColors.inkMuted)),
+          ],
           const SizedBox(height: 20),
           PrimaryBtn('Use 1 credit and edit', onTap: () {
             Navigator.of(ctx).pop();
@@ -674,6 +693,20 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
         ],
       );
     });
+  }
+
+  /// Same pacing math as the Account plan card — a raw credit count doesn't say
+  /// whether it's comfortable or about to run out; days-left-in-period does.
+  String? _pacePlayerHint(int? left) {
+    if (left == null) return null; // unlimited plan
+    final end = _sub?['expires_at']?.toString();
+    final endDate = end != null ? DateTime.tryParse(end) : null;
+    if (endDate == null) return null;
+    final daysLeft = endDate.difference(DateTime.now()).inHours / 24;
+    if (daysLeft <= 0) return null;
+    if (left <= 0) return 'No credits left · renews in ${daysLeft.round()}d';
+    final perDay = left / daysLeft;
+    return perDay >= 1 ? '≈${perDay.round()}/day left to stay on pace' : '${daysLeft.round()}d of edits left at this pace';
   }
 
   Widget _creditRow(String label, String value, Color valueColor) => Padding(

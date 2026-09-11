@@ -8,13 +8,18 @@ import 'package:path_provider/path_provider.dart';
 /// A saved brand identity: 1-3 colors, a preferred font family, and a logo file.
 /// Applied to overlays in one tap so a creator's clips stay on-brand.
 class BrandKit {
-  BrandKit({List<int>? colors, this.fontFamily, this.fontPath, this.logoPath})
+  BrandKit({List<int>? colors, this.fontFamily, this.fontPath, this.logoPath, this.handle})
       : colors = colors ?? const [0xFFFFFFFF, 0xFF684FC8, 0xFF17131F];
 
   List<int> colors; // ARGB, first = primary
   String? fontFamily; // registered family for preview
   String? fontPath; // .ttf on disk for FFmpeg
-  String? logoPath; // logo image on disk
+  /// Deprecated: an older build let a Brand Kit carry an image logo file.
+  /// Kept only so an existing saved kit still round-trips through JSON; no UI
+  /// writes to it any more — a meme page's mark is its handle, stamped as
+  /// text (`handle`), the same as the editor's own Logo tool.
+  String? logoPath;
+  String? handle; // e.g. "@yourpage" — applied as the logo text mark
 
   int get primary => colors.isNotEmpty ? colors.first : 0xFFFFFFFF;
 
@@ -23,6 +28,7 @@ class BrandKit {
         'fontFamily': fontFamily,
         'fontPath': fontPath,
         'logoPath': logoPath,
+        'handle': handle,
       };
 
   factory BrandKit.fromJson(Map<String, dynamic> j) => BrandKit(
@@ -30,6 +36,7 @@ class BrandKit {
         fontFamily: j['fontFamily'] as String?,
         fontPath: j['fontPath'] as String?,
         logoPath: j['logoPath'] as String?,
+        handle: j['handle'] as String?,
       );
 }
 
