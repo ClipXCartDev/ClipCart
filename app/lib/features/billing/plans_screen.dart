@@ -80,7 +80,9 @@ class PlansScreen extends StatelessWidget {
                 Container(
                   width: 56, height: 56, alignment: Alignment.center,
                   decoration: BoxDecoration(color: AppColors.goldAccent, borderRadius: BorderRadius.circular(R.media)),
-                  child: const Icon(Icons.star_rounded, size: 30, color: AppColors.ink),
+                  // dark icon on the bright gold tile — AppColors.ink (near-white,
+                  // for dark surfaces) was unreadable here.
+                  child: const Icon(Icons.star_rounded, size: 30, color: Color(0xFF3B2A05)),
                 ),
                 const SizedBox(height: 22),
                 const Text('Subscribe to edit and export',
@@ -571,7 +573,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Container(
                   width: 40, height: 40, alignment: Alignment.center,
                   decoration: BoxDecoration(color: const Color(0xFFF3BA2F), borderRadius: BorderRadius.circular(R.tile)),
-                  child: const Text('B', style: TextStyle(fontFamily: kSans, fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.ink)),
+                  // dark letter on the bright gold chip — AppColors.ink (near-white,
+                  // for dark surfaces) was unreadable here.
+                  child: const Text('B', style: TextStyle(fontFamily: kSans, fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF3B2A05))),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(

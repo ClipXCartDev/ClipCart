@@ -19,7 +19,7 @@ class PrimaryButton extends StatelessWidget {
       color: Colors.transparent,
       child: Ink(
         decoration: BoxDecoration(
-          color: enabled ? AppColors.brand : const Color(0xFFDAD5E2),
+          color: enabled ? AppColors.brand : AppColors.brand.withValues(alpha: 0.38),
           borderRadius: BorderRadius.circular(10),
         ),
         child: InkWell(
@@ -33,8 +33,8 @@ class PrimaryButton extends StatelessWidget {
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (icon != null) ...[Icon(icon, color: enabled ? Colors.white : const Color(0xFF94909C), size: 19), const SizedBox(width: 8)],
-                      Text(label, style: TextStyle(color: enabled ? Colors.white : const Color(0xFF94909C), fontWeight: FontWeight.w600, fontSize: 16)),
+                      if (icon != null) ...[Icon(icon, color: Colors.white.withValues(alpha: enabled ? 1 : 0.6), size: 19), const SizedBox(width: 8)],
+                      Text(label, style: TextStyle(color: Colors.white.withValues(alpha: enabled ? 1 : 0.6), fontWeight: FontWeight.w600, fontSize: 16)),
                     ],
                   ),
           ),
