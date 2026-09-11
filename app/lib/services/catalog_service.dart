@@ -56,7 +56,11 @@ class CatalogService {
   /// DioException 402 (subscribe / no credits left) when not allowed. Atomic
   /// (tmp → rename) so a failed download never leaves a corrupt cache.
   /// `fresh: true` forces a re-download.
-  Future<String> editClipFile(String clipId, {bool fresh = false}) async {
+  Future<String> editClipFile(
+    String clipId, {
+    bool fresh = false,
+    void Function(int received, int total)? onProgress,
+  }) async {
     final r = await api.dio.post('/clips/$clipId/download-url');
     final url = RuntimeConfig.absolute(r.data['url'] as String);
     final dir = await getTemporaryDirectory();
@@ -65,7 +69,7 @@ class CatalogService {
     if (fresh && await f.exists()) await f.delete();
     if (!fresh && await f.exists() && await f.length() > 0) return path;
     final tmp = '$path.tmp';
-    await Dio().download(url, tmp);
+    await Dio().download(url, tmp, onReceiveProgress: onProgress);
     await File(tmp).rename(path);
     return path;
   }

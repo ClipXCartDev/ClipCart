@@ -209,10 +209,14 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _searchField() {
     return Container(
       height: 42,
-      decoration: BoxDecoration(color: AppColors.surfaceHover2, borderRadius: BorderRadius.circular(R.pill)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(R.pill),
+        border: Border.all(color: AppColors.line),
+      ),
       child: Row(children: [
         const SizedBox(width: 14),
-        const Icon(Icons.search_rounded, size: 20, color: AppColors.inkFaint),
+        const Icon(Icons.search_rounded, size: 20, color: AppColors.inkMuted),
         const SizedBox(width: 8),
         Expanded(
           child: TextField(
@@ -225,9 +229,16 @@ class _SearchScreenState extends State<SearchScreen> {
             },
             style: const TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink),
             cursorColor: AppColors.brand,
+            // flat: no fill / no border of its own — the pill IS the field
             decoration: const InputDecoration(
               isCollapsed: true,
+              isDense: true,
+              filled: false,
+              fillColor: Colors.transparent,
+              contentPadding: EdgeInsets.zero,
               border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
               hintText: 'Search clips, movies, moods',
               hintStyle: TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.inkFaint),
             ),

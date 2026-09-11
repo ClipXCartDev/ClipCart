@@ -586,7 +586,8 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
                 child: FilledButton(
                   onPressed: onTap,
                   style: FilledButton.styleFrom(
-                    backgroundColor: exported ? AppColors.ink : AppColors.brand,
+                    backgroundColor: exported ? AppColors.surfaceHover2 : AppColors.brand,
+                    foregroundColor: exported ? AppColors.ink : Colors.white,
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(R.button)),
                   ),

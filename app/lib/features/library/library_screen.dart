@@ -27,11 +27,12 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _Export {
-  _Export(this.file, this.thumb, this.modified, this.sizeMb);
+  _Export(this.file, this.thumb, this.modified, this.sizeMb, {this.title});
   final File file;
   final File? thumb;
   final DateTime modified;
   final double sizeMb;
+  final String? title; // clip name written by the editor (sidecar .txt)
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
@@ -69,8 +70,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
     for (final f in dir.listSync().whereType<File>().where((f) => f.path.endsWith('.mp4'))) {
       final stat = f.statSync();
       // replace only the trailing extension (path already ends with .mp4)
-      final thumb = File('${f.path.substring(0, f.path.length - 4)}.jpg');
-      out.add(_Export(f, thumb.existsSync() ? thumb : null, stat.modified, stat.size / (1024 * 1024)));
+      final stem = f.path.substring(0, f.path.length - 4);
+      final thumb = File('$stem.jpg');
+      String? title;
+      final side = File('$stem.txt');
+      if (side.existsSync()) {
+        try { title = (await side.readAsString()).trim(); } catch (_) {}
+      }
+      out.add(_Export(f, thumb.existsSync() ? thumb : null, stat.modified, stat.size / (1024 * 1024),
+          title: (title == null || title.isEmpty) ? null : title));
     }
     out.sort((a, b) => b.modified.compareTo(a.modified));
     return out;
@@ -363,6 +371,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   String _name(_Export e) {
+    if (e.title != null) return e.title!;
     final base = e.file.path.split(Platform.pathSeparator).last;
     const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     final d = e.modified;
@@ -386,6 +395,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           onDelete: () async {
             await e.file.delete();
             if (e.thumb != null && e.thumb!.existsSync()) await e.thumb!.delete();
+            final side = File('${e.file.path.substring(0, e.file.path.length - 4)}.txt');
+            if (side.existsSync()) await side.delete();
           }),
     ));
     if (mounted) setState(() { _exports = _loadExports(); });

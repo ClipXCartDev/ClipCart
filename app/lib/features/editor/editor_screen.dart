@@ -50,6 +50,17 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _defaultFont;
   bool _busy = false;
   bool _finalized = false; // exported: the clip is final — no more autosaves/drafts
+  double? _dlProgress; // 0..1 while the full-HD base clip downloads (null = not downloading)
+  int _dlTotalBytes = 0;
+
+  void _onDownload(int received, int total) {
+    if (!mounted) return;
+    final frac = total > 0 ? (received / total).clamp(0.0, 1.0) : null;
+    // throttle rebuilds to whole-percent steps
+    final prev = _dlProgress == null ? -1 : (_dlProgress! * 100).floor();
+    final next = frac == null ? -1 : (frac * 100).floor();
+    if (next != prev || total != _dlTotalBytes) setState(() { _dlProgress = frac; _dlTotalBytes = total; });
+  }
   String? _error;
 
   Object? _selected; // SubtitleSegment | 'logo' | null
@@ -146,7 +157,8 @@ class _EditorScreenState extends State<EditorScreen> {
         // Re-fetch the base clip file if the cached path is gone (app reinstall / cache clear).
         var basePath = restored.baseClipPath;
         if (!File(basePath).existsSync() && saved.clipId != null) {
-          basePath = await context.read<CatalogService>().editClipFile(saved.clipId!);
+          basePath = await context.read<CatalogService>().editClipFile(saved.clipId!, onProgress: _onDownload);
+          _dlProgress = null;
         }
         await _load(basePath);
         // Overlay the restored edits on top of the freshly-loaded project.
@@ -176,7 +188,8 @@ class _EditorScreenState extends State<EditorScreen> {
       // from a corrupt/partial cache or a transient failure).
       for (var attempt = 0; attempt < 2; attempt++) {
         try {
-          final path = await cs.editClipFile(clipId, fresh: attempt > 0);
+          final path = await cs.editClipFile(clipId, fresh: attempt > 0, onProgress: _onDownload);
+          _dlProgress = null;
           await _load(path);
           if (existing.isNotEmpty) {
             // Continue the existing draft (it already holds any creator overlays
@@ -2163,6 +2176,11 @@ class _EditorScreenState extends State<EditorScreen> {
     }
     try {
       final res = await ExportService().export(_project!, onProgress: (v) => progress.value = v);
+      // My Clips shows the clip's name, not a timestamp: write it beside the file.
+      final exportTitle = (widget.title ?? widget.clip?.title ?? widget.resume?.name ?? '').trim();
+      if (exportTitle.isNotEmpty && res.path.endsWith('.mp4')) {
+        try { await File('${res.path.substring(0, res.path.length - 4)}.txt').writeAsString(exportTitle); } catch (_) {}
+      }
       // The credit was already spent on open. A successful render now makes the
       // clip FINAL for this customer (server + on-device draft) — one edit, one
       // export, no second history. A failed render leaves the draft intact.
@@ -2234,12 +2252,36 @@ class _EditorScreenState extends State<EditorScreen> {
               ? const CircularProgressIndicator(color: _kAccent)
               : Column(mainAxisSize: MainAxisSize.min, children: [
                   if (_error == null) ...[
-                    const CircularProgressIndicator(color: _kAccent),
-                    const SizedBox(height: 16),
+                    // honest progress while the full-quality base clip downloads
+                    // (these are 15-80 MB originals — a bare spinner read as "stuck")
+                    SizedBox(
+                      width: 64, height: 64,
+                      child: Stack(alignment: Alignment.center, children: [
+                        CircularProgressIndicator(
+                          value: _dlProgress,
+                          strokeWidth: 4,
+                          color: _kAccent,
+                          backgroundColor: _dlProgress == null ? null : AppColors.line,
+                        ),
+                        if (_dlProgress != null)
+                          Text('${(_dlProgress! * 100).round()}%',
+                              style: const TextStyle(fontFamily: 'IBMPlexMono', fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                      ]),
+                    ),
+                    const SizedBox(height: 18),
                   ],
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Text(_error ?? 'Loading your clip in full HD…', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.inkMuted)),
+                    child: Text(
+                      _error ??
+                          (_dlProgress == null
+                              ? 'Preparing your clip in full HD…'
+                              : 'Downloading full-HD clip'
+                                  '${_dlTotalBytes > 0 ? ' · ${(_dlTotalBytes / 1048576).toStringAsFixed(0)} MB' : ''}'
+                                  '\nOnly once — it stays on this phone'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.inkMuted, height: 1.45),
+                    ),
                   ),
                   const SizedBox(height: 14),
                   if (_error != null && widget.clip != null)
@@ -2290,7 +2332,9 @@ class _EditorScreenState extends State<EditorScreen> {
       // black gap, and _toolbar/_inlineTextEditor already add the bottom inset.
       body: Column(
         children: [
-          Expanded(child: SafeArea(top: false, bottom: false, child: _canvas())),
+          // RepaintBoundary: dragging a layer on the canvas must not repaint the
+          // deck, and scrubbing the timeline must not re-rasterize the canvas.
+          Expanded(child: SafeArea(top: false, bottom: false, child: RepaintBoundary(child: _canvas()))),
           if (_typing)
             _inlineTextEditor()
           else
@@ -2299,9 +2343,9 @@ class _EditorScreenState extends State<EditorScreen> {
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _playbar(),
-                _timeline(),
-                _toolbar(),
+                RepaintBoundary(child: _playbar()),
+                RepaintBoundary(child: _timeline()),
+                RepaintBoundary(child: _toolbar()),
               ],
             ),
         ],
@@ -2386,7 +2430,8 @@ class _EditorScreenState extends State<EditorScreen> {
                       // videoScale/videoDx/videoDy apply the user's pan+zoom on top.
                       // 'fit' letterboxes the whole video onto a bg fill; 'fill'
                       // cover-crops. Scale/reposition apply to both.
-                      child: ClipRect(
+                      child: RepaintBoundary(
+                        child: ClipRect(
                         child: ColoredBox(
                           // User-controllable frame background (fill gap / letterbox).
                           color: Color(_project!.videoBgColor),
@@ -2406,6 +2451,7 @@ class _EditorScreenState extends State<EditorScreen> {
                             ),
                           ),
                         ),
+                      ),
                       ),
                     ),
                     ...overlays.map((e) => e.value),
@@ -2890,7 +2936,7 @@ class _EditorScreenState extends State<EditorScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
-                        child: const Text('Tap Add text, Emoji or Sticker to begin', style: TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
+                        child: const Text('Tap Text or Layers to add your first layer', style: TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
                       ),
                     ),
                   ),
@@ -3571,7 +3617,14 @@ class _EditorScreenState extends State<EditorScreen> {
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(icon, color: on ? Colors.white : AppColors.ink, size: 20),
                 const SizedBox(height: 4),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 10, fontWeight: FontWeight.w500)),
+                // scale-down instead of clipping: "Transform" must fit six-up on a 360dp phone
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(label, maxLines: 1, style: TextStyle(color: on ? Colors.white : AppColors.ink, fontSize: 10, fontWeight: FontWeight.w500)),
+                  ),
+                ),
               ]),
             ),
           ),
