@@ -36,10 +36,20 @@ const double _kOverscan = 1.012;
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key, this.clip, this.title, this.resume});
+  const EditorScreen({super.key, this.clip, this.title, this.resume, this.authorFile, this.authorInitial});
   final models.Clip? clip;
   final String? title;
   final SavedProject? resume; // reopen a saved in-progress project
+
+  /// AUTHOR MODE — a creator laying out the layers that ship WITH a clip, on a
+  /// local file they just picked (no catalog clip, no credit, no export). The
+  /// screen pops the layer set back as a snapshot map for the upload form to
+  /// attach as the clip's `overlays`; the customer then opens those same layers
+  /// in this same editor and restyles them.
+  final String? authorFile;
+  final Map<String, dynamic>? authorInitial; // re-open a previously designed set
+
+  bool get isAuthoring => authorFile != null;
 
   @override
   State<EditorScreen> createState() => _EditorScreenState();
@@ -148,6 +158,19 @@ class _EditorScreenState extends State<EditorScreen> {
     } catch (_) {
       _defaultFont = '';
     }
+    // AUTHOR MODE: the creator's own local file, laid out for the customers who
+    // will edit these layers later. No credit, no draft store, no export.
+    if (widget.isAuthoring) {
+      try {
+        await _load(widget.authorFile!);
+        if (widget.authorInitial != null) await _applyCreatorOverlays(widget.authorInitial!);
+        _error = null;
+      } catch (_) {
+        _error = 'Could not open this video.';
+      }
+      if (mounted) setState(() {});
+      return;
+    }
     // RESUME a saved in-progress project: reopen its base clip + restore all edits.
     if (widget.resume != null) {
       _projectId = widget.resume!.id;
@@ -242,7 +265,9 @@ class _EditorScreenState extends State<EditorScreen> {
   /// Editor tab and can be resumed. Returns true on success.
   Future<bool> _saveProject() async {
     final p = _project;
-    if (p == null || _finalized) return false;
+    // Author mode designs layers for a clip that doesn't exist yet — there is no
+    // customer draft to store.
+    if (p == null || _finalized || widget.isAuthoring) return false;
     try {
       // one stable file per clip → editing the same clip never duplicates.
       _projectId ??= widget.clip != null ? 'clip_${widget.clip!.id}' : 'proj_${DateTime.now().microsecondsSinceEpoch}';
@@ -326,6 +351,18 @@ class _EditorScreenState extends State<EditorScreen> {
     };
     try {
       p.restore(merged);
+      // Rescale px-based text values from the author's frame to this one: the
+      // author may have designed on a full-res file while the customer edits the
+      // 720p preview, and a raw fontSize would change apparent size between them.
+      final authored = (data['authoredShort'] as num?)?.toDouble() ?? 0;
+      if (authored > 0 && p.authoredShort > 0 && (p.authoredShort - authored).abs() > 1) {
+        final k = p.authoredShort / authored;
+        for (final s in p.subtitles) {
+          s.fontSize *= k;
+          s.strokeWidth *= k;
+          s.letterSpacing *= k;
+        }
+      }
       if (mounted) setState(() { _undo.clear(); _redo.clear(); });
     } catch (_) {/* malformed overlays — leave the canvas blank */}
   }
@@ -400,7 +437,7 @@ class _EditorScreenState extends State<EditorScreen> {
   /// draft store ~1.2s later. No spinner, no button.
   void _scheduleAutosave() {
     _autosaveTimer?.cancel();
-    if (_finalized) return;
+    if (_finalized || widget.isAuthoring) return;
     _autosaveTimer = Timer(const Duration(milliseconds: 1200), () async {
       if (!mounted || _project == null || _busy || _finalized) return;
       final ok = await _saveProject();
@@ -868,6 +905,20 @@ class _EditorScreenState extends State<EditorScreen> {
             Row(children: [
               const Text('Layers', style: TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600)),
               const Spacer(),
+              // Caption timing lives here rather than in the text panel's tabs,
+              // which the client pinned to Font / Styling / Advance.
+              if (!selectMode && _project!.subtitles.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () { Navigator.pop(context); _openCaptionSync(); },
+                  behavior: HitTestBehavior.opaque,
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.compare_arrows_rounded, size: 16, color: _kAccent),
+                    SizedBox(width: 5),
+                    Text('Sync', style: TextStyle(color: _kAccent, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+                const SizedBox(width: 14),
+              ],
               if (ordered.isNotEmpty)
                 GestureDetector(
                   onTap: () => setSheet(() { selectMode = !selectMode; sel.clear(); }),
@@ -1765,6 +1816,161 @@ class _EditorScreenState extends State<EditorScreen> {
     return 'Layer';
   }
 
+  /// AUTHOR MODE done — hand the layer set back to the upload form as the map
+  /// the customer's editor will `restore()` later. Device-local file paths are
+  /// stripped: they mean nothing on the customer's phone (font families are
+  /// bundled with the app, so the look survives; a path would not). Music and
+  /// the author's own trim are dropped too — those are the customer's calls.
+  void _saveAuthorLayers() {
+    final snap = _project!.snapshot();
+    // Text sizes are in VIDEO pixels, so they only mean something against the
+    // frame they were laid out on — record it so the customer's copy can be
+    // rescaled to their own frame instead of coming out too big or too small.
+    snap['authoredShort'] = _project!.authoredShort;
+    for (final key in ['logoPath', 'musicPath', 'trimStart', 'trimEnd']) {
+      snap.remove(key);
+    }
+    for (final list in ['subs', 'stk']) {
+      final items = snap[list];
+      if (items is List) {
+        for (final item in items) {
+          if (item is Map) item.remove('fp'); // SubtitleSegment.fontFilePath
+        }
+      }
+    }
+    // Stickers reference image files on the author's device — they can't travel.
+    snap['stk'] = <dynamic>[];
+    Navigator.of(context).pop(snap);
+  }
+
+  // ---------- caption sync: do the captions line up with the video? ----------
+
+  /// Shifts EVERY text layer by [delta] seconds, keeping their spacing — the
+  /// standard fix when a whole caption track (often the author's) runs early or
+  /// late against the footage. Clamped so the earliest caption can't cross 0 and
+  /// the latest can't run past the clip, so nudging never silently drops one out
+  /// of the export.
+  void _shiftCaptions(double delta) {
+    final subs = _project!.subtitles;
+    if (subs.isEmpty) return;
+    final dur = _project!.outEnd > 0 ? _project!.outEnd : _duration;
+    var lo = double.infinity, hi = -double.infinity;
+    for (final s in subs) {
+      if (s.start < lo) lo = s.start;
+      if (s.end > hi) hi = s.end;
+    }
+    final d = delta.clamp(-lo, (dur - hi).clamp(0.0, double.infinity));
+    if (d.abs() < 0.001) return;
+    _snapshot();
+    setState(() {
+      for (final s in subs) {
+        s.start += d;
+        s.end += d;
+      }
+    });
+  }
+
+  /// Caption sync settings — a global nudge for the whole track plus exact
+  /// start/end entry per caption, with tap-to-seek so the fix can be checked
+  /// against the actual frame instead of guessed from a thumbnail-sized timeline.
+  Future<void> _openCaptionSync() async {
+    if (_project!.subtitles.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No captions on this clip yet')));
+      return;
+    }
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.bg,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheet) {
+          final subs = [..._project!.subtitles]..sort((a, b) => a.start.compareTo(b.start));
+          final dur = _project!.outEnd > 0 ? _project!.outEnd : _duration;
+          Widget nudge(String label, double d) => Expanded(
+                child: GestureDetector(
+                  onTap: () { _shiftCaptions(d); setSheet(() {}); },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: 40,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
+                    child: Text(label, style: const TextStyle(color: AppColors.ink, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              );
+          return SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
+              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Center(child: _Grabber()),
+                const Text('Caption sync', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
+                const SizedBox(height: 4),
+                const Text('Play the clip and watch a caption. If the whole track runs early or late, shift it all at once; fine-tune a single line below.',
+                    style: TextStyle(color: AppColors.inkMuted, fontSize: 12, height: 1.45)),
+                const SizedBox(height: 14),
+                const Text('Shift every caption', style: TextStyle(fontSize: 11.5, color: AppColors.inkMuted, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 7),
+                Row(children: [nudge('−0.5s', -0.5), nudge('−0.1s', -0.1), nudge('+0.1s', 0.1), nudge('+0.5s', 0.5)]),
+                const SizedBox(height: 16),
+                Text('Each caption  ·  ${subs.length}', style: const TextStyle(fontSize: 11.5, color: AppColors.inkMuted, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 7),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(children: [
+                      for (final s in subs)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                          decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.line)),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                            Row(children: [
+                              Expanded(
+                                child: Text(s.text.isEmpty ? 'Text' : s.text,
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: AppColors.ink, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                              ),
+                              GestureDetector(
+                                onTap: () { _seek(s.start); setSheet(() {}); },
+                                behavior: HitTestBehavior.opaque,
+                                child: const Padding(
+                                  padding: EdgeInsets.only(left: 8),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Icon(Icons.my_location_rounded, size: 14, color: _kAccent),
+                                    SizedBox(width: 4),
+                                    Text('Jump', style: TextStyle(color: _kAccent, fontSize: 12, fontWeight: FontWeight.w600)),
+                                  ]),
+                                ),
+                              ),
+                            ]),
+                            const SizedBox(height: 9),
+                            Row(children: [
+                              Expanded(child: _NumFieldLight(
+                                label: 'Start s', value: s.start, min: 0, max: dur, decimals: 1,
+                                onChanged: (v) { _mutate(() => s.start = v.clamp(0.0, (s.end - 0.2).clamp(0.0, dur))); setSheet(() {}); },
+                              )),
+                              const SizedBox(width: 10),
+                              Expanded(child: _NumFieldLight(
+                                label: 'End s', value: s.end, min: 0, max: dur, decimals: 1,
+                                onChanged: (v) { _mutate(() => s.end = v.clamp(s.start + 0.2, dur)); setSheet(() {}); },
+                              )),
+                            ]),
+                          ]),
+                        ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
+              ]),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   String _layerDurLabel(Object it) {
     final dur = _duration;
     if (it == 'logo') return 'Full clip';
@@ -2481,9 +2687,9 @@ class _EditorScreenState extends State<EditorScreen> {
                   if (_error != null && widget.clip != null)
                     SizedBox(width: 220, child: PrimaryButton(label: 'Retry', icon: Icons.refresh, onPressed: _retry)),
                   if (_error != null && widget.clip != null) const SizedBox(height: 10),
-                  // "Choose video" only when there is nothing to load (no catalog clip) or
-                  // loading failed — not while a catalog clip is mid-download.
-                  if (widget.clip == null || _error != null)
+                  // "Choose video" only when there is nothing to load (no catalog clip,
+                  // no author file) or loading failed — not while one is mid-load.
+                  if ((widget.clip == null && !widget.isAuthoring) || _error != null)
                     SizedBox(width: 220, child: PrimaryButton(label: 'Choose video', icon: Icons.video_library, onPressed: _pickClip)),
                 ]),
         ),
@@ -2524,7 +2730,14 @@ class _EditorScreenState extends State<EditorScreen> {
           // Undo/Redo/Select/Delete now live on the transport row (client §4).
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: SizedBox(width: 104, child: PrimaryButton(label: 'Export', icon: Icons.ios_share, loading: _busy, onPressed: _busy ? null : _export)),
+            child: SizedBox(
+              width: widget.isAuthoring ? 124 : 104,
+              child: widget.isAuthoring
+                  // Author mode hands the layer set back to the upload form; there
+                  // is nothing to render here — the customer exports, not the author.
+                  ? PrimaryButton(label: 'Save layers', icon: Icons.layers_rounded, onPressed: _saveAuthorLayers)
+                  : PrimaryButton(label: 'Export', icon: Icons.ios_share, loading: _busy, onPressed: _busy ? null : _export),
+            ),
           ),
         ],
       ),

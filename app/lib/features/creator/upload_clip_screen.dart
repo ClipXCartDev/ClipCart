@@ -27,6 +27,12 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
   bool _busy = false;
   bool _uploading = false;
   String? _baseKey;
+  /// The picked file stays on hand after upload so the author can lay layers out
+  /// on the real footage without re-downloading what they just sent.
+  String? _baseLocalPath;
+  /// The layer set that ships WITH this clip — the customer opens these in the
+  /// same editor and restyles them (colour, font, wording) before exporting.
+  Map<String, dynamic>? _overlays;
 
   Future<void> _pickBase() async {
     final res = await FilePicker.platform.pickFiles(type: FileType.video);
@@ -34,7 +40,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
     setState(() => _uploading = true);
     try {
       final key = await context.read<CreatorService>().uploadBaseClip(res.files.single.path!, res.files.single.name);
-      setState(() => _baseKey = key);
+      setState(() { _baseKey = key; _baseLocalPath = res.files.single.path; });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
@@ -42,6 +48,26 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
       if (mounted) setState(() => _uploading = false);
     }
   }
+
+  /// Opens the editor in AUTHOR mode on the file just picked. What comes back
+  /// is the clip's shipped layer set — captions positioned and styled on the
+  /// real footage, which every customer then edits rather than starting blank.
+  Future<void> _designLayers() async {
+    final path = _baseLocalPath;
+    if (path == null) return;
+    final result = await context.push<Object?>('/editor', extra: {
+      'authorFile': path,
+      'authorInitial': _overlays,
+      'title': _title.text.trim().isEmpty ? 'Design layers' : _title.text.trim(),
+    });
+    if (result is Map<String, dynamic> && mounted) {
+      setState(() => _overlays = result);
+      final n = (result['subs'] as List?)?.length ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$n layer${n == 1 ? '' : 's'} attached to this clip')));
+    }
+  }
+
+  int get _overlayCount => (_overlays?['subs'] as List?)?.length ?? 0;
 
   @override
   void dispose() {
@@ -67,6 +93,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
         'layers': _layers.toList(),
         'access': _access,
         'base_clip_path': _baseKey,
+        'overlays': _overlays,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitted for review')));
@@ -121,6 +148,44 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
                       const SizedBox(height: 8),
                       Text(_baseKey != null ? 'Base clip uploaded' : 'Tap to upload base clip (MP4)', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.mut, fontSize: 12)),
                     ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Layer design — only once there's footage to lay them out on.
+          Opacity(
+            opacity: _baseLocalPath == null ? 0.5 : 1,
+            child: InkWell(
+              onTap: _baseLocalPath == null ? null : _designLayers,
+              borderRadius: BorderRadius.circular(R.card),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _overlayCount > 0 ? AppColors.brandTint : AppColors.surface,
+                  borderRadius: BorderRadius.circular(R.card),
+                  border: Border.all(color: _overlayCount > 0 ? AppColors.brand : AppColors.line),
+                ),
+                child: Row(children: [
+                  Icon(_overlayCount > 0 ? Icons.layers_rounded : Icons.layers_outlined,
+                      color: _overlayCount > 0 ? AppColors.brand : AppColors.mut, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(_overlayCount > 0 ? '$_overlayCount layer${_overlayCount == 1 ? '' : 's'} attached' : 'Design the layers (optional)',
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.ink)),
+                      const SizedBox(height: 2),
+                      Text(
+                        _baseLocalPath == null
+                            ? 'Upload the base clip first'
+                            : 'Captions the customer opens already styled, then edits',
+                        style: const TextStyle(color: AppColors.mut, fontSize: 11.5),
+                      ),
+                    ]),
+                  ),
+                  if (_baseLocalPath != null)
+                    Text(_overlayCount > 0 ? 'Edit' : 'Open',
+                        style: const TextStyle(color: AppColors.brand, fontWeight: FontWeight.w600, fontSize: 13)),
+                ]),
+              ),
             ),
           ),
           const SizedBox(height: 14),

@@ -100,10 +100,21 @@ class _ClipCartAppState extends State<ClipCartApp> {
         GoRoute(
           path: '/editor',
           pageBuilder: (c, s) {
-            // extra may be a Clip (new edit) or a SavedProject (resume).
+            // extra may be a Clip (new edit), a SavedProject (resume), or an
+            // author-mode payload (a creator laying out a clip's shipped layers).
             final extra = s.extra;
             if (extra is SavedProject) {
               return _fadeScalePage(s, EditorScreen(resume: extra, title: extra.name));
+            }
+            if (extra is Map && extra['authorFile'] is String) {
+              return _fadeScalePage(
+                s,
+                EditorScreen(
+                  authorFile: extra['authorFile'] as String,
+                  authorInitial: extra['authorInitial'] as Map<String, dynamic>?,
+                  title: (extra['title'] as String?) ?? 'Design layers',
+                ),
+              );
             }
             final clip = extra is Clip ? extra : null;
             return _fadeScalePage(s, EditorScreen(clip: clip, title: clip?.title));
