@@ -18,3 +18,9 @@ backend/storage/
 
 # Node (tooling)
 node_modules/
+
+# Local-only, never publish — this repo is public.
+# backup/RECOVERY.md carries a real R2 access key id.
+backup/
+.mcp.json
+*.bak
