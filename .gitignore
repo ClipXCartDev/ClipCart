@@ -24,3 +24,18 @@ node_modules/
 backup/
 .mcp.json
 *.bak
+
+# Flutter targets this product never ships. ClipCart is a phone app (the
+# editor renders through ffmpeg_kit on-device) and the website is the separate
+# vanilla-JS SPA in /web — these are untouched `flutter create` leftovers.
+app/linux/
+app/macos/
+app/windows/
+app/web/
+
+# Generated build output and scratch notes
+app/android/.kotlin/
+app/font_detail.txt
+app/qa3.txt
+app/trim_lens.txt
+design-preview/shots/
