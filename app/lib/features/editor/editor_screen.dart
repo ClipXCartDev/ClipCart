@@ -553,7 +553,7 @@ class _EditorScreenState extends State<EditorScreen> {
   /// and Brand Kit's "Apply brand" (supplies the saved handle/colour/font and
   /// updates it silently instead of stacking a second mark).
   SubtitleSegment _logoTextLayer({String? text, int? color, String? fontFamily, String? fontFilePath}) {
-    final existing = _project!.subtitles.where((s) => s.dx == 0.20 && s.dy == 0.07).toList();
+    final existing = _project!.subtitles.where((s) => s.kind == 'logo').toList();
     if (existing.isNotEmpty) {
       final s = existing.first;
       if (text != null) s.text = text;
@@ -565,6 +565,7 @@ class _EditorScreenState extends State<EditorScreen> {
       text: text ?? '@yourpage', start: 0, end: _duration <= 0 ? 3 : _duration,
       fontSize: 30, dx: 0.20, dy: 0.07, bold: true, shadow: true,
       color: color ?? 0xFFFFFFFF, fontFamily: fontFamily, fontFilePath: fontFilePath, z: _topZ(),
+      kind: 'logo',
     );
     _project!.subtitles.add(seg);
     return seg;
@@ -583,6 +584,7 @@ class _EditorScreenState extends State<EditorScreen> {
       text: '@yourhandle', start: 0, end: _duration <= 0 ? 3 : _duration,
       fontSize: 34, dx: 0.5, dy: 0.93, bold: true,
       bgEnabled: true, bgColor: 0x99000000, color: 0xFFFFFFFF, z: _topZ(),
+      kind: 'handle',
     );
     setState(() { _project!.subtitles.add(seg); _selected = seg; });
     _startTyping(seg);
@@ -597,7 +599,7 @@ class _EditorScreenState extends State<EditorScreen> {
       text: 'Follow for more', start: s0, end: dz <= 0 ? 3 : dz,
       fontSize: 40, dx: 0.5, dy: 0.5, bold: true,
       bgEnabled: true, bgColor: 0xFF0E9E6E, color: 0xFFFFFFFF,
-      anim: OverlayAnim.popIn, z: _topZ(),
+      anim: OverlayAnim.popIn, z: _topZ(), kind: 'cta',
     );
     setState(() { _project!.subtitles.add(seg); _selected = seg; });
     _startTyping(seg);
@@ -612,7 +614,7 @@ class _EditorScreenState extends State<EditorScreen> {
       text: 'Thanks for watching', start: s0, end: dz,
       fontSize: 52, dx: 0.5, dy: 0.5, bold: true,
       bgEnabled: true, bgColor: 0xE60B0A0C, color: 0xFFFFFFFF,
-      anim: OverlayAnim.fade, fadeIn: 0.3, z: _topZ(),
+      anim: OverlayAnim.fade, fadeIn: 0.3, z: _topZ(), kind: 'outro',
     );
     setState(() { _project!.subtitles.add(card); _selected = card; });
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Outro card added to the last 2.5s — tap to edit')));
@@ -845,37 +847,21 @@ class _EditorScreenState extends State<EditorScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => StatefulBuilder(builder: (ctx, setSheet) {
-        bool isEmoji(Object it) => it is StickerOverlay && it.emoji != null;
+        List<Object> membersOf(String kind) => _layersOfKind(kind);
 
-        // Kinds carry the names the Add row uses, so a layer lands in the group
-        // named after the button that created it.
-        List<Object> membersOf(String kind) {
-          List<Object> out;
-          switch (kind) {
-            case 'text':
-              out = _project!.subtitles.cast<Object>().toList();
-              break;
-            case 'emoji':
-              out = _project!.stickers.where(isEmoji).cast<Object>().toList();
-              break;
-            case 'sticker':
-              out = _project!.stickers.where((s) => !isEmoji(s)).cast<Object>().toList();
-              break;
-            case 'logo':
-              out = _project!.logoPath != null ? <Object>['logo'] : <Object>[];
-              break;
-            default:
-              out = <Object>[];
-          }
-          out.sort((a, b) => _layerZ(b).compareTo(_layerZ(a))); // top layer first
-          return out;
-        }
-
+        // Whatever the Add row can create, its layers get their own group.
+        VoidCallback addFor(String id) => switch (id) {
+              'text' => _addSubtitle,
+              'logo' => _addLogoText,
+              'handle' => _addUsername,
+              'cta' => _addCta,
+              'outro' => _addEndingScreen,
+              'emoji' => _openEmojiPicker,
+              'sticker' => _pickSticker,
+              _ => () {},
+            };
         final kinds = <(String, String, IconData, VoidCallback)>[
-          ('text', 'Text', Icons.title_rounded, _addSubtitle),
-          ('emoji', 'Emoji', Icons.emoji_emotions_outlined, _openEmojiPicker),
-          ('sticker', 'Stickers', Icons.auto_awesome_motion, _pickSticker),
-          ('logo', 'Logo', Icons.verified_outlined, _addLogoText),
+          for (final k in kLayerKinds) (k.$1, k.$2, k.$3, addFor(k.$1)),
         ];
         final present = [for (final k in kinds) if (membersOf(k.$1).isNotEmpty) k];
         final shown = openKind == null ? const <Object>[] : membersOf(openKind!);
@@ -1839,19 +1825,67 @@ class _EditorScreenState extends State<EditorScreen> {
     });
   }
 
+  /// Every kind a layer can belong to, in add-menu order. The layers sheet and
+  /// the timeline both read this, so they cannot end up grouping differently.
+  static const List<(String, String, IconData)> kLayerKinds = [
+    ('text', 'Text', Icons.title_rounded),
+    ('logo', 'Logo', Icons.verified_outlined),
+    ('handle', 'Handle', Icons.alternate_email_rounded),
+    ('cta', 'CTA', Icons.campaign_rounded),
+    ('outro', 'Outro', Icons.movie_filter_rounded),
+    ('emoji', 'Emoji', Icons.emoji_emotions_outlined),
+    ('sticker', 'Stickers', Icons.auto_awesome_motion),
+    ('image', 'Logo image', Icons.image_rounded),
+  ];
+
+  /// Which kind a layer belongs to. Stickers split on whether they carry an
+  /// emoji; the 'logo' sentinel is the imported image, not the text logo.
+  String _layerKind(Object it) {
+    if (it is SubtitleSegment) return it.kind;
+    if (it is StickerOverlay) return it.emoji != null ? 'emoji' : 'sticker';
+    return 'image';
+  }
+
+  (String, String, IconData) _kindMeta(String id) =>
+      kLayerKinds.firstWhere((k) => k.$1 == id, orElse: () => (id, 'Layer', Icons.layers_rounded));
+
+  /// The layers of one kind, topmost first.
+  List<Object> _layersOfKind(String id) {
+    final out = <Object>[
+      for (final s in _project!.subtitles) if (_layerKind(s) == id) s,
+      for (final s in _project!.stickers) if (_layerKind(s) == id) s,
+      if (id == 'image' && _project!.logoPath != null) 'logo',
+    ]..sort((a, b) => _layerZ(b).compareTo(_layerZ(a)));
+    return out;
+  }
+
   // ---------- unified layer helpers (multi-track timeline + pro layers panel) ----------
   // A "layer" is a SubtitleSegment | StickerOverlay | the 'logo' sentinel string.
   double _layerZ(Object it) => it is SubtitleSegment ? it.z : it is StickerOverlay ? it.z : _project!.logoZ;
   bool _layerLocked(Object it) => it is SubtitleSegment ? it.locked : it is StickerOverlay ? it.locked : _project!.logoLocked;
   bool _layerHidden(Object it) => it is SubtitleSegment ? it.hidden : it is StickerOverlay ? it.hidden : _project!.logoHidden;
-  Color _layerColor(Object it) => it is SubtitleSegment ? AppColors.brand : it is StickerOverlay ? const Color(0xFF7B61FF) : const Color(0xFF17A2A2);
+  /// One colour per kind so a timeline block reads as what it is even when the
+  /// label is clipped to a few characters.
+  Color _layerColor(Object it) => switch (_layerKind(it)) {
+        'logo' => const Color(0xFF17A2A2),
+        'handle' => const Color(0xFF2E8BD6),
+        'cta' => const Color(0xFF0E9E6E),
+        'outro' => const Color(0xFFB2642E),
+        'emoji' || 'sticker' => const Color(0xFF7B61FF),
+        'image' => const Color(0xFF17A2A2),
+        _ => AppColors.brand,
+      };
+
   IconData? _layerIcon(Object it) =>
-      it == 'logo' ? Icons.image_rounded : it is StickerOverlay ? (it.emoji != null ? null : Icons.auto_awesome_motion_rounded) : Icons.title_rounded;
+      it is StickerOverlay && it.emoji != null ? null : _kindMeta(_layerKind(it)).$3;
 
   String _layerName(Object it) {
-    if (it == 'logo') return 'Logo';
+    if (it == 'logo') return 'Logo image';
     if (it is StickerOverlay) return it.emoji != null ? '${it.emoji} Emoji' : 'Sticker';
-    if (it is SubtitleSegment) return it.text.trim().isEmpty ? 'Text' : it.text.trim();
+    if (it is SubtitleSegment) {
+      // an untyped layer still says what it is rather than a bare "Text"
+      return it.text.trim().isEmpty ? _kindMeta(it.kind).$2 : it.text.trim();
+    }
     return 'Layer';
   }
 
@@ -3341,11 +3375,9 @@ class _EditorScreenState extends State<EditorScreen> {
     // each, and a header row to close it again. Collapsing by default keeps the
     // timeline the same height whether a clip carries two captions or twenty.
     final kinds = <(String, String, List<Object>)>[
-      ('text', 'Text', p.subtitles.cast<Object>().toList()),
-      ('emoji', 'Emoji', p.stickers.where((s) => s.emoji != null).cast<Object>().toList()),
-      ('sticker', 'Stickers', p.stickers.where((s) => s.emoji == null).cast<Object>().toList()),
-      ('logo', 'Logo', p.logoPath != null ? <Object>['logo'] : <Object>[]),
-    ].where((k) => k.$3.isNotEmpty).toList();
+      for (final k in kLayerKinds)
+        if (_layersOfKind(k.$1).isNotEmpty) (k.$1, k.$2, _layersOfKind(k.$1)),
+    ];
     const trackH = 26.0;
     const rowH = 22.0;
     const headH = 15.0;

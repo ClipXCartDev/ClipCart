@@ -81,7 +81,13 @@ class SubtitleSegment {
     this.shadowAngle = 45.0,
     this.opacity = 1.0,
     this.locked = false,
+    this.kind = 'text',
   });
+
+  /// Which add-menu button produced this layer: text, logo, handle, cta or
+  /// outro. They are all the same object, so without the tag they all read as
+  /// plain text and collapse into one group in the timeline and layers sheet.
+  String kind;
 
   String text;
   double start; // seconds
@@ -142,8 +148,28 @@ class SubtitleSegment {
         letterSpacing: letterSpacing, lineHeight: lineHeight, bold: bold, italic: italic, shadow: shadow,
         shadowColor: shadowColor, shadowOpacity: shadowOpacity, shadowBlur: shadowBlur,
         shadowDistance: shadowDistance, shadowAngle: shadowAngle,
-        opacity: opacity, locked: locked,
+        opacity: opacity, locked: locked, kind: kind,
       );
+
+  /// Work out what a layer saved before kinds existed actually is.
+  ///
+  /// Projects written by earlier builds carry no tag, and defaulting them all
+  /// to plain text would show every logo, handle, CTA and outro ever made as a
+  /// Text layer. The presets each left a recognisable fingerprint — the logo its
+  /// corner position, the others their distinctive background — so the tag can
+  /// be recovered once, on load, instead of being lost.
+  static String _inferKind(Map<String, dynamic> j) {
+    double num_(String k, [double d = -1]) => (j[k] as num?)?.toDouble() ?? d;
+    bool near(double a, double b) => (a - b).abs() < 0.02;
+    final dx = num_('dx'), dy = num_('dy');
+    final bgc = (j['bgc'] as int?) ?? 0;
+    final text = (j['t'] as String?) ?? '';
+    if (near(dx, 0.20) && near(dy, 0.07)) return 'logo';
+    if (bgc == 0xFF0E9E6E) return 'cta';
+    if (bgc == 0xE60B0A0C) return 'outro';
+    if (text.startsWith('@') && near(dy, 0.93)) return 'handle';
+    return 'text';
+  }
 
   Map<String, dynamic> toJson() => {
         't': text, 's': start, 'e': end, 'ff': fontFamily, 'fp': fontFilePath,
@@ -152,7 +178,7 @@ class SubtitleSegment {
         'fi': fadeIn, 'fo': fadeOut, 'an': anim.index,
         'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow,
         'shc': shadowColor, 'sho': shadowOpacity, 'shb': shadowBlur, 'shd': shadowDistance, 'sha': shadowAngle,
-        'op': opacity, 'lk': locked,
+        'op': opacity, 'lk': locked, 'k': kind,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -173,6 +199,7 @@ class SubtitleSegment {
         shadowBlur: (j['shb'] as num?)?.toDouble() ?? 0.5,
         shadowDistance: (j['shd'] as num?)?.toDouble() ?? 0.0,
         shadowAngle: (j['sha'] as num?)?.toDouble() ?? 45.0,
+        kind: (j['k'] as String?) ?? _inferKind(j),
         opacity: (j['op'] as num?)?.toDouble() ?? 1.0,
         locked: (j['lk'] as bool?) ?? false,
       );
