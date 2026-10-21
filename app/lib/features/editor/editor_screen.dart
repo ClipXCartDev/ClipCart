@@ -3322,17 +3322,28 @@ class _EditorScreenState extends State<EditorScreen> {
     final dur = _duration;
     final p = _project!;
     final hasLayers = p.subtitles.isNotEmpty || p.stickers.isNotEmpty || p.logoPath != null;
-    // Multi-track (CapCut-style): base video filmstrip on top, then ONE ROW PER
-    // overlay layer (each text / sticker / logo its own track, top layer first).
-    final layers = <Object>[
-      for (final s in p.subtitles) s,
-      for (final s in p.stickers) s,
-      if (p.logoPath != null) 'logo',
-    ]..sort((a, b) => _layerZ(b).compareTo(_layerZ(a)));
+    // Base video filmstrip on top, then ONE LANE PER KIND rather than one row
+    // per layer (client: merge them into groups). Inside a lane the blocks stay
+    // where their time puts them, so every layer keeps its own start and end —
+    // a lane only splits into a second line when two of its blocks actually
+    // overlap and would otherwise be drawn on top of each other.
+    final lanes = <(Color, List<Object>)>[];
+    for (final group in <List<Object>>[
+      p.subtitles.cast<Object>().toList(),
+      p.stickers.where((s) => s.emoji != null).cast<Object>().toList(),
+      p.stickers.where((s) => s.emoji == null).cast<Object>().toList(),
+      if (p.logoPath != null) <Object>['logo'],
+    ]) {
+      if (group.isEmpty) continue;
+      final tint = _layerColor(group.first);
+      for (final line in _packByTime(group, dur)) {
+        lanes.add((tint, line));
+      }
+    }
     const trackH = 26.0;
     const rowH = 22.0;
     const gap = 5.0;
-    final contentH = trackH + gap + layers.length * (rowH + gap);
+    final contentH = trackH + gap + lanes.length * (rowH + gap);
     final viewH = (contentH + 16).clamp(58.0, 196.0); // +16 = container 8+8 vertical pad
     return Container(
       color: AppColors.surfaceHover,
@@ -3383,9 +3394,9 @@ class _EditorScreenState extends State<EditorScreen> {
                     ),
                   ),
                 ),
-              // ---- one track ROW per layer (top layer first) ----
-              for (int i = 0; i < layers.length; i++)
-                _trackRow(layers[i], trackH + gap + i * (rowH + gap), rowH, w, dur, x, sec),
+              // ---- one lane per kind (split only where blocks overlap) ----
+              for (int i = 0; i < lanes.length; i++)
+                _laneRow(lanes[i].$2, lanes[i].$1, trackH + gap + i * (rowH + gap), rowH, w, dur, x, sec),
               // playhead spanning the whole stack
               Positioned(left: ph.clamp(0, w) - 1, top: -2, height: contentH + 4, child: IgnorePointer(child: Container(width: 2, color: AppColors.ink))),
               Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle)))),
@@ -3415,40 +3426,79 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  /// One timeline track ROW for a single overlay layer (text/sticker/logo). The
-  /// layer's block is positioned by time; drag = move, edge grips = duration.
-  /// A locked layer (or the logo, which has no time window) ignores drag/resize.
-  Widget _trackRow(Object it, double top, double rowH, double w, double dur, double Function(double) x, double Function(double) sec) {
-    final isLogo = it == 'logo';
-    final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
-    final locked = _layerLocked(it);
-    double st, en;
-    if (isLogo) { st = 0; en = dur; }
-    else if (it is SubtitleSegment) { st = it.start; en = it.end; }
-    else { final s = it as StickerOverlay; st = s.start; en = s.end >= 9998 ? dur : s.end; }
-    final left = x(st).clamp(0.0, w);
-    final width = (x(en) - x(st)).clamp(28.0, w);
-    final canTime = !isLogo && !locked; // logo has no time window; locked = no move
+  /// Where a layer sits on the timeline. The logo has no window of its own, so
+  /// it reads as the whole clip; a sticker's open-ended 9999 end does too.
+  (double, double) _layerSpan(Object it, double dur) {
+    if (it == 'logo') return (0, dur);
+    if (it is SubtitleSegment) return (it.start, it.end >= 9998 ? dur : it.end);
+    final s = it as StickerOverlay;
+    return (s.start, s.end >= 9998 ? dur : s.end);
+  }
+
+  /// Pack one kind's layers onto as few lines as their times allow, so merging
+  /// a kind into a single lane never hides a block behind another. Greedy by
+  /// start time: a block joins the first line whose last block has already
+  /// ended, otherwise it opens a new one.
+  List<List<Object>> _packByTime(List<Object> items, double dur) {
+    final sorted = [...items]..sort((a, b) => _layerSpan(a, dur).$1.compareTo(_layerSpan(b, dur).$1));
+    final lines = <List<Object>>[];
+    final ends = <double>[];
+    for (final it in sorted) {
+      final (st, en) = _layerSpan(it, dur);
+      var placed = false;
+      for (var i = 0; i < lines.length; i++) {
+        if (st >= ends[i] - 0.001) {
+          lines[i].add(it);
+          ends[i] = en;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        lines.add([it]);
+        ends.add(en);
+      }
+    }
+    return lines;
+  }
+
+  /// One timeline lane holding every layer of a kind that fits on this line.
+  /// Each block is positioned by its own time; drag = move, edge grips =
+  /// duration. A locked layer (or the logo, which has no window) ignores both.
+  /// [tint] colours the empty lane so a kind is still identifiable where it has
+  /// no block under the playhead.
+  Widget _laneRow(List<Object> items, Color tint, double top, double rowH, double w, double dur, double Function(double) x, double Function(double) sec) {
     return Positioned(
       left: 0, right: 0, top: top, height: rowH,
       child: Stack(clipBehavior: Clip.none, children: [
-        // faint lane background so the track reads even where the block isn't
+        // faint lane background so the track reads even where no block is
         Positioned.fill(child: IgnorePointer(child: DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.bgAlt.withOpacity(0.45), borderRadius: BorderRadius.circular(6))))),
-        Positioned(
-          left: left, width: width, top: 0, bottom: 0,
-          child: _timelineBlock(
-            label: _layerName(it),
-            icon: _layerIcon(it),
-            selected: selected,
-            color: _layerColor(it),
-            locked: locked,
-            onTap: () => setState(() => _selected = isLogo ? 'logo' : it),
-            onDrag: canTime ? (d) => setState(() => _dragLayerTime(it, sec(d), dur)) : (_) {},
-            onResizeLeft: canTime ? (d) => setState(() => _resizeLayerStart(it, sec(d), dur)) : null,
-            onResizeRight: canTime ? (d) => setState(() => _resizeLayerEnd(it, sec(d), dur)) : null,
-          ),
-        ),
+          decoration: BoxDecoration(color: tint.withOpacity(0.10), borderRadius: BorderRadius.circular(6))))),
+        for (final it in items) ...[
+          () {
+            final isLogo = it == 'logo';
+            final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
+            final locked = _layerLocked(it);
+            final (st, en) = _layerSpan(it, dur);
+            final left = x(st).clamp(0.0, w);
+            final width = (x(en) - x(st)).clamp(28.0, w - left);
+            final canTime = !isLogo && !locked;
+            return Positioned(
+              left: left, width: width, top: 0, bottom: 0,
+              child: _timelineBlock(
+                label: _layerName(it),
+                icon: _layerIcon(it),
+                selected: selected,
+                color: _layerColor(it),
+                locked: locked,
+                onTap: () => setState(() => _selected = isLogo ? 'logo' : it),
+                onDrag: canTime ? (d) => setState(() => _dragLayerTime(it, sec(d), dur)) : (_) {},
+                onResizeLeft: canTime ? (d) => setState(() => _resizeLayerStart(it, sec(d), dur)) : null,
+                onResizeRight: canTime ? (d) => setState(() => _resizeLayerEnd(it, sec(d), dur)) : null,
+              ),
+            );
+          }(),
+        ],
       ]),
     );
   }
