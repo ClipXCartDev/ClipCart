@@ -367,10 +367,6 @@ class EditorProject {
     this.authoredShort = 0.0,
     this.aspect = AspectOption.original,
     this.originalVolume = 1.0,
-    this.musicPath,
-    this.musicVolume = 0.7,
-    this.musicStart = 0.0,
-    this.musicFadeOut = true,
     this.watermarkOn = true,
     this.videoScale = 1.0,
     this.videoDx = 0.0,
@@ -395,11 +391,6 @@ class EditorProject {
   bool logoHidden; // layer visibility
   bool logoLocked; // when true the logo can't be moved/scaled/deleted
   double originalVolume; // 0..1 volume of the clip's own audio
-  // §4.0 feedback 6 — music imported from the device, mixed under the clip audio.
-  String? musicPath; // added music track (null = none)
-  double musicVolume; // 0..1 music level
-  double musicStart; // seconds into the track to start from
-  bool musicFadeOut; // fade the music out at the end
   double trimStart; // seconds
   double? trimEnd; // seconds (null = clip end)
   double duration; // full clip duration seconds
@@ -436,7 +427,6 @@ class EditorProject {
         'logoScale': logoScale, 'logoRotation': logoRotation, 'logoZ': logoZ, 'logoHidden': logoHidden, 'logoLocked': logoLocked,
         'trimStart': trimStart, 'trimEnd': trimEnd, 'aspect': _aspectIndex(aspect),
         'originalVolume': originalVolume,
-        'musicPath': musicPath, 'musicVolume': musicVolume, 'musicStart': musicStart, 'musicFadeOut': musicFadeOut,
         'watermarkOn': watermarkOn,
         'videoScale': videoScale, 'videoDx': videoDx, 'videoDy': videoDy,
         'videoFitContain': videoFitContain, 'videoBgColor': videoBgColor,
@@ -445,10 +435,6 @@ class EditorProject {
 
   void restore(Map<String, dynamic> s) {
     originalVolume = (s['originalVolume'] as num?)?.toDouble() ?? 1.0;
-    musicPath = s['musicPath'] as String?;
-    musicVolume = (s['musicVolume'] as num?)?.toDouble() ?? 0.7;
-    musicStart = (s['musicStart'] as num?)?.toDouble() ?? 0.0;
-    musicFadeOut = (s['musicFadeOut'] as bool?) ?? true;
     videoScale = (s['videoScale'] as num?)?.toDouble() ?? 1.0;
     videoDx = (s['videoDx'] as num?)?.toDouble() ?? 0.0;
     videoDy = (s['videoDy'] as num?)?.toDouble() ?? 0.0;

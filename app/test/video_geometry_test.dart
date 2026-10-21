@@ -1,0 +1,143 @@
+// Guards the one rule the editor cannot be allowed to break: the preview and
+// the export have to place the video identically. They are different renderers,
+// so the only thing that can be tested here is that they are fed the same
+// numbers — which is exactly what used to drift when the rules were written out
+// twice.
+
+import 'package:clipcart/models/video_geometry.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// Pull a numeric argument out of a built filter chain so the test reads what
+/// FFmpeg would actually be told, not what we hoped we wrote.
+double? _argAfter(String chain, String marker) {
+  final i = chain.indexOf(marker);
+  if (i < 0) return null;
+  final m = RegExp(r'-?\d+\.?\d*').firstMatch(chain.substring(i + marker.length));
+  return m == null ? null : double.parse(m.group(0)!);
+}
+
+VideoGeometry _geo({
+  double? ar,
+  double scale = 1.0,
+  double dx = 0,
+  double dy = 0,
+  bool contain = false,
+}) =>
+    VideoGeometry.resolve(
+      aspectRatio: ar,
+      scale: scale,
+      dx: dx,
+      dy: dy,
+      fitContain: contain,
+      bgColor: 0xFF000000,
+    );
+
+void main() {
+  group('mode selection', () {
+    test('an untouched source clip does nothing at all', () {
+      final g = _geo();
+      expect(g.mode, VideoFitMode.passthrough);
+      expect(g.filterChain(), 'null');
+    });
+
+    test('a cropped frame fills by default and letterboxes on request', () {
+      expect(_geo(ar: 9 / 16, scale: 1.5).mode, VideoFitMode.fillZoom);
+      expect(_geo(ar: 9 / 16, scale: 0.6).mode, VideoFitMode.fillShrink);
+      expect(_geo(ar: 9 / 16, scale: 1.5, contain: true).mode, VideoFitMode.contain);
+    });
+
+    test('a pan alone is enough to stop being a passthrough', () {
+      expect(_geo(dx: 0.1).mode, VideoFitMode.originalZoom);
+      expect(_geo(scale: 0.8).mode, VideoFitMode.originalShrink);
+    });
+  });
+
+  group('clamping is shared', () {
+    test('zoom is held inside the pinch limits', () {
+      expect(_geo(scale: 99).scale, kMaxVideoScale);
+      expect(_geo(scale: 0.01).scale, kMinVideoScale);
+    });
+
+    test('pan cannot exceed the travel the zoom actually allows', () {
+      // At 2x, half the frame is cropped away, so the picture can travel a
+      // quarter of the frame before an edge pulls in.
+      final g = _geo(ar: 9 / 16, scale: 2.0, dx: 0.9, dy: -0.9);
+      expect(g.panX, closeTo(0.25, 1e-9));
+      expect(g.panY, closeTo(-0.25, 1e-9));
+    });
+
+    test('an unzoomed frame has nowhere to pan', () {
+      expect(VideoGeometry.panLimitFor(1.0), 0.0);
+      expect(_geo(ar: 9 / 16, scale: 1.0, dx: 0.4).panX, 0.0);
+    });
+
+    test('a shrunk frame pans across its empty gap', () {
+      expect(VideoGeometry.panLimitFor(0.5), closeTo(0.25, 1e-9));
+    });
+  });
+
+  group('preview and filtergraph agree', () {
+    test('both sides scale by the same number, overscan included', () {
+      final g = _geo(ar: 9 / 16, scale: 2.0);
+      expect(g.effectiveScale, closeTo(2.0 * kVideoOverscan, 1e-9));
+      // the filtergraph's scale step must carry that same factor
+      expect(_argAfter(g.filterChain(), 'scale=iw*'),
+          closeTo(g.effectiveScale, 1e-4));
+    });
+
+    test('overscan applies only where there is a crop seam to hide', () {
+      // letterboxing leaves no seam, and neither does the source's own aspect
+      expect(_geo(ar: 9 / 16, scale: 2.0, contain: true).effectiveScale, 2.0);
+      expect(_geo(scale: 2.0).effectiveScale, 2.0);
+      // shrinking never overscans either
+      expect(_geo(ar: 9 / 16, scale: 0.5).effectiveScale, 0.5);
+    });
+
+    test('the pan the preview translates by is the pan the chain shifts by', () {
+      const frame = 1080.0;
+      final g = _geo(ar: 9 / 16, scale: 2.0, dx: 0.1);
+      expect(g.panPixelsX(frame), closeTo(0.1 * frame, 1e-9));
+      // the second crop's x origin is offset by that same fraction
+      expect(_argAfter(g.filterChain(), "-ow*"), closeTo(g.panX, 1e-4));
+    });
+
+    test('a clamped pan reaches the filtergraph already clamped', () {
+      // the preview and the export must agree even when the user over-drags
+      final g = _geo(ar: 9 / 16, scale: 2.0, dx: 5.0);
+      expect(g.panX, closeTo(0.25, 1e-9));
+      expect(_argAfter(g.filterChain(), "-ow*"), closeTo(0.25, 1e-4));
+    });
+  });
+
+  group('filter chain shape', () {
+    test('every mode sets the sample aspect so players do not stretch it', () {
+      for (final g in [
+        _geo(ar: 9 / 16, scale: 1.5),
+        _geo(ar: 9 / 16, scale: 0.6),
+        _geo(ar: 9 / 16, scale: 1.0, contain: true),
+        _geo(scale: 0.6),
+        _geo(scale: 1.5),
+      ]) {
+        expect(g.filterChain(), contains('setsar=1'), reason: '${g.mode}');
+      }
+    });
+
+    test('commas inside filter arguments stay escaped', () {
+      // an unescaped comma here would split the filtergraph and fail the render
+      final chain = _geo(ar: 9 / 16, scale: 1.5).filterChain();
+      expect(chain, contains('min(iw\\,'));
+    });
+
+    test('the background colour reaches the pad fill', () {
+      final g = VideoGeometry.resolve(
+        aspectRatio: 9 / 16,
+        scale: 0.5,
+        dx: 0,
+        dy: 0,
+        fitContain: false,
+        bgColor: 0xFFFFFFFF,
+      );
+      expect(g.filterChain(), contains('color=0xffffff'));
+    });
+  });
+}

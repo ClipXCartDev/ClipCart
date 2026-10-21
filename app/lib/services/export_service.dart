@@ -9,6 +9,7 @@ import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../models/editor_state.dart';
+import '../models/video_geometry.dart';
 import 'text_render.dart';
 
 class ExportResult {
@@ -21,10 +22,6 @@ class ExportResult {
 /// transparent PNG that is scaled, rotated and time-gated — perfectly WYSIWYG
 /// with the editor canvas. Optional trim + aspect-ratio crop.
 class ExportService {
-  /// Cover-crop overscan factor — matches the editor preview so the exported
-  /// frame is WYSIWYG and no 1px seam shows on the aspect-crop edge.
-  static const double _overscan = 1.012;
-
   /// [onProgress] receives 0.0..1.0 during the render (from real FFmpeg frame
   /// statistics — honest progress, no fake bar). It may not reach exactly 1.0.
   /// Short edge of the source's video stream, or null if it can't be probed.
@@ -86,67 +83,18 @@ class ExportService {
     final hasLogo = p.logoPath != null && !p.logoHidden && File(p.logoPath!).existsSync();
     final stickers = p.stickers.where((s) => !s.hidden && inWindow(s.start, s.end) && File(s.path).existsSync()).toList();
 
-    // Aspect crop (center) + optional video PAN/ZOOM inside the frame. The editor
-    // crops the preview LIVE (canvas = crop ratio, video cover-cropped) AND lets the
-    // user zoom/pan the video inside that frame, so overlay dx/dy are stored relative
-    // to the CROPPED frame — identical to FFmpeg's main_w/main_h. True WYSIWYG.
-    //
-    // Pipeline for a crop with pan/zoom: crop to aspect → scale up by videoScale →
-    // crop back to the aspect box at the panned offset. Center pan (0,0) = cover.
-    final cropChain = StringBuffer();
-    final ar = p.aspect.ratio;
-    // videoScale now goes BELOW 1.0 (client: "scale down the video") — a value
-    // under 1 shrinks the video inside the frame and pads the gap with the bg
-    // colour; a value of 1+ zooms/crops. Range clamped 0.25..4.0.
-    final vz = p.videoScale.clamp(0.25, 4.0);
-    final panX = p.videoDx.clamp(-0.5, 0.5);
-    final panY = p.videoDy.clamp(-0.5, 0.5);
-    final bg = _ffColor(p.videoBgColor);
-    // A hair of overscan on a cover-crop kills the 1px black seam that showed on
-    // the frame edge after an aspect change (client bug 1). Only applied when
-    // NOT scaling down (vz>=1) and only under an aspect crop — never on Original.
-    final effVz = vz >= 1.0 ? vz * _overscan : vz;
-    if (ar != null && p.videoFitContain) {
-      // FIT mode: letterbox the whole video onto a bg fill of the target aspect.
-      // Build a box sized to the aspect (based on the input's larger dimension),
-      // scale the video to fit inside it (× videoScale), pad to the box centre.
-      // target box: width = max(iw, ih*ar), height = width/ar → contains the source
-      cropChain.write("scale=w='iw*${_f(vz)}':h='ih*${_f(vz)}',");
-      // Pan is a fraction of the FULL output box (matches the preview's dx*w
-      // translate), not of the empty slack — otherwise export under-pans (WYSIWYG).
-      cropChain.write("pad=w='max(iw\\,ih*${_f(ar)})':h='max(iw\\,ih*${_f(ar)})/${_f(ar)}'"
-          ":x='(ow-iw)/2+ow*${_f(panX)}':y='(oh-ih)/2+oh*${_f(panY)}':color=$bg,setsar=1");
-    } else if (ar != null) {
-      // FILL mode: cover-crop to the target aspect, then apply the user's zoom/pan.
-      cropChain.write("crop='min(iw\\,ih*${_f(ar)})':'min(ih\\,iw/${_f(ar)})'");
-      if (vz < 1.0) {
-        // SCALE DOWN: shrink the cropped frame and pad back to the box with bg.
-        // Pan = ow*panX (fraction of the frame) to match the preview's dx*w shift.
-        cropChain.write(",scale=iw*${_f(vz)}:ih*${_f(vz)}");
-        cropChain.write(",pad=w=iw/${_f(vz)}:h=ih/${_f(vz)}"
-            ":x='(ow-iw)/2+ow*${_f(panX)}':y='(oh-ih)/2+oh*${_f(panY)}':color=$bg");
-      } else {
-        // ZOOM/COVER (+overscan): scale up then re-crop to the box at the pan offset.
-        // Crop offset shifts the visible region by ow*panX to match the preview.
-        cropChain.write(",scale=iw*${_f(effVz)}:ih*${_f(effVz)}");
-        cropChain.write(",crop=iw/${_f(effVz)}:ih/${_f(effVz)}"
-            ":'(iw-ow)/2-ow*${_f(panX)}':'(ih-oh)/2-oh*${_f(panY)}'");
-      }
-      cropChain.write(',setsar=1');
-    } else if (vz < 1.0) {
-      // Original ratio, scaled DOWN: pad the shrunk frame back to source size.
-      cropChain.write("scale=iw*${_f(vz)}:ih*${_f(vz)}");
-      cropChain.write(",pad=w=iw/${_f(vz)}:h=ih/${_f(vz)}"
-          ":x='(ow-iw)/2+ow*${_f(panX)}':y='(oh-ih)/2+oh*${_f(panY)}':color=$bg,setsar=1");
-    } else if (vz > 1.001 || panX.abs() > 0.001 || panY.abs() > 0.001) {
-      // Original ratio, zoomed/panned in the native frame (no overscan on Original).
-      cropChain.write("scale=iw*${_f(vz)}:ih*${_f(vz)}");
-      cropChain.write(",crop=iw/${_f(vz)}:ih/${_f(vz)}"
-          ":'(iw-ow)/2-ow*${_f(panX)}':'(ih-oh)/2-oh*${_f(panY)}',setsar=1");
-    } else {
-      cropChain.write('null');
-    }
-    final cropFilter = cropChain.toString();
+    // Where the video sits in the frame is resolved by VideoGeometry, which the
+    // editor preview reads from as well. The preview and this filtergraph cannot
+    // drift apart on scale or pan any more, because neither one works them out.
+    final geo = VideoGeometry.resolve(
+      aspectRatio: p.aspect.ratio,
+      scale: p.videoScale,
+      dx: p.videoDx,
+      dy: p.videoDy,
+      fitContain: p.videoFitContain,
+      bgColor: p.videoBgColor,
+    );
+    final cropFilter = geo.filterChain();
     double cropDx(double dx) => dx;
     double cropDy(double dy) => dy;
     const cropScaleW = 1.0;
@@ -368,7 +316,4 @@ class ExportService {
   }
 
   String _f(num v, [int d = 4]) => v.toStringAsFixed(d);
-
-  /// ARGB int → FFmpeg colour literal `0xRRGGBB` (alpha dropped for pad fill).
-  String _ffColor(int argb) => '0x${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 }

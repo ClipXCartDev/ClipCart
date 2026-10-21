@@ -14,6 +14,7 @@ import '../../core/runtime_config.dart';
 import '../../core/theme.dart' show AppColors;
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
+import '../../models/video_geometry.dart';
 import '../../services/brand_kit_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
@@ -29,9 +30,6 @@ const _kBg = AppColors.bg;            // #FCFAF6 canvas backdrop / top bar
 const _kPanel = AppColors.surfaceHover; // #F7F5F1 control panels / bottom sheets
 const _kChip = AppColors.bgAlt;       // #EFECE5 raised tool tiles / fields
 const _kAccent = AppColors.brand;     // #684FC8 brand primary
-// Cover-crop overscan (matches ExportService._overscan) — a hair of zoom on a
-// cropped frame hides the 1px seam that showed on the aspect-crop edge.
-const double _kOverscan = 1.012;
 
 /// Pro layers editor: draggable / pinch-scalable / rotatable overlays on a dark
 /// canvas, scrubbable timeline with trim, undo/redo, aspect crop, on-device export.
@@ -132,17 +130,19 @@ class _EditorScreenState extends State<EditorScreen> {
   /// How far the video may pan (fraction of frame) at a given scale. When zoomed
   /// in (>1) it's the croppable margin; when scaled DOWN (<1) it's the empty gap
   /// the video can travel within the frame before hitting an edge.
-  double _videoPanLimit(double s) =>
-      (s >= 1.0 ? (1 - 1 / s) / 2 : (1 - s) / 2).clamp(0.0, 0.5);
+  /// How the video sits in the frame, resolved by the same code the exporter
+  /// uses. The canvas below renders from this, so what the user drags here is
+  /// literally what the filtergraph will be told to do.
+  VideoGeometry _geo() => VideoGeometry.resolve(
+        aspectRatio: _project!.aspect.ratio,
+        scale: _project!.videoScale,
+        dx: _project!.videoDx,
+        dy: _project!.videoDy,
+        fitContain: _project!.videoFitContain,
+        bgColor: _project!.videoBgColor,
+      );
 
-  /// Video display scale for the preview — adds cover overscan on a cropped frame
-  /// (only when filling and not scaling down) so the editor matches the export.
-  double _effVideoScale() {
-    final vz = _project!.videoScale;
-    final cropped = _project!.aspect.ratio != null;
-    if (cropped && !_project!.videoFitContain && vz >= 1.0) return vz * _kOverscan;
-    return vz;
-  }
+  double _videoPanLimit(double s) => VideoGeometry.panLimitFor(s);
 
   @override
   void initState() {
@@ -944,7 +944,6 @@ class _EditorScreenState extends State<EditorScreen> {
                       (Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }, false),
                       (Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }, false),
                       (Icons.dashboard_customize_rounded, 'Template', () { Navigator.pop(context); _openLayoutTemplates(); }, false),
-                      (Icons.music_note_rounded, 'Music', () { Navigator.pop(context); _openMusicSheet(); }, _project!.musicPath != null),
                       (Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, _project!.watermarkOn),
                     ])
                       Padding(padding: const EdgeInsets.only(right: 14), child: _addTile(t.$1, t.$2, t.$3, on: t.$4)),
@@ -1154,104 +1153,6 @@ class _EditorScreenState extends State<EditorScreen> {
     {'name': 'Night', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xE6000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
     {'name': 'Gold', 'font': 'Playfair Display', 'color': 0xFFD89A3C, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideUp},
   ];
-
-  // ---------- Music (§4.0 feedback 6 — import from device, mix + start offset) ----------
-  Future<void> _openMusicSheet() async {
-    final p = _project!;
-    var volSnapped = false;
-    void snapVol() { if (!volSnapped) { _snapshot(); volSnapped = true; } }
-    String fmtStart(double s) {
-      final m = s ~/ 60, sec = (s % 60);
-      return '$m:${sec.toStringAsFixed(1).padLeft(4, '0')}';
-    }
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.bg,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => StatefulBuilder(
-        builder: (context, setSheet) => SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(18, 10, 18, 18 + MediaQuery.of(context).viewPadding.bottom),
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Center(child: _Grabber()),
-                const Text('Music', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
-                const SizedBox(height: 14),
-                if (p.musicPath == null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        FilePickerResult? res;
-                        try {
-                          res = await FilePicker.platform.pickFiles(type: FileType.audio);
-                        } catch (_) {
-                          res = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['mp3', 'm4a', 'aac', 'wav', 'ogg']);
-                        }
-                        if (res != null && res.files.single.path != null) {
-                          _mutate(() => p.musicPath = res!.files.single.path);
-                          setSheet(() {});
-                        }
-                      },
-                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(vertical: 13)),
-                      icon: const Icon(Icons.library_music_rounded, size: 18),
-                      label: const Text('Import from device'),
-                    ),
-                  )
-                else ...[
-                  // track card
-                  Container(
-                    padding: const EdgeInsets.all(11),
-                    decoration: BoxDecoration(color: _kChip, borderRadius: BorderRadius.circular(11), border: Border.all(color: AppColors.line)),
-                    child: Row(children: [
-                      Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.goldBg, borderRadius: BorderRadius.circular(9)), child: const Icon(Icons.music_note_rounded, color: AppColors.goldText, size: 20)),
-                      const SizedBox(width: 11),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(p.musicPath!.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.ink, fontSize: 14, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        const Text('from your device', style: TextStyle(color: AppColors.inkMuted, fontSize: 11, fontFamily: 'IBMPlexMono')),
-                      ])),
-                      GestureDetector(
-                        onTap: () async {
-                          final res = await FilePicker.platform.pickFiles(type: FileType.audio);
-                          if (res != null && res.files.single.path != null) { _mutate(() => p.musicPath = res.files.single.path); setSheet(() {}); }
-                        },
-                        child: const Text('Replace', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w600, fontSize: 13)),
-                      ),
-                    ]),
-                  ),
-                  const SizedBox(height: 12),
-                  _fadeRowGeneric('Music', p.musicVolume, 0, 1, (v) { snapVol(); setSheet(() { p.musicVolume = v; setState(() {}); }); }, suffix: ''),
-                  _fadeRowGeneric('Clip audio', p.originalVolume, 0, 1, (v) { snapVol(); setSheet(() { p.originalVolume = v; setState(() {}); }); }, suffix: ''),
-                  _fadeRowGeneric('Start at', p.musicStart, 0, 60, (v) { snapVol(); setSheet(() { p.musicStart = v; setState(() {}); }); }, suffix: 's'),
-                  const SizedBox(height: 2),
-                  Align(alignment: Alignment.centerLeft, child: Text('Starts at ${fmtStart(p.musicStart)}', style: const TextStyle(color: AppColors.inkMuted, fontSize: 11, fontFamily: 'IBMPlexMono'))),
-                  const SizedBox(height: 6),
-                  Row(children: [
-                    const Text('Fade out at the end', style: TextStyle(color: AppColors.ink, fontSize: 13)),
-                    const Spacer(),
-                    Switch(value: p.musicFadeOut, activeColor: _kAccent, onChanged: (v) { _mutate(() => p.musicFadeOut = v); setSheet(() {}); }),
-                  ]),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: () { _mutate(() => p.musicPath = null); setSheet(() {}); },
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.err),
-                      label: const Text('Remove music', style: TextStyle(color: AppColors.err, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 12),
-                SizedBox(width: double.infinity, child: PrimaryButton(label: 'Done', icon: Icons.check, onPressed: () => Navigator.pop(context))),
-              ]),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   /// Logo Adjust — exact X / Y (%) + Scale + Rotation numeric boxes.
   Future<void> _openLogoAdjust() async {
@@ -1819,15 +1720,15 @@ class _EditorScreenState extends State<EditorScreen> {
   /// AUTHOR MODE done — hand the layer set back to the upload form as the map
   /// the customer's editor will `restore()` later. Device-local file paths are
   /// stripped: they mean nothing on the customer's phone (font families are
-  /// bundled with the app, so the look survives; a path would not). Music and
-  /// the author's own trim are dropped too — those are the customer's calls.
+  /// bundled with the app, so the look survives; a path would not). The author's
+  /// own trim is dropped too — that is the customer's call.
   void _saveAuthorLayers() {
     final snap = _project!.snapshot();
     // Text sizes are in VIDEO pixels, so they only mean something against the
     // frame they were laid out on — record it so the customer's copy can be
     // rescaled to their own frame instead of coming out too big or too small.
     snap['authoredShort'] = _project!.authoredShort;
-    for (final key in ['logoPath', 'musicPath', 'trimStart', 'trimEnd']) {
+    for (final key in ['logoPath', 'trimStart', 'trimEnd']) {
       snap.remove(key);
     }
     for (final list in ['subs', 'stk']) {
@@ -2789,6 +2690,7 @@ class _EditorScreenState extends State<EditorScreen> {
             final ar = _project!.aspect.ratio;
             final cropSrcH = ar == null ? srcH : (srcH < srcW / ar ? srcH : srcW / ar);
             final scale = h / cropSrcH; // WYSIWYG video→canvas px on the cropped frame
+            final geo = _geo();
             return ValueListenableBuilder<VideoPlayerValue>(
               valueListenable: _vc!,
               builder: (context, v, _) {
@@ -2850,9 +2752,11 @@ class _EditorScreenState extends State<EditorScreen> {
                           // User-controllable frame background (fill gap / letterbox).
                           color: Color(_project!.videoBgColor),
                           child: Transform.translate(
-                            offset: Offset(_project!.videoDx * w, _project!.videoDy * h),
+                            // same resolver the exporter uses, so the pan is
+                            // clamped identically on both sides
+                            offset: Offset(geo.panPixelsX(w), geo.panPixelsY(h)),
                             child: Transform.scale(
-                              scale: _effVideoScale(),
+                              scale: geo.effectiveScale,
                               child: FittedBox(
                                 fit: _project!.videoFitContain ? BoxFit.contain : BoxFit.cover,
                                 clipBehavior: Clip.hardEdge,
@@ -3593,7 +3497,6 @@ class _EditorScreenState extends State<EditorScreen> {
               crossAxisSpacing: 8,
               childAspectRatio: 0.92,
               children: [
-                _moreTile(Icons.music_note_rounded, 'Music', () { Navigator.pop(context); _openMusicSheet(); }, on: _project!.musicPath != null),
                 _moreTile(Icons.alternate_email_rounded, 'Username', () { Navigator.pop(context); _addUsername(); }),
                 _moreTile(Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }),
                 _moreTile(Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }),
