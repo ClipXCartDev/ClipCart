@@ -80,6 +80,8 @@ def browse_query(
     language: str | None = None,
     access: str | None = None,
     featured: bool | None = None,
+    movie: str | None = None,
+    max_duration: int | None = None,
     sort: str = "trending",
 ) -> Select:
     """Approved clips only, with filters + sort. Returns a Select of Clip."""
@@ -98,6 +100,13 @@ def browse_query(
         stmt = stmt.where(Clip.access == access)
     if featured is not None:
         stmt = stmt.where(Clip.is_featured == featured)
+    if movie:
+        stmt = stmt.where(func.lower(Clip.movie_name) == movie.lower())
+    if max_duration:
+        # a clip with no recorded duration is not excluded by a length filter:
+        # we do not know that it is too long, and dropping it would hide it for
+        # a reason the catalogue cannot actually support.
+        stmt = stmt.where(or_(Clip.duration_sec.is_(None), Clip.duration_sec <= max_duration))
 
     if sort == "newest":
         stmt = stmt.order_by(Clip.created_at.desc())

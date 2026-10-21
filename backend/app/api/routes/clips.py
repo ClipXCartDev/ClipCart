@@ -34,6 +34,8 @@ def list_clips(
     language: str | None = None,
     access: str | None = None,
     featured: bool | None = None,
+    movie: str | None = None,
+    max_duration: int | None = Query(None, ge=1, le=600),
     sort: str = "trending",
     limit: int = Query(20, ge=1, le=60),
     offset: int = Query(0, ge=0),
@@ -42,11 +44,36 @@ def list_clips(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"sort must be one of {SORTS}")
     stmt = browse_query(
         db, q=q, category=category, genre=genre, language=language,
-        access=access, featured=featured, sort=sort,
+        access=access, featured=featured, movie=movie,
+        max_duration=max_duration, sort=sort,
     )
     total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = db.scalars(stmt.limit(limit).offset(offset)).all()
     return ClipListOut(items=[clip_to_out(c) for c in rows], total=total, limit=limit, offset=offset)
+
+
+@router.get("/clips/facets")
+def clip_facets(db: Session = Depends(get_db)) -> dict:
+    """The values a browse filter can actually be set to.
+
+    The app builds its filter sheet from this rather than from a hardcoded list,
+    so the options can never offer a genre the catalogue does not have or miss
+    one it just gained.
+    """
+    def distinct(col):
+        rows = db.scalars(
+            select(col)
+            .where(Clip.status == ClipStatus.approved, col.isnot(None), col != "")
+            .distinct()
+            .order_by(col)
+        ).all()
+        return [r for r in rows if r]
+
+    return {
+        "genres": distinct(Clip.genre),
+        "languages": distinct(Clip.language),
+        "movies": distinct(Clip.movie_name),
+    }
 
 
 @router.get("/showcase")
