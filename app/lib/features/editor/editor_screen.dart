@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/runtime_config.dart';
@@ -2689,6 +2690,79 @@ class _EditorScreenState extends State<EditorScreen> {
     return go ?? false;
   }
 
+  /// What the user sees the moment a render finishes. Posting is the point of
+  /// the whole flow, so it is the button under the thumb — not a line of text
+  /// telling them where the file went and leaving them to find it.
+  Future<void> _showExportDone(ExportResult res) async {
+    final isFinal = widget.clip != null;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(ctx).viewPadding.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Center(child: _Grabber()),
+          const SizedBox(height: 8),
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(color: AppColors.okBg, borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.check_rounded, color: AppColors.okText, size: 22),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Your video is ready',
+                style: TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600))),
+          ]),
+          const SizedBox(height: 10),
+          Text(
+            res.savedToGallery
+                ? 'Saved to your Gallery and My Clips.'
+                : 'Saved on this device and in My Clips.',
+            style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5, height: 1.4),
+          ),
+          if (isFinal) ...[
+            const SizedBox(height: 6),
+            const Text('This clip is now final and cannot be re-edited.',
+                style: TextStyle(color: AppColors.inkFaint, fontSize: 11.5, height: 1.4)),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: PrimaryButton(
+              label: 'Share',
+              icon: Icons.ios_share,
+              onPressed: () async {
+                try {
+                  await Share.shareXFiles([XFile(res.path)], text: 'Made with ClipCart');
+                } catch (_) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Could not open sharing. The video is saved in My Clips.')),
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.ink,
+                  side: const BorderSide(color: AppColors.line),
+                  padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: const Text('Done'),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
   Future<void> _export() async {
     // Quota/Pro gating only applies to catalog clips (there's a creator to pay
     // and a server-side monthly quota). A picked local file (widget.clip == null)
@@ -2797,22 +2871,7 @@ class _EditorScreenState extends State<EditorScreen> {
       }
       closeProgress();
       if (mounted) {
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            backgroundColor: AppColors.surface,
-            title: const Text('Exported', style: TextStyle(color: AppColors.ink)),
-            content: Text(
-              (res.savedToGallery
-                      ? 'Saved to your Gallery (ClipCart album) and My Clips.'
-                      : 'Saved on device:\n${res.path}') +
-                  (widget.clip != null ? '\n\nThis clip is now final — it can\'t be re-edited.' : ''),
-              style: const TextStyle(color: AppColors.inkMuted),
-            ),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-          ),
-        );
+        await _showExportDone(res);
         // a final clip has nothing left to edit — return to the player
         if (widget.clip != null && mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
       }

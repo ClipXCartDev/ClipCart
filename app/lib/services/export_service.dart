@@ -22,6 +22,39 @@ class ExportResult {
 /// transparent PNG that is scaled, rotated and time-gated — perfectly WYSIWYG
 /// with the editor canvas. Optional trim + aspect-ratio crop.
 class ExportService {
+  /// Whether this device can really encode through MediaCodec.
+  ///
+  /// The encoder being compiled into the FFmpeg build says nothing about the
+  /// device exposing it, and finding out the hard way would mean losing a whole
+  /// render. So it is settled once with a throwaway frame — well under a second
+  /// — and the answer kept for the rest of the session.
+  static bool? _hwEncode;
+
+  static Future<bool> _hardwareEncodeWorks() async {
+    if (_hwEncode != null) return _hwEncode!;
+    try {
+      final probe = '${(await getTemporaryDirectory()).path}/hwprobe.mp4';
+      final done = Completer<void>();
+      final session = await FFmpegKit.executeWithArgumentsAsync([
+        '-y', '-f', 'lavfi', '-i', 'color=c=black:s=320x240:d=0.1',
+        '-c:v', 'h264_mediacodec', '-b:v', '200k', '-pix_fmt', 'yuv420p', probe,
+      ], (_) => done.complete());
+      await done.future;
+      final ok = ReturnCode.isSuccess(await session.getReturnCode());
+      try { File(probe).deleteSync(); } catch (_) {}
+      _hwEncode = ok;
+    } catch (_) {
+      _hwEncode = false;
+    }
+    return _hwEncode!;
+  }
+
+  /// Target bitrate for the hardware encoder, which works to a bitrate rather
+  /// than to a quality level the way libx264's CRF does. Chosen for clips that
+  /// are going straight to a social feed: visually clean, and small enough that
+  /// uploading one on mobile data is not a punishment.
+  static String _hwBitrate(int shortEdge) => shortEdge >= 1080 ? '6M' : '3M';
+
   /// [onProgress] receives 0.0..1.0 during the render (from real FFmpeg frame
   /// statistics — honest progress, no fake bar). It may not reach exactly 1.0.
   /// Short edge of the source's video stream, or null if it can't be probed.
@@ -209,12 +242,23 @@ class ExportService {
     parts.addAll(['-filter_complex', fc.toString(), '-map', '[vout]', '-map', audioMap]);
     // Cap to the intended clip length.
     parts.addAll(['-t', _f(p.outDuration, 3)]);
+    // Hand the encode to the phone's video chip where that is possible, and
+    // fall back to the CPU where it is not. The fallback is not a rare path to
+    // be ignored: emulators and some older devices have no usable encoder.
+    final hw = await _hardwareEncodeWorks();
+    if (hw) {
+      parts.addAll([
+        '-c:v', 'h264_mediacodec', '-b:v', _hwBitrate(p.resolution.shortEdge),
+      ]);
+    } else {
+      // crf 18 is visually lossless; medium trades a little speed for size.
+      parts.addAll(['-c:v', 'libx264', '-preset', 'medium', '-crf', '18']);
+    }
     parts.addAll([
-      // High-quality HD export: crf 18 ≈ visually lossless, medium preset for good
-      // quality-per-bit. Output frame rate per the user's fps choice (30/60).
-      '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
       '-r', '${p.fps}',
-      '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-level', '4.1',
+      '-pix_fmt', 'yuv420p',
+      // profile/level are x264 options; MediaCodec picks its own
+      if (!hw) ...['-profile:v', 'high', '-level', '4.1'],
       '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', output,
     ]);
 
