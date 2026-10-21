@@ -2576,10 +2576,126 @@ class _EditorScreenState extends State<EditorScreen> {
     ) ?? false;
   }
 
+  /// The text each preset ships with. A layer still carrying its default was
+  /// never filled in, and that is the usual reason an exported clip looks
+  /// unfinished — a "@yourpage" sitting in the corner of a finished video.
+  static const Map<String, String> kPlaceholderText = {
+    'logo': '@yourpage',
+    'handle': '@yourhandle',
+    'cta': 'Follow for more',
+    'outro': 'Thanks for watching',
+  };
+
+  /// Visible layers that would burn into the export still saying nothing, or
+  /// still saying whatever the preset put there. Hidden layers are left out:
+  /// hiding one is a decision, not an oversight.
+  List<SubtitleSegment> _unfilledLayers() {
+    final out = <SubtitleSegment>[];
+    for (final s in _project!.subtitles) {
+      if (s.hidden) continue;
+      final t = s.text.trim();
+      if (t.isEmpty || t == kPlaceholderText[s.kind]) out.add(s);
+    }
+    return out;
+  }
+
+  /// Checks the project over before the render starts, as the build contract
+  /// asks. Returns true to go ahead — including when the user chooses to export
+  /// anyway, because this warns rather than blocks: a placeholder is sometimes
+  /// exactly what someone wants in a draft.
+  Future<bool> _confirmBeforeExport() async {
+    final unfilled = _unfilledLayers();
+    if (unfilled.isEmpty) return true;
+    final go = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(ctx).viewPadding.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Center(child: _Grabber()),
+          const SizedBox(height: 6),
+          Text(unfilled.length == 1
+              ? 'One layer still has placeholder text'
+              : '${unfilled.length} layers still have placeholder text',
+              style: const TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          Text(unfilled.length == 1
+              ? 'It will appear in the finished video exactly as it is. Tap it to edit.'
+              : 'They will appear in the finished video exactly as they are. Tap one to edit it.',
+              style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5, height: 1.4)),
+          const SizedBox(height: 14),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.3),
+            child: SingleChildScrollView(
+              child: Column(children: [
+                for (final s in unfilled)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: _kChip,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      horizontalTitleGap: 10,
+                      leading: Icon(_kindMeta(s.kind).$3, size: 20, color: _layerColor(s)),
+                      title: Text(_kindMeta(s.kind).$2,
+                          style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14)),
+                      subtitle: Text(s.text.trim().isEmpty ? 'Empty' : s.text.trim(),
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: AppColors.inkFaint, fontSize: 11.5, fontFamily: 'IBMPlexMono')),
+                      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.chevron, size: 22),
+                      // jump straight to the offending layer instead of making
+                      // the user hunt for it
+                      onTap: () {
+                        Navigator.pop(ctx, false);
+                        setState(() => _selected = s);
+                        _seek(s.start);
+                        _startTyping(s);
+                      },
+                    ),
+                  ),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.ink,
+                    side: const BorderSide(color: AppColors.line),
+                    padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: const Text('Go back'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: PrimaryButton(
+                label: 'Export anyway',
+                icon: Icons.ios_share,
+                onPressed: () => Navigator.pop(ctx, true),
+              ),
+            ),
+          ]),
+        ]),
+      ),
+    );
+    return go ?? false;
+  }
+
   Future<void> _export() async {
     // Quota/Pro gating only applies to catalog clips (there's a creator to pay
     // and a server-side monthly quota). A picked local file (widget.clip == null)
     // is the user's own content with no creator to pay, so it stays ungated.
+    // Required-field validation before the render starts (build contract,
+    // phase 6). It warns and lets the user through; it does not block.
+    if (!await _confirmBeforeExport()) return;
     if (!await _openExportSettings()) return;
     setState(() => _busy = true);
     // Progress dialog with a REAL bar driven by FFmpeg frame statistics (honest
