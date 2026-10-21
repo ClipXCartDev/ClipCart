@@ -135,11 +135,16 @@ class CatalogService {
     String sort = 'trending',
     String? access,
     bool? featured,
+    String? genre,
+    String? language,
+    String? movie,
+    int? maxDuration,
     int limit = 20,
     int offset = 0,
     bool force = false,
   }) async {
-    final key = 'q=$q|c=$category|a=$access|f=$featured|s=$sort|l=$limit|o=$offset';
+    final key = 'q=$q|c=$category|a=$access|f=$featured|g=$genre|l=$language'
+        '|m=$movie|d=$maxDuration|s=$sort|l=$limit|o=$offset';
     if (!force) {
       final hit = _clipCache[key];
       if (hit != null && DateTime.now().difference(hit.$1) < _clipTtl) return hit.$2;
@@ -149,6 +154,10 @@ class CatalogService {
       if (category != null) 'category': category,
       if (access != null) 'access': access,
       if (featured != null) 'featured': featured,
+      if (genre != null) 'genre': genre,
+      if (language != null) 'language': language,
+      if (movie != null) 'movie': movie,
+      if (maxDuration != null) 'max_duration': maxDuration,
       'sort': sort,
       'limit': limit,
       'offset': offset,
@@ -158,6 +167,28 @@ class CatalogService {
         .toList();
     _clipCache[key] = (DateTime.now(), items);
     return items;
+  }
+
+  Map<String, List<String>>? _facets;
+  DateTime? _facetsAt;
+
+  /// The genres, languages and movies the catalogue actually contains, for
+  /// building the browse filters. Read from the server rather than hardcoded so
+  /// the options cannot drift away from the clips they are meant to narrow.
+  /// Cached for the session: the catalogue does not gain a new language often.
+  Future<Map<String, List<String>>> facets({bool force = false}) async {
+    if (!force && _facets != null && _facetsAt != null &&
+        DateTime.now().difference(_facetsAt!) < const Duration(minutes: 30)) {
+      return _facets!;
+    }
+    final r = await api.dio.get('/clips/facets');
+    final d = r.data as Map<String, dynamic>;
+    _facets = {
+      for (final k in const ['genres', 'languages', 'movies'])
+        k: ((d[k] as List?) ?? const []).map((e) => e.toString()).toList(),
+    };
+    _facetsAt = DateTime.now();
+    return _facets!;
   }
 
   Future<Clip> getClip(String slug) async {

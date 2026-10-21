@@ -34,6 +34,14 @@ class _SearchScreenState extends State<SearchScreen> {
   // a page that wants to be FIRST to a clip actually needs. Both are already
   // supported server-side — this was just never wired to anything.
   String _sort = 'trending';
+  // The rest of section 7.3's filters. All of these were already understood by
+  // the server; the app simply never sent them.
+  String? _genre;
+  String? _language;
+  String? _movie;
+  int? _maxDuration; // seconds
+  String? _access;   // 'free' | 'pro'
+  Map<String, List<String>> _facets = const {};
   bool _loading = true, _loadingMore = false, _more = true;
   String? _error;
   int _gen = 0; // bumps on every _reload; in-flight page loads with a stale gen are discarded
@@ -59,6 +67,8 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       try { _cats = await _cs.categories(); } catch (_) {}
+      // non-fatal: without facets the sheet simply offers fewer rows
+      try { _facets = await _cs.facets(); } catch (_) {}
       await _reload();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
@@ -83,6 +93,11 @@ class _SearchScreenState extends State<SearchScreen> {
       final next = await _cs.listClips(
         q: _query.isEmpty ? null : _query,
         category: _cat,
+        genre: _genre,
+        language: _language,
+        movie: _movie,
+        maxDuration: _maxDuration,
+        access: _access,
         limit: _page,
         offset: _grid.length,
         sort: _sort,
@@ -140,41 +155,137 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // ── filter sheet — categories only ─────────────────────────────────────────
+  /// Every filter currently narrowing the grid, as removable chips.
+  /// "Active filters must be visible and removable" is the PRD's wording, and
+  /// a filter you cannot see is the reason an empty grid looks like an empty
+  /// catalogue.
+  List<(String, VoidCallback)> _activeFilters() => [
+        if (_cat != null) (_catName(_cat), () => _applyFilters(cat: null, clearCat: true)),
+        if (_genre != null) (_genre!, () => _applyFilters(genre: null, clearGenre: true)),
+        if (_language != null) (_language!, () => _applyFilters(language: null, clearLanguage: true)),
+        if (_movie != null) (_movie!, () => _applyFilters(movie: null, clearMovie: true)),
+        if (_maxDuration != null) ('Under ${_maxDuration}s', () => _applyFilters(maxDuration: null, clearDuration: true)),
+        if (_access != null) (_access == 'free' ? 'Free' : 'Pro', () => _applyFilters(access: null, clearAccess: true)),
+      ];
+
+  /// One way in and out of a filter change, so nothing can set a filter without
+  /// also resetting the paging that depends on it.
+  void _applyFilters({
+    String? cat, String? genre, String? language, String? movie,
+    int? maxDuration, String? access,
+    bool clearCat = false, bool clearGenre = false, bool clearLanguage = false,
+    bool clearMovie = false, bool clearDuration = false, bool clearAccess = false,
+  }) {
+    setState(() {
+      if (cat != null || clearCat) _cat = cat;
+      if (genre != null || clearGenre) _genre = genre;
+      if (language != null || clearLanguage) _language = language;
+      if (movie != null || clearMovie) _movie = movie;
+      if (maxDuration != null || clearDuration) _maxDuration = maxDuration;
+      if (access != null || clearAccess) _access = access;
+    });
+    _reload();
+  }
+
+  void _clearAllFilters() => _applyFilters(
+        clearCat: true, clearGenre: true, clearLanguage: true,
+        clearMovie: true, clearDuration: true, clearAccess: true,
+      );
+
   void _openFilter() {
-    String? sel = _cat;
+    // local copies so Cancel is a real cancel
+    String? cat = _cat, genre = _genre, language = _language, movie = _movie, access = _access;
+    int? maxDur = _maxDuration;
     showAppSheet(context, (ctx) {
       return StatefulBuilder(builder: (ctx, setSheet) {
-        final rows = <(String?, String)>[(null, 'All clips')];
-        for (final c in _cats) {
-          rows.add(((c['slug'] as String?) ?? c['name'] as String?, (c['name'] as String?) ?? 'Clips'));
-        }
-        final label = sel == _cat ? 'Show ${_grid.length} clips' : 'Show clips';
-        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 2, bottom: 4),
-            child: Text('Filter by category', style: T.section),
-          ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
+        Widget section(String title, List<Widget> children) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final r in rows)
-                  _CheckRow(
-                    label: r.$2,
-                    selected: sel == r.$1,
-                    onTap: () => setSheet(() => sel = r.$1),
-                  ),
+                Padding(padding: const EdgeInsets.only(left: 2, top: 14, bottom: 6), child: Text(title, style: T.section)),
+                Wrap(spacing: 8, runSpacing: 8, children: children),
               ],
+            );
+
+        Widget chip(String label, bool selected, VoidCallback onTap) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setSheet(onTap),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.brand : AppColors.bgAlt,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: selected ? AppColors.brand : AppColors.line),
+                ),
+                child: Text(label,
+                    style: TextStyle(
+                        fontFamily: kSans, fontSize: 13, fontWeight: FontWeight.w600,
+                        color: selected ? Colors.white : AppColors.ink)),
+              ),
+            );
+
+        final genres = _facets['genres'] ?? const <String>[];
+        final languages = _facets['languages'] ?? const <String>[];
+        final movies = _facets['movies'] ?? const <String>[];
+
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Padding(padding: EdgeInsets.only(left: 2), child: Text('Filters', style: T.section)),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                section('Category', [
+                  chip('All', cat == null, () => cat = null),
+                  for (final c in _cats)
+                    chip((c['name'] as String?) ?? 'Clips',
+                        cat == ((c['slug'] as String?) ?? c['name'] as String?),
+                        () => cat = (c['slug'] as String?) ?? c['name'] as String?),
+                ]),
+                if (genres.isNotEmpty)
+                  section('Genre', [
+                    chip('Any', genre == null, () => genre = null),
+                    for (final g in genres) chip(g, genre == g, () => genre = g),
+                  ]),
+                if (languages.isNotEmpty)
+                  section('Language', [
+                    chip('Any', language == null, () => language = null),
+                    for (final l in languages) chip(l, language == l, () => language = l),
+                  ]),
+                if (movies.isNotEmpty)
+                  section('Movie', [
+                    chip('Any', movie == null, () => movie = null),
+                    for (final m in movies) chip(m, movie == m, () => movie = m),
+                  ]),
+                section('Length', [
+                  chip('Any', maxDur == null, () => maxDur = null),
+                  for (final d in const [10, 15, 30, 60])
+                    chip('Under ${d}s', maxDur == d, () => maxDur = d),
+                ]),
+                section('Access', [
+                  chip('Any', access == null, () => access = null),
+                  chip('Free', access == 'free', () => access = 'free'),
+                  chip('Pro', access == 'pro', () => access = 'pro'),
+                ]),
+              ]),
             ),
           ),
           const SizedBox(height: 16),
           Row(children: [
             TextButton(
-              onPressed: () => setSheet(() => sel = null),
+              onPressed: () => setSheet(() {
+                cat = null; genre = null; language = null; movie = null; maxDur = null; access = null;
+              }),
               child: const Text('Reset', style: TextStyle(fontFamily: kSans, fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.inkMuted)),
             ),
             const SizedBox(width: 12),
-            Expanded(child: PrimaryBtn(label, onTap: () { Navigator.pop(ctx); _pickCategory(sel); })),
+            Expanded(
+              child: PrimaryBtn('Show clips', onTap: () {
+                Navigator.pop(ctx);
+                setState(() {
+                  _cat = cat; _genre = genre; _language = language;
+                  _movie = movie; _maxDuration = maxDur; _access = access;
+                });
+                _reload();
+              }),
+            ),
           ]),
         ]);
       });
@@ -222,6 +333,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
       ),
+      if (_activeFilters().isNotEmpty) _activeFilterBar(),
       Expanded(child: _body()),
     ]);
   }
@@ -310,6 +422,57 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  /// The filters currently applied, each with a cross that removes just that
+  /// one, plus a clear-all. Without this an over-filtered grid is
+  /// indistinguishable from a catalogue with nothing in it.
+  Widget _activeFilterBar() {
+    final active = _activeFilters();
+    return SizedBox(
+      height: 34,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        physics: const BouncingScrollPhysics(),
+        children: [
+          for (final f in active)
+            Padding(
+              padding: const EdgeInsets.only(right: 7),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: f.$2,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(11, 0, 7, 0),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandTint,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.brand.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(f.$1,
+                        style: const TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.brand)),
+                    const SizedBox(width: 3),
+                    const Icon(Icons.close_rounded, size: 14, color: AppColors.brand),
+                  ]),
+                ),
+              ),
+            ),
+          if (active.length > 1)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _clearAllFilters,
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: const Text('Clear all',
+                    style: TextStyle(fontFamily: kSans, fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.inkMuted)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _body() {
     // Show the skeleton not just on first boot but whenever a (re)load is in
     // flight with nothing yet — otherwise a category switch / pull-to-refresh
@@ -324,12 +487,25 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
     if (_grid.isEmpty) {
+      // An empty grid under filters is nearly always too many filters, not an
+      // empty catalogue — so say which way out there is rather than leaving the
+      // user to guess whether anything exists at all.
+      final active = _activeFilters();
+      if (active.isNotEmpty) {
+        return PremiumEmptyState(
+          icon: Icons.filter_alt_off_rounded,
+          title: _query.isEmpty ? 'Nothing matches those filters' : 'Nothing matches "$_query" with those filters',
+          subtitle: active.length == 1
+              ? 'Remove the filter to see more clips.'
+              : 'Remove a filter to see more clips.',
+          cta: active.length == 1 ? 'Remove filter' : 'Clear filters',
+          onCta: _clearAllFilters,
+        );
+      }
       return PremiumEmptyState(
         icon: Icons.search_off_rounded,
         title: 'No clips found',
-        subtitle: _cat != null
-            ? 'Nothing in ${_catName(_cat)} yet. Try another category.'
-            : 'Try a different word, mood, or category.',
+        subtitle: 'Try a different word, mood, or category.',
       );
     }
     return RefreshIndicator(
