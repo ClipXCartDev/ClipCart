@@ -142,6 +142,10 @@ class _EditorScreenState extends State<EditorScreen> {
         bgColor: _project!.videoBgColor,
       );
 
+  /// Timeline kinds the user has opened. Collapsed is the default: a kind is
+  /// one entry until it is tapped, then it shows its own layers.
+  final Set<String> _openTimelineKinds = <String>{};
+
   double _videoPanLimit(double s) => VideoGeometry.panLimitFor(s);
 
   @override
@@ -3322,28 +3326,29 @@ class _EditorScreenState extends State<EditorScreen> {
     final dur = _duration;
     final p = _project!;
     final hasLayers = p.subtitles.isNotEmpty || p.stickers.isNotEmpty || p.logoPath != null;
-    // Base video filmstrip on top, then ONE LANE PER KIND rather than one row
-    // per layer (client: merge them into groups). Inside a lane the blocks stay
-    // where their time puts them, so every layer keeps its own start and end —
-    // a lane only splits into a second line when two of its blocks actually
-    // overlap and would otherwise be drawn on top of each other.
-    final lanes = <(Color, List<Object>)>[];
-    for (final group in <List<Object>>[
-      p.subtitles.cast<Object>().toList(),
-      p.stickers.where((s) => s.emoji != null).cast<Object>().toList(),
-      p.stickers.where((s) => s.emoji == null).cast<Object>().toList(),
-      if (p.logoPath != null) <Object>['logo'],
-    ]) {
-      if (group.isEmpty) continue;
-      final tint = _layerColor(group.first);
-      for (final line in _packByTime(group, dur)) {
-        lanes.add((tint, line));
-      }
-    }
+    // Base video filmstrip on top, then ONE ENTRY PER KIND. A kind stays a
+    // single row until it is tapped; opening it shows its own layers, one row
+    // each, and a header row to close it again. Collapsing by default keeps the
+    // timeline the same height whether a clip carries two captions or twenty.
+    final kinds = <(String, String, List<Object>)>[
+      ('text', 'Text', p.subtitles.cast<Object>().toList()),
+      ('emoji', 'Emoji', p.stickers.where((s) => s.emoji != null).cast<Object>().toList()),
+      ('sticker', 'Stickers', p.stickers.where((s) => s.emoji == null).cast<Object>().toList()),
+      ('logo', 'Logo', p.logoPath != null ? <Object>['logo'] : <Object>[]),
+    ].where((k) => k.$3.isNotEmpty).toList();
     const trackH = 26.0;
     const rowH = 22.0;
+    const headH = 15.0;
     const gap = 5.0;
-    final contentH = trackH + gap + lanes.length * (rowH + gap);
+    // Heights are known before layout; the rows themselves need x/sec and so are
+    // built inside the LayoutBuilder below.
+    var measured = trackH + gap;
+    for (final k in kinds) {
+      measured += _openTimelineKinds.contains(k.$1)
+          ? headH + gap + k.$3.length * (rowH + gap)
+          : rowH + gap;
+    }
+    final contentH = measured;
     final viewH = (contentH + 16).clamp(58.0, 196.0); // +16 = container 8+8 vertical pad
     return Container(
       color: AppColors.surfaceHover,
@@ -3394,9 +3399,25 @@ class _EditorScreenState extends State<EditorScreen> {
                     ),
                   ),
                 ),
-              // ---- one lane per kind (split only where blocks overlap) ----
-              for (int i = 0; i < lanes.length; i++)
-                _laneRow(lanes[i].$2, lanes[i].$1, trackH + gap + i * (rowH + gap), rowH, w, dur, x, sec),
+              // ---- one entry per kind, expanded into its layers when open ----
+              ...() {
+                var top = trackH + gap;
+                final out = <Widget>[];
+                for (final k in kinds) {
+                  if (!_openTimelineKinds.contains(k.$1)) {
+                    out.add(_kindEntryRow(k.$1, k.$2, k.$3, top, rowH, w, dur, x));
+                    top += rowH + gap;
+                    continue;
+                  }
+                  out.add(_kindHeaderRow(k.$1, k.$2, k.$3, top, headH));
+                  top += headH + gap;
+                  for (final it in k.$3) {
+                    out.add(_layerRow(it, top, rowH, w, dur, x, sec));
+                    top += rowH + gap;
+                  }
+                }
+                return out;
+              }(),
               // playhead spanning the whole stack
               Positioned(left: ph.clamp(0, w) - 1, top: -2, height: contentH + 4, child: IgnorePointer(child: Container(width: 2, color: AppColors.ink))),
               Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle)))),
@@ -3435,70 +3456,96 @@ class _EditorScreenState extends State<EditorScreen> {
     return (s.start, s.end >= 9998 ? dur : s.end);
   }
 
-  /// Pack one kind's layers onto as few lines as their times allow, so merging
-  /// a kind into a single lane never hides a block behind another. Greedy by
-  /// start time: a block joins the first line whose last block has already
-  /// ended, otherwise it opens a new one.
-  List<List<Object>> _packByTime(List<Object> items, double dur) {
-    final sorted = [...items]..sort((a, b) => _layerSpan(a, dur).$1.compareTo(_layerSpan(b, dur).$1));
-    final lines = <List<Object>>[];
-    final ends = <double>[];
-    for (final it in sorted) {
-      final (st, en) = _layerSpan(it, dur);
-      var placed = false;
-      for (var i = 0; i < lines.length; i++) {
-        if (st >= ends[i] - 0.001) {
-          lines[i].add(it);
-          ends[i] = en;
-          placed = true;
-          break;
-        }
-      }
-      if (!placed) {
-        lines.add([it]);
-        ends.add(en);
-      }
+  /// The collapsed row for a kind: ONE block covering everything that kind
+  /// holds, from its earliest start to its latest end. Tapping it opens the
+  /// kind. It is deliberately not draggable — moving "all the text at once" is
+  /// not a thing the user asked for, and the individual layers are one tap away.
+  Widget _kindEntryRow(String id, String label, List<Object> items, double top, double rowH, double w, double dur, double Function(double) x) {
+    var st = double.infinity, en = 0.0;
+    for (final it in items) {
+      final (a, b) = _layerSpan(it, dur);
+      if (a < st) st = a;
+      if (b > en) en = b;
     }
-    return lines;
-  }
-
-  /// One timeline lane holding every layer of a kind that fits on this line.
-  /// Each block is positioned by its own time; drag = move, edge grips =
-  /// duration. A locked layer (or the logo, which has no window) ignores both.
-  /// [tint] colours the empty lane so a kind is still identifiable where it has
-  /// no block under the playhead.
-  Widget _laneRow(List<Object> items, Color tint, double top, double rowH, double w, double dur, double Function(double) x, double Function(double) sec) {
+    if (st == double.infinity) st = 0;
+    final tint = _layerColor(items.first);
+    final left = x(st).clamp(0.0, w);
+    final width = (x(en) - x(st)).clamp(44.0, w - left);
+    final anySelected = items.any((it) => it == 'logo' ? _selected == 'logo' : identical(_selected, it));
     return Positioned(
       left: 0, right: 0, top: top, height: rowH,
       child: Stack(clipBehavior: Clip.none, children: [
-        // faint lane background so the track reads even where no block is
         Positioned.fill(child: IgnorePointer(child: DecoratedBox(
           decoration: BoxDecoration(color: tint.withOpacity(0.10), borderRadius: BorderRadius.circular(6))))),
-        for (final it in items) ...[
-          () {
-            final isLogo = it == 'logo';
-            final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
-            final locked = _layerLocked(it);
-            final (st, en) = _layerSpan(it, dur);
-            final left = x(st).clamp(0.0, w);
-            final width = (x(en) - x(st)).clamp(28.0, w - left);
-            final canTime = !isLogo && !locked;
-            return Positioned(
-              left: left, width: width, top: 0, bottom: 0,
-              child: _timelineBlock(
-                label: _layerName(it),
-                icon: _layerIcon(it),
-                selected: selected,
-                color: _layerColor(it),
-                locked: locked,
-                onTap: () => setState(() => _selected = isLogo ? 'logo' : it),
-                onDrag: canTime ? (d) => setState(() => _dragLayerTime(it, sec(d), dur)) : (_) {},
-                onResizeLeft: canTime ? (d) => setState(() => _resizeLayerStart(it, sec(d), dur)) : null,
-                onResizeRight: canTime ? (d) => setState(() => _resizeLayerEnd(it, sec(d), dur)) : null,
-              ),
-            );
-          }(),
-        ],
+        Positioned(
+          left: left, width: width, top: 0, bottom: 0,
+          child: _timelineBlock(
+            label: items.length == 1 ? label : '$label  ${items.length}',
+            icon: _layerIcon(items.first),
+            selected: anySelected,
+            color: tint,
+            locked: false,
+            trailing: Icons.expand_more_rounded,
+            onTap: () => setState(() => _openTimelineKinds.add(id)),
+            onDrag: (_) {},
+          ),
+        ),
+      ]),
+    );
+  }
+
+  /// The strip that sits above an opened kind's layers and closes it again.
+  Widget _kindHeaderRow(String id, String label, List<Object> items, double top, double headH) {
+    final tint = _layerColor(items.first);
+    return Positioned(
+      left: 0, right: 0, top: top, height: headH,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _openTimelineKinds.remove(id)),
+        child: Row(children: [
+          Icon(Icons.expand_less_rounded, size: 14, color: tint),
+          const SizedBox(width: 3),
+          Text('$label  ${items.length}',
+              style: TextStyle(color: tint, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 0.4)),
+          const SizedBox(width: 6),
+          Expanded(child: IgnorePointer(child: DecoratedBox(
+              decoration: BoxDecoration(color: tint.withOpacity(0.22), borderRadius: BorderRadius.circular(1)),
+              child: const SizedBox(height: 1)))),
+        ]),
+      ),
+    );
+  }
+
+  /// One opened layer's own row: positioned by its time, drag = move, edge
+  /// grips = duration. A locked layer (or the logo, which has no window)
+  /// ignores both.
+  Widget _layerRow(Object it, double top, double rowH, double w, double dur, double Function(double) x, double Function(double) sec) {
+    final isLogo = it == 'logo';
+    final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
+    final locked = _layerLocked(it);
+    final (st, en) = _layerSpan(it, dur);
+    final left = x(st).clamp(0.0, w);
+    final width = (x(en) - x(st)).clamp(28.0, w - left);
+    final canTime = !isLogo && !locked;
+    return Positioned(
+      left: 0, right: 0, top: top, height: rowH,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned.fill(child: IgnorePointer(child: DecoratedBox(
+          decoration: BoxDecoration(color: AppColors.bgAlt.withOpacity(0.45), borderRadius: BorderRadius.circular(6))))),
+        Positioned(
+          left: left, width: width, top: 0, bottom: 0,
+          child: _timelineBlock(
+            label: _layerName(it),
+            icon: _layerIcon(it),
+            selected: selected,
+            color: _layerColor(it),
+            locked: locked,
+            onTap: () => setState(() => _selected = isLogo ? 'logo' : it),
+            onDrag: canTime ? (d) => setState(() => _dragLayerTime(it, sec(d), dur)) : (_) {},
+            onResizeLeft: canTime ? (d) => setState(() => _resizeLayerStart(it, sec(d), dur)) : null,
+            onResizeRight: canTime ? (d) => setState(() => _resizeLayerEnd(it, sec(d), dur)) : null,
+          ),
+        ),
       ]),
     );
   }
@@ -3514,6 +3561,7 @@ class _EditorScreenState extends State<EditorScreen> {
     void Function(double)? onResizeLeft,
     void Function(double)? onResizeRight,
     bool locked = false,
+    IconData? trailing,
   }) {
     // A block is time-draggable only if it isn't locked AND actually has a time
     // window to move (resize grips present). The full-clip logo has neither.
@@ -3536,6 +3584,8 @@ class _EditorScreenState extends State<EditorScreen> {
           if (locked) ...[const Icon(Icons.lock, size: 10, color: Colors.white), const SizedBox(width: 3)],
           if (icon != null) ...[Icon(icon, size: 12, color: Colors.white), const SizedBox(width: 4)],
           Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700))),
+          // marks a collapsed kind as openable
+          if (trailing != null) ...[const SizedBox(width: 3), Icon(trailing, size: 13, color: Colors.white)],
         ]),
       ),
     );
