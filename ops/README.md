@@ -56,3 +56,11 @@ order, from inside the api container:
 `previews/{id}.mp4` re-attach for free. `base_clip_path` is the one field the
 public-API backup cannot carry, which is why it has to be recovered by
 matching frames against the thumbnails.
+
+### Locking the origin to Cloudflare
+
+    bash server/lock_to_cloudflare.sh
+
+Run after DNS is proxied. It is re-runnable and verifies container egress
+before declaring success, because the obvious version of this rule silently
+breaks image builds - see the comments in the script for why.
