@@ -819,34 +819,101 @@ class _EditorScreenState extends State<EditorScreen> {
 
   // ---------- layers panel (CapCut-style: reorder z, select, hide, delete) ----------
   void _openLayers({bool startInSelect = false}) {
-    // Multi-select (§4.0 feedback 5): a select mode with per-row checks + batch
-    // delete/hide. State lives here so it persists across StatefulBuilder rebuilds.
-    // [startInSelect] opens straight into select mode (transport-row "Select").
+    // Two levels, because a flat list of every overlay stops being readable the
+    // moment a clip has a few captions (client: "text par click karo, uske andar
+    // text ki layers dikhein; back karo to ek hi Text entry"). Level one is one
+    // row per kind; opening a kind shows that kind's layers and nothing else.
     final sel = <Object>{};
     var selectMode = startInSelect;
+    String? openKind; // null = the kind list
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => StatefulBuilder(builder: (ctx, setSheet) {
-        final ordered = <MapEntry<double, Object>>[
-          for (final s in _project!.subtitles) MapEntry(s.z, s),
-          for (final s in _project!.stickers) MapEntry(s.z, s),
-          if (_project!.logoPath != null) MapEntry(_project!.logoZ, 'logo'),
-        ]..sort((a, b) => b.key.compareTo(a.key)); // top layer first
+        bool isEmoji(Object it) => it is StickerOverlay && it.emoji != null;
 
-        void reassign() {
-          for (var i = 0; i < ordered.length; i++) {
-            final z = (ordered.length - i).toDouble();
-            final it = ordered[i].value;
-            if (it is SubtitleSegment) {
-              it.z = z;
-            } else if (it is StickerOverlay) {
-              it.z = z;
-            } else {
-              _project!.logoZ = z;
-            }
+        // Kinds carry the names the Add row uses, so a layer lands in the group
+        // named after the button that created it.
+        List<Object> membersOf(String kind) {
+          List<Object> out;
+          switch (kind) {
+            case 'text':
+              out = _project!.subtitles.cast<Object>().toList();
+              break;
+            case 'emoji':
+              out = _project!.stickers.where(isEmoji).cast<Object>().toList();
+              break;
+            case 'sticker':
+              out = _project!.stickers.where((s) => !isEmoji(s)).cast<Object>().toList();
+              break;
+            case 'logo':
+              out = _project!.logoPath != null ? <Object>['logo'] : <Object>[];
+              break;
+            default:
+              out = <Object>[];
           }
+          out.sort((a, b) => _layerZ(b).compareTo(_layerZ(a))); // top layer first
+          return out;
+        }
+
+        final kinds = <(String, String, IconData, VoidCallback)>[
+          ('text', 'Text', Icons.title_rounded, _addSubtitle),
+          ('emoji', 'Emoji', Icons.emoji_emotions_outlined, _openEmojiPicker),
+          ('sticker', 'Stickers', Icons.auto_awesome_motion, _pickSticker),
+          ('logo', 'Logo', Icons.verified_outlined, _addLogoText),
+        ];
+        final present = [for (final k in kinds) if (membersOf(k.$1).isNotEmpty) k];
+        final shown = openKind == null ? const <Object>[] : membersOf(openKind!);
+        final totalLayers = present.fold<int>(0, (n, k) => n + membersOf(k.$1).length);
+
+        /// Reorder inside one kind only. The z values that kind already occupies
+        /// are redealt in the new order, so layers of other kinds keep their
+        /// place in the stack instead of being renumbered around it.
+        void reassignWithin(List<Object> items) {
+          final slots = [for (final it in items) _layerZ(it)]..sort((a, b) => b.compareTo(a));
+          for (var i = 0; i < items.length; i++) {
+            _setLayerZ(items[i], slots[i]);
+          }
+        }
+
+        Widget kindRow((String, String, IconData, VoidCallback) k) {
+          final items = membersOf(k.$1);
+          final allHidden = items.every(_layerHidden);
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+              color: _kChip,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              horizontalTitleGap: 12,
+              leading: Icon(k.$3, color: allHidden ? AppColors.inkFaint : _kAccent, size: 24),
+              title: Text(k.$2,
+                  style: TextStyle(color: allHidden ? AppColors.inkFaint : AppColors.ink, fontWeight: FontWeight.w600, fontSize: 14)),
+              subtitle: Text(items.length == 1 ? '1 layer' : '${items.length} layers',
+                  style: const TextStyle(color: AppColors.inkFaint, fontSize: 11, fontFamily: 'IBMPlexMono')),
+              onTap: () => setSheet(() {
+                openKind = k.$1;
+                sel.clear();
+              }),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                _layerIconBtn(allHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded, AppColors.inkMuted, () {
+                  _snapshot();
+                  setState(() {
+                    for (final it in items) {
+                      _setLayerHidden(it, !allHidden);
+                    }
+                  });
+                  setSheet(() {});
+                }),
+                const Icon(Icons.chevron_right_rounded, color: AppColors.chevron, size: 22),
+              ]),
+            ),
+          );
         }
 
         Widget rowFor(Object it) {
@@ -896,6 +963,10 @@ class _EditorScreenState extends State<EditorScreen> {
           );
         }
 
+        final inKind = openKind != null;
+        final kind = inKind ? kinds.firstWhere((k) => k.$1 == openKind) : null;
+        final kindLabel = kind?.$2 ?? 'Layers';
+
         return Container(
           decoration: const BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
           padding: EdgeInsets.fromLTRB(14, 10, 14, 16 + MediaQuery.of(context).viewPadding.bottom),
@@ -903,11 +974,28 @@ class _EditorScreenState extends State<EditorScreen> {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Center(child: _Grabber()),
             Row(children: [
-              const Text('Layers', style: TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600)),
+              if (inKind)
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setSheet(() {
+                    openKind = null;
+                    sel.clear();
+                    selectMode = false;
+                  }),
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 6, top: 2, bottom: 2),
+                    child: Icon(Icons.arrow_back_rounded, size: 20, color: AppColors.ink),
+                  ),
+                ),
+              Text(kindLabel, style: const TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600)),
+              if (inKind) ...[
+                const SizedBox(width: 8),
+                Text('${shown.length}', style: const TextStyle(color: AppColors.inkFaint, fontSize: 13, fontFamily: 'IBMPlexMono')),
+              ],
               const Spacer(),
               // Caption timing lives here rather than in the text panel's tabs,
               // which the client pinned to Font / Styling / Advance.
-              if (!selectMode && _project!.subtitles.isNotEmpty) ...[
+              if (!selectMode && openKind == 'text' && _project!.subtitles.isNotEmpty) ...[
                 GestureDetector(
                   onTap: () { Navigator.pop(context); _openCaptionSync(); },
                   behavior: HitTestBehavior.opaque,
@@ -919,42 +1007,53 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
                 const SizedBox(width: 14),
               ],
-              if (ordered.isNotEmpty)
+              if (inKind && shown.isNotEmpty)
                 GestureDetector(
                   onTap: () => setSheet(() { selectMode = !selectMode; sel.clear(); }),
                   child: Text(selectMode ? 'Done' : 'Select', style: const TextStyle(color: _kAccent, fontSize: 13.5, fontWeight: FontWeight.w600)),
                 ),
             ]),
-            // ── Add layer (relocated from the bottom toolbar per client §4) ──
+            // Add layer (relocated from the bottom toolbar per client section 4).
             if (!selectMode) ...[
               const SizedBox(height: 12),
-              SizedBox(
-                height: 78,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    for (final t in <(IconData, String, VoidCallback, bool)>[
-                      (Icons.title_rounded, 'Text', () { Navigator.pop(context); _addSubtitle(); }, false),
-                      (Icons.verified_outlined, 'Logo', () { Navigator.pop(context); _addLogoText(); }, false),
-                      (Icons.emoji_emotions_outlined, 'Emoji', () { Navigator.pop(context); _openEmojiPicker(); }, false),
-                      (Icons.auto_awesome_motion, 'Sticker', () { Navigator.pop(context); _pickSticker(); }, false),
-                      (Icons.alternate_email_rounded, 'Handle', () { Navigator.pop(context); _addUsername(); }, false),
-                      (Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }, false),
-                      (Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }, false),
-                      (Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }, false),
-                      (Icons.dashboard_customize_rounded, 'Template', () { Navigator.pop(context); _openLayoutTemplates(); }, false),
-                      (Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, _project!.watermarkOn),
-                    ])
-                      Padding(padding: const EdgeInsets.only(right: 14), child: _addTile(t.$1, t.$2, t.$3, on: t.$4)),
-                  ],
+              if (inKind)
+                // inside a kind, the only add that makes sense is that kind's own
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _addTile(kind!.$3, 'Add $kindLabel', () { Navigator.pop(context); kind.$4(); }),
+                )
+              else
+                SizedBox(
+                  height: 78,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      for (final t in <(IconData, String, VoidCallback, bool)>[
+                        (Icons.title_rounded, 'Text', () { Navigator.pop(context); _addSubtitle(); }, false),
+                        (Icons.verified_outlined, 'Logo', () { Navigator.pop(context); _addLogoText(); }, false),
+                        (Icons.emoji_emotions_outlined, 'Emoji', () { Navigator.pop(context); _openEmojiPicker(); }, false),
+                        (Icons.auto_awesome_motion, 'Sticker', () { Navigator.pop(context); _pickSticker(); }, false),
+                        (Icons.alternate_email_rounded, 'Handle', () { Navigator.pop(context); _addUsername(); }, false),
+                        (Icons.campaign_rounded, 'CTA', () { Navigator.pop(context); _addCta(); }, false),
+                        (Icons.movie_filter_rounded, 'Outro', () { Navigator.pop(context); _addEndingScreen(); }, false),
+                        (Icons.palette_rounded, 'Brand', () { Navigator.pop(context); _openBrandKit(); }, false),
+                        (Icons.dashboard_customize_rounded, 'Template', () { Navigator.pop(context); _openLayoutTemplates(); }, false),
+                        (Icons.branding_watermark_outlined, _project!.watermarkOn ? 'Mark on' : 'Mark off', () { Navigator.pop(context); _toggleWatermark(); }, _project!.watermarkOn),
+                      ])
+                        Padding(padding: const EdgeInsets.only(right: 14), child: _addTile(t.$1, t.$2, t.$3, on: t.$4)),
+                    ],
+                  ),
                 ),
-              ),
               const Divider(height: 20, color: AppColors.line),
             ],
             const SizedBox(height: 8),
-            if (ordered.isEmpty)
+            if (!inKind && totalLayers == 0)
               const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('No layers yet.\nAdd text or a logo.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.inkMuted))))
+            else if (!inKind)
+              Flexible(child: ListView(shrinkWrap: true, children: [for (final k in present) kindRow(k)]))
+            else if (shown.isEmpty)
+              Padding(padding: const EdgeInsets.all(28), child: Center(child: Text('No $kindLabel layers yet.', style: const TextStyle(color: AppColors.inkMuted))))
             else
               Flexible(
                 child: ReorderableListView(
@@ -962,15 +1061,15 @@ class _EditorScreenState extends State<EditorScreen> {
                   buildDefaultDragHandles: true,
                   onReorder: (oldI, newI) {
                     _snapshot();
-                    setSheet(() {
-                      if (newI > oldI) newI--;
-                      final it = ordered.removeAt(oldI);
-                      ordered.insert(newI, it);
-                      reassign();
-                    });
+                    final items = [...shown];
+                    if (newI > oldI) newI--;
+                    final it = items.removeAt(oldI);
+                    items.insert(newI, it);
+                    reassignWithin(items);
+                    setSheet(() {});
                     setState(() {});
                   },
-                  children: [for (final e in ordered) rowFor(e.value)],
+                  children: [for (final it in shown) rowFor(it)],
                 ),
               ),
             // batch action bar (multi-select)
@@ -982,9 +1081,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     _snapshot();
                     setState(() {
                       for (final it in sel) {
-                        if (it is SubtitleSegment) it.hidden = !it.hidden;
-                        else if (it is StickerOverlay) it.hidden = !it.hidden;
-                        else _project!.logoHidden = !_project!.logoHidden;
+                        _setLayerHidden(it, !_layerHidden(it));
                       }
                     });
                     setSheet(() {});
@@ -1000,9 +1097,13 @@ class _EditorScreenState extends State<EditorScreen> {
                     setState(() {
                       for (final it in sel) {
                         if (_layerLocked(it)) continue; // locked layers are protected from delete
-                        if (it is SubtitleSegment) _project!.subtitles.remove(it);
-                        else if (it is StickerOverlay) _project!.stickers.remove(it);
-                        else _project!.logoPath = null;
+                        if (it is SubtitleSegment) {
+                          _project!.subtitles.remove(it);
+                        } else if (it is StickerOverlay) {
+                          _project!.stickers.remove(it);
+                        } else {
+                          _project!.logoPath = null;
+                        }
                         if (identical(_selected, it)) _selected = null;
                       }
                     });
@@ -1018,6 +1119,29 @@ class _EditorScreenState extends State<EditorScreen> {
         );
       }),
     );
+  }
+
+  // Writers for the unified layer helpers further down, so grouped reordering
+  // and group-level hiding can set z/visibility without caring which list the
+  // layer actually lives in.
+  void _setLayerZ(Object it, double z) {
+    if (it is SubtitleSegment) {
+      it.z = z;
+    } else if (it is StickerOverlay) {
+      it.z = z;
+    } else {
+      _project!.logoZ = z;
+    }
+  }
+
+  void _setLayerHidden(Object it, bool hidden) {
+    if (it is SubtitleSegment) {
+      it.hidden = hidden;
+    } else if (it is StickerOverlay) {
+      it.hidden = hidden;
+    } else {
+      _project!.logoHidden = hidden;
+    }
   }
 
   // Inline text bar (docked above the keyboard; video + live text stay visible).
