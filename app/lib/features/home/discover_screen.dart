@@ -181,9 +181,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
-  // Compact subscribe / Pro pill for the header. When active it's a brand-violet
-  // "Pro" state carrying the days remaining; when there's no plan it's a gold
-  // "Subscribe" CTA (deliberate premium accent on paper).
+  /// How close to expiry the plan has to be before the pill starts warning.
+  /// A week is enough notice to renew without the pill crying wolf all month.
+  static const int _endingSoonDays = 7;
+
+  // Compact plan pill for the header, in the three states Revision A asks for:
+  // a gold "Subscribe" with no plan, an amber "Renew" while one is running out,
+  // and a brand-violet "Pro" the rest of the time. The amber state is the point
+  // of having three — without it an expiring plan reads exactly like a healthy
+  // one, and the user only finds out when a clip refuses to open.
   Widget _subPill() {
     final active = _hasPlan;
     final expiresRaw = _sub?['expires_at'] ?? _sub?['current_period_end'] ?? _sub?['end_at'];
@@ -192,10 +198,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     final daysLeft = expires?.difference(DateTime.now()).inDays;
 
     if (active) {
-      // brand-violet Pro chip — icon + "Pro" + days-left sub-label
+      final ending = daysLeft != null && daysLeft >= 0 && daysLeft <= _endingSoonDays;
       final String sub = (daysLeft != null && daysLeft >= 0)
           ? (daysLeft == 0 ? 'ends today' : '$daysLeft days left')
           : 'active';
+      // Amber while it is running out, violet while it is healthy. The label
+      // changes too: colour alone is not a state anyone can act on, and the
+      // accessibility rule in the contract says as much.
+      final Color c1 = ending ? const Color(0xFFE0A040) : const Color(0xFF7A62D6);
+      final Color c2 = ending ? AppColors.goldAccent : AppColors.brand;
+      final Color glow = ending ? AppColors.goldAccent : AppColors.brand;
+      final Color fg = ending ? const Color(0xFF3B2A05) : Colors.white;
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () async { await context.push('/plans'); if (mounted) _refreshSub(); },
@@ -203,21 +216,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           height: 34,
           padding: const EdgeInsets.fromLTRB(9, 0, 13, 0),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF7A62D6), AppColors.brand]),
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [c1, c2]),
             borderRadius: BorderRadius.circular(R.pill),
-            boxShadow: [BoxShadow(color: AppColors.brand.withValues(alpha: 0.34), blurRadius: 11, offset: const Offset(0, 3))],
+            boxShadow: [BoxShadow(color: glow.withValues(alpha: 0.34), blurRadius: 11, offset: const Offset(0, 3))],
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 20, height: 20,
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle),
-              child: const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
+              decoration: BoxDecoration(color: fg.withValues(alpha: 0.18), shape: BoxShape.circle),
+              child: Icon(ending ? Icons.schedule_rounded : Icons.verified_rounded, size: 13, color: fg),
             ),
             const SizedBox(width: 6),
             Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Pro', style: TextStyle(fontFamily: kSans, fontSize: 12.5, height: 1.05, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: Colors.white)),
-              Text(sub, style: TextStyle(fontFamily: kMono, fontSize: 8.5, height: 1.05, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.82))),
+              Text(ending ? 'Renew' : 'Pro',
+                  style: TextStyle(fontFamily: kSans, fontSize: 12.5, height: 1.05, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: fg)),
+              Text(sub, style: TextStyle(fontFamily: kMono, fontSize: 8.5, height: 1.05, fontWeight: FontWeight.w500, color: fg.withValues(alpha: 0.82))),
             ]),
           ]),
         ),

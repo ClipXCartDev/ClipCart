@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
 import 'support_chat_screen.dart';
+import '../../core/runtime_config.dart';
 
 /// §25 Help & support — a query-first support hub: a dark CTA to open a new
 /// request, the user's ticket list, FAQ, contact details, and account security.
@@ -14,17 +15,24 @@ class SupportScreen extends StatefulWidget {
 }
 
 class _SupportScreenState extends State<SupportScreen> {
+  /// Both of these come from remote config so they can be corrected without
+  /// shipping a release — the build contract asks for exactly that, and these
+  /// two spent a while pointing at a domain the app does not own.
+  String get _email => RuntimeConfig.get<String>('support_email', 'support@clipscart.app');
+  String get _helpUrl => '${RuntimeConfig.origin}/help';
+  String get _helpLabel => _helpUrl.replaceFirst(RegExp(r'^https?://'), '');
+
   void _openQuery() {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SupportChatScreen()));
   }
 
   void _copyEmail() {
-    Clipboard.setData(const ClipboardData(text: 'support@clipcart.app'));
+    Clipboard.setData(ClipboardData(text: _email));
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Email copied')));
   }
 
   void _copyWebsite() {
-    Clipboard.setData(const ClipboardData(text: 'https://clipcart.app/help'));
+    Clipboard.setData(ClipboardData(text: _helpUrl));
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied')));
   }
 
@@ -69,7 +77,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   ListRowTile(
                     icon: Icons.mail_outline_rounded,
                     label: 'Email',
-                    value: 'support@clipcart.app',
+                    value: _email,
                     chevron: false,
                     onTap: _copyEmail,
                     trailing: _RowAction(label: 'Copy', onTap: _copyEmail),
@@ -77,7 +85,7 @@ class _SupportScreenState extends State<SupportScreen> {
                   ListRowTile(
                     icon: Icons.public_rounded,
                     label: 'Help centre',
-                    value: 'clipcart.app/help',
+                    value: _helpLabel,
                     chevron: false,
                     onTap: _copyWebsite,
                     trailing: _RowAction(label: 'Copy', onTap: _copyWebsite),

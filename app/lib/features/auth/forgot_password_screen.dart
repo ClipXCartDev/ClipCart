@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
+import '../../core/runtime_config.dart';
 
 /// §03 Reset password. There is no email service wired (lean, crypto-only infra),
 /// so a self-service email code isn't sent — password resets are verified by
@@ -11,12 +12,14 @@ import '../../core/ui_kit.dart';
 class ForgotPasswordScreen extends StatelessWidget {
   const ForgotPasswordScreen({super.key});
 
-  static const _supportEmail = 'support@clipcart.app';
+  // from remote config, so a wrong address is a config change not a release
+  static String get _supportEmail =>
+      RuntimeConfig.get<String>('support_email', 'support@clipscart.app');
 
   @override
   Widget build(BuildContext context) {
     void copyEmail() {
-      Clipboard.setData(const ClipboardData(text: _supportEmail));
+      Clipboard.setData(ClipboardData(text: _supportEmail));
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Support email copied')));
     }
 
@@ -60,11 +63,11 @@ class ForgotPasswordScreen extends StatelessWidget {
                       child: const Icon(Icons.mail_outline_rounded, size: 20, color: AppColors.ink),
                     ),
                     const SizedBox(width: 13),
-                    const Expanded(
+                    Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        Text('Email support', style: TextStyle(fontFamily: kSans, fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
-                        SizedBox(height: 4),
-                        Text(_supportEmail, style: TextStyle(fontFamily: kMono, fontSize: 12.5, color: AppColors.inkMuted)),
+                        const Text('Email support', style: TextStyle(fontFamily: kSans, fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                        const SizedBox(height: 4),
+                        Text(_supportEmail, style: const TextStyle(fontFamily: kMono, fontSize: 12.5, color: AppColors.inkMuted)),
                       ]),
                     ),
                   ]),
