@@ -71,7 +71,17 @@ class _EditorScreenState extends State<EditorScreen> {
   }
   String? _error;
 
-  Object? _selected; // SubtitleSegment | 'logo' | null
+  Object? _selectedLayer; // SubtitleSegment | StickerOverlay | 'logo' | null
+  Object? get _selected => _selectedLayer;
+
+  /// Clearing the selection ends an edit, and an ended edit folds the timeline
+  /// back to one entry per kind. The group was opened to reach a layer, not to
+  /// leave the timeline tall afterwards — going through a setter means every
+  /// path that finishes an edit gets this without having to remember to.
+  set _selected(Object? v) {
+    _selectedLayer = v;
+    if (v == null) _openTimelineKinds.clear();
+  }
   bool _trimMode = false;
   int _textTab = 0; // client §3 text panel sub-tab: 0 Font · 1 Styling · 2 Advance
 
