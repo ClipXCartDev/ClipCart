@@ -133,6 +133,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         padding: EdgeInsets.only(bottom: 24 + MediaQuery.of(context).viewPadding.bottom),
         children: [
           _header(),
+          _searchEntry(),
           const SizedBox(height: 4),
           if (_featured.isNotEmpty) _rail('Newly released', _featured, null),
           for (final row in _rows)
@@ -255,6 +256,43 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           SizedBox(width: 5),
           Text('Subscribe', style: TextStyle(fontFamily: kSans, fontSize: 13, height: 1.0, fontWeight: FontWeight.w700, letterSpacing: -0.1, color: Color(0xFF3B2A05))),
         ]),
+      ),
+    );
+  }
+
+  /// A search field on Home, as the client's mockup has it.
+  ///
+  /// It is a button dressed as a field rather than a second search
+  /// implementation: tapping it opens Explore, which already owns the query,
+  /// the filters and the results. Two search boxes that behave differently is
+  /// worse than one that is reachable from both places.
+  Widget _searchEntry() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          exploreCategory.value = null;
+          homeTab.value = 1;
+        },
+        child: Container(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: AppColors.bgAlt,
+            borderRadius: BorderRadius.circular(R.button),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(children: [
+            const Icon(Icons.search_rounded, size: 19, color: AppColors.inkFaint),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('Search clips, movies, moods',
+                  style: TextStyle(fontFamily: kSans, fontSize: 14, color: AppColors.inkFaint)),
+            ),
+            const Icon(Icons.tune_rounded, size: 18, color: AppColors.inkFaint),
+          ]),
+        ),
       ),
     );
   }

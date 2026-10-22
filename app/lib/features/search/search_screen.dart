@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
@@ -42,6 +44,12 @@ class _SearchScreenState extends State<SearchScreen> {
   int? _maxDuration; // seconds
   String? _access;   // 'free' | 'pro'
   Map<String, List<String>> _facets = const {};
+  /// The search field and chips fold away while the grid is moving. Driven by a
+  /// settle timer rather than scroll direction, because the ask was that they
+  /// come back when scrolling stops — direction alone would keep them hidden
+  /// through a long flick that never reverses.
+  bool _headerHidden = false;
+  Timer? _headerSettle;
   bool _loading = true, _loadingMore = false, _more = true;
   String? _error;
   int _gen = 0; // bumps on every _reload; in-flight page loads with a stale gen are discarded
@@ -54,8 +62,24 @@ class _SearchScreenState extends State<SearchScreen> {
     _boot();
   }
 
+  /// Hide while moving, show once still. Near the top they always stay: folding
+  /// them away there would flicker on the smallest nudge.
+  void _headerOnScroll() {
+    const settle = Duration(milliseconds: 320);
+    _headerSettle?.cancel();
+    if (_scroll.position.pixels <= 60) {
+      if (_headerHidden) setState(() => _headerHidden = false);
+      return;
+    }
+    if (!_headerHidden) setState(() => _headerHidden = true);
+    _headerSettle = Timer(settle, () {
+      if (mounted && _headerHidden) setState(() => _headerHidden = false);
+    });
+  }
+
   @override
   void dispose() {
+    _headerSettle?.cancel();
     _q.dispose();
     _scroll.dispose();
     super.dispose();
@@ -118,6 +142,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onScroll() {
+    _headerOnScroll();
     if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 700) _loadMore();
     final dir = _scroll.position.userScrollDirection;
     if (_scroll.position.pixels < 120) {
@@ -155,6 +180,62 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // ── filter sheet — categories only ─────────────────────────────────────────
+  /// Search field and chips, folded away while the grid is being scrolled so
+  /// the clips get the whole screen.
+  Widget _collapsingHeader() {
+    return ClipRect(
+      child: AnimatedAlign(
+        alignment: Alignment.bottomCenter,
+        heightFactor: _headerHidden ? 0.0 : 1.0,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        child: AnimatedOpacity(
+          opacity: _headerHidden ? 0 : 1,
+          duration: const Duration(milliseconds: 140),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+              child: Row(children: [
+                Expanded(child: _searchField()),
+                const SizedBox(width: 10),
+                _filterButton(),
+              ]),
+            ),
+            // sort + category chips — thin pills, brand-fill on select. Sort is
+            // always shown; category chips wait for the category list.
+            SizedBox(
+              height: 32,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _SortChip('Trending', Icons.local_fire_department_rounded, selected: _sort == 'trending', onTap: () => _pickSort('trending')),
+                  _SortChip('Newest', Icons.bolt_rounded, selected: _sort == 'newest', onTap: () => _pickSort('newest')),
+                  if (_cats.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      child: SizedBox(height: 18, child: VerticalDivider(width: 1, thickness: 1, color: AppColors.line)),
+                    ),
+                    const SizedBox(width: 4),
+                    _CatChip('All', selected: _cat == null, onTap: () => _pickCategory(null)),
+                    for (final c in _cats)
+                      _CatChip(
+                        (c['name'] as String?) ?? 'Clips',
+                        selected: _cat == ((c['slug'] as String?) ?? c['name']),
+                        onTap: () => _pickCategory((c['slug'] as String?) ?? c['name'] as String),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ]),
+        ),
+      ),
+    );
+  }
+
   /// Every filter currently narrowing the grid, as removable chips.
   /// "Active filters must be visible and removable" is the PRD's wording, and
   /// a filter you cannot see is the reason an empty grid looks like an empty
@@ -295,44 +376,10 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      // search field + filter button
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-        child: Row(children: [
-          Expanded(child: _searchField()),
-          const SizedBox(width: 10),
-          _filterButton(),
-        ]),
-      ),
-      // sort + category chips — modern & compact (thin pills, brand-fill on select).
-      // Sort is always shown (it needs no data to be meaningful); category chips
-      // wait for the category list like before.
-      SizedBox(
-        height: 32,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          physics: const BouncingScrollPhysics(),
-          children: [
-            _SortChip('Trending', Icons.local_fire_department_rounded, selected: _sort == 'trending', onTap: () => _pickSort('trending')),
-            _SortChip('Newest', Icons.bolt_rounded, selected: _sort == 'newest', onTap: () => _pickSort('newest')),
-            if (_cats.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: SizedBox(height: 18, child: VerticalDivider(width: 1, thickness: 1, color: AppColors.line)),
-              ),
-              const SizedBox(width: 4),
-              _CatChip('All', selected: _cat == null, onTap: () => _pickCategory(null)),
-              for (final c in _cats)
-                _CatChip(
-                  (c['name'] as String?) ?? 'Clips',
-                  selected: _cat == ((c['slug'] as String?) ?? c['name']),
-                  onTap: () => _pickCategory((c['slug'] as String?) ?? c['name'] as String),
-                ),
-            ],
-          ],
-        ),
-      ),
+      _collapsingHeader(),
+      // The active-filter bar is deliberately NOT part of the collapse: it is
+      // the only thing explaining why the grid is short, and hiding it mid-
+      // scroll would make a filtered grid look like an empty catalogue.
       if (_activeFilters().isNotEmpty) _activeFilterBar(),
       Expanded(child: _body()),
     ]);

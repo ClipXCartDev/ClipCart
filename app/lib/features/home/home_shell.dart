@@ -111,10 +111,13 @@ class _TabBar extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => onSelect(i),
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(index == i ? _tabItems[i].$2 : _tabItems[i].$1, size: 20, color: index == i ? AppColors.brand : AppColors.inkFaint),
+                      // brandLight, not brand: the tab bar sits under a selected
+                      // filter chip and the subscribe pill, both full-strength
+                      // violet, and three of them at once reads as noise.
+                      Icon(index == i ? _tabItems[i].$2 : _tabItems[i].$1, size: 20, color: index == i ? AppColors.brandLight : AppColors.inkFaint),
                       const SizedBox(height: 6),
                       Text(_tabItems[i].$3,
-                          style: T.tab.copyWith(fontWeight: index == i ? FontWeight.w600 : FontWeight.w500, color: index == i ? AppColors.brand : AppColors.inkFaint)),
+                          style: T.tab.copyWith(fontWeight: index == i ? FontWeight.w600 : FontWeight.w500, color: index == i ? AppColors.brandLight : AppColors.inkFaint)),
                     ]),
                   ),
                 ),
