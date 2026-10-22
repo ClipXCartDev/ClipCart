@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/editor_state.dart';
 import '../models/video_geometry.dart';
+import '../models/video_look.dart';
 import 'text_render.dart';
 
 /// Thrown when the user stopped the render themselves. Separate from a
@@ -225,8 +226,14 @@ class ExportService {
     ]..sort((a, b) => (a['z'] as double).compareTo(b['z'] as double));
 
     // Filtergraph (no spaces; commas inside filter args escaped as \,).
+    // The look grades the VIDEO only. It goes before the geometry, so the
+    // letterbox fill keeps the colour the user actually picked, and before the
+    // overlays, so their text and logo read the same under every look - which
+    // is how the editor previews it.
+    final look = VideoLook.byId(p.lookId).filterChain();
     final fc = StringBuffer()
       ..write('[0:v]')
+      ..write(look == null ? '' : '$look,')
       ..write(cropFilter)
       ..write('[bg];');
     String cur = 'bg';

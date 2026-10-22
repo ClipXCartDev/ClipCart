@@ -400,6 +400,7 @@ class EditorProject {
     this.videoDy = 0.0,
     this.videoFitContain = false,
     this.videoBgColor = 0xFF000000,
+    this.lookId = 'none',
     this.resolution = ExportResolution.p1080,
     this.fps = 30,
   })  : subtitles = subtitles ?? [],
@@ -435,6 +436,7 @@ class EditorProject {
   // §4.0 feedback 4 — ratio refit: 'fill' cover-crops; 'fit' letterboxes the whole
   // video onto a background fill (black or white). Scale/reposition apply to both.
   bool videoFitContain; // false = fill/cover, true = fit/contain with bg
+  String lookId; // colour grade, resolved through VideoLook.byId
   int videoBgColor; // ARGB background fill for 'fit' mode (black or white)
   ExportResolution resolution; // output resolution target
   int fps; // 30 or 60
@@ -457,6 +459,7 @@ class EditorProject {
         'watermarkOn': watermarkOn,
         'videoScale': videoScale, 'videoDx': videoDx, 'videoDy': videoDy,
         'videoFitContain': videoFitContain, 'videoBgColor': videoBgColor,
+        'lookId': lookId,
         'resolution': resolution.shortEdge, 'fps': fps,
       };
 
@@ -467,6 +470,7 @@ class EditorProject {
     videoDy = (s['videoDy'] as num?)?.toDouble() ?? 0.0;
     videoFitContain = (s['videoFitContain'] as bool?) ?? false;
     videoBgColor = (s['videoBgColor'] as int?) ?? 0xFF000000;
+    lookId = (s['lookId'] as String?) ?? 'none';
     resolution = (s['resolution'] as int? ?? 1080) == 720 ? ExportResolution.p720 : ExportResolution.p1080;
     fps = (s['fps'] as int?) ?? 30;
     // Defensive parsing so a partial / malformed payload (e.g. a creator overlay

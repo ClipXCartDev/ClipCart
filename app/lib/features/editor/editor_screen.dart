@@ -16,6 +16,7 @@ import '../../core/theme.dart' show AppColors;
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
 import '../../models/video_geometry.dart';
+import '../../models/video_look.dart';
 import 'export_progress_screen.dart';
 import '../../services/brand_kit_service.dart';
 import '../../services/catalog_service.dart';
@@ -3044,6 +3045,7 @@ class _EditorScreenState extends State<EditorScreen> {
             final cropSrcH = ar == null ? srcH : (srcH < srcW / ar ? srcH : srcW / ar);
             final scale = h / cropSrcH; // WYSIWYG video→canvas px on the cropped frame
             final geo = _geo();
+            final look = VideoLook.byId(_project!.lookId);
             return ValueListenableBuilder<VideoPlayerValue>(
               valueListenable: _vc!,
               builder: (context, v, _) {
@@ -3116,7 +3118,15 @@ class _EditorScreenState extends State<EditorScreen> {
                                 child: SizedBox(
                                   width: _vc!.value.size.width == 0 ? 720 : _vc!.value.size.width,
                                   height: _vc!.value.size.height == 0 ? 1280 : _vc!.value.size.height,
-                                  child: VideoPlayer(_vc!),
+                                  // the look grades the video and nothing else:
+                                  // not the letterbox fill, not the overlays -
+                                  // the same place the export applies it
+                                  child: look.isIdentity
+                                      ? VideoPlayer(_vc!)
+                                      : ColorFiltered(
+                                          colorFilter: ColorFilter.matrix(look.matrix),
+                                          child: VideoPlayer(_vc!),
+                                        ),
                                 ),
                               ),
                             ),
@@ -4064,7 +4074,7 @@ class _EditorScreenState extends State<EditorScreen> {
       padding: EdgeInsets.fromLTRB(10, 6, 10, 6 + MediaQuery.of(context).viewPadding.bottom),
       child: !hasSel
           // PROJECT tools — ONE clean row (client §4): Text · Trim · Split ·
-          // Aspect · Transform · Layers. Add-tools (Logo/Stickers/Handle/CTA/
+          // Aspect · Video · Layers. Add-tools (Logo/Stickers/Handle/CTA/
           // Outro/Brand) live under Layers → "Add".
           ? SizedBox(
               height: 60,
@@ -4073,8 +4083,11 @@ class _EditorScreenState extends State<EditorScreen> {
                 _barTile(Icons.content_cut_rounded, 'Trim', () => setState(() => _trimMode = !_trimMode), on: _trimMode),
                 _barTile(Icons.call_split_rounded, 'Split', _splitAtPlayhead),
                 _barTile(Icons.crop_rounded, _project!.aspect.isOriginal ? 'Aspect' : _project!.aspect.label, _pickAspect, on: !_project!.aspect.isOriginal),
-                _barTile(Icons.open_with_rounded, 'Transform', _openTransform,
-                    on: _project!.videoScale != 1.0 || _project!.videoDx != 0 || _project!.videoDy != 0),
+                // "Video" rather than "Transform": the sheet now owns the look
+                // as well as the placement, and a filter nobody can find is a
+                // filter nobody uses. Still one of the same six.
+                _barTile(Icons.tune_rounded, 'Video', _openTransform,
+                    on: _project!.videoScale != 1.0 || _project!.videoDx != 0 || _project!.videoDy != 0 || _project!.lookId != 'none'),
                 _barTile(Icons.layers_rounded, 'Layers', _openLayers),
               ]),
             )
@@ -4455,6 +4468,70 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  /// The looks, as live swatches of the clip's own frame rather than labels.
+  ///
+  /// A name like "Faded" means nothing until you see it on your footage, so
+  /// each chip grades the project's own poster through the same matrix the
+  /// canvas and the export use - what you tap is what you get.
+  Widget _lookStrip(void Function(String id) onPick) {
+    final current = _project!.lookId;
+    return SizedBox(
+      height: 86,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: VideoLook.all.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final look = VideoLook.all[i];
+          final on = look.id == current;
+          return GestureDetector(
+            onTap: () => onPick(look.id),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 58, height: 58,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: on ? _kAccent : AppColors.line, width: on ? 2 : 1),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(on ? 10 : 11),
+                  child: _lookSwatch(look),
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(look.label,
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: on ? FontWeight.w700 : FontWeight.w500,
+                      color: on ? _kAccent : AppColors.inkMuted)),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  /// One chip's picture: the clip's thumbnail under the look, or - when there
+  /// is no thumbnail to grade - a colour ramp, which still shows what the look
+  /// does to warmth, contrast and saturation.
+  Widget _lookSwatch(VideoLook look) {
+    final url = widget.clip?.thumb ?? widget.resume?.thumb;
+    final Widget base = url == null || url.isEmpty
+        ? const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xFFE8734A), Color(0xFF8A7CF0), Color(0xFF1C2333)],
+              ),
+            ),
+          )
+        : Image.network(url, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const ColoredBox(color: AppColors.mediaPlaceholder));
+    return look.isIdentity
+        ? base
+        : ColorFiltered(colorFilter: ColorFilter.matrix(look.matrix), child: base);
+  }
+
   Widget _fitChip(String label, bool on, VoidCallback onTap) => GestureDetector(
         onTap: onTap,
         child: Container(
@@ -4504,17 +4581,21 @@ class _EditorScreenState extends State<EditorScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => StatefulBuilder(builder: (context, setSheet) {
         final lim = _videoPanLimit(p.videoScale);
-        final changed = p.videoScale != 1.0 || p.videoDx != 0 || p.videoDy != 0 || p.videoFitContain;
+        final changed = p.videoScale != 1.0 || p.videoDx != 0 || p.videoDy != 0 || p.videoFitContain || p.lookId != 'none';
         return SafeArea(
           child: SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(context).viewPadding.bottom),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Center(child: _Grabber()),
-                const Text('Transform', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
+                const Text('Video', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 4),
-                const Text('Scale and position the video inside the frame.', style: TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+                const Text('Pick a look, then scale and position the video in the frame.', style: TextStyle(color: AppColors.inkMuted, fontSize: 12)),
                 const SizedBox(height: 14),
+                const Text('LOOK', style: TextStyle(color: AppColors.inkMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+                const SizedBox(height: 8),
+                _lookStrip((id) { _mutate(() => p.lookId = id); setSheet(() {}); }),
+                const SizedBox(height: 16),
                 // Scale — now goes BELOW 1× (client: scale the video down).
                 _fadeRowGeneric('Scale', p.videoScale, 0.25, 4.0, (v) {
                   snap();
@@ -4548,7 +4629,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
-                      onPressed: () { _mutate(() { p.videoScale = 1.0; p.videoDx = 0; p.videoDy = 0; p.videoFitContain = false; }); setSheet(() {}); },
+                      onPressed: () { _mutate(() { p.videoScale = 1.0; p.videoDx = 0; p.videoDy = 0; p.videoFitContain = false; p.lookId = 'none'; }); setSheet(() {}); },
                       icon: const Icon(Icons.restart_alt_rounded, size: 18, color: _kAccent),
                       label: const Text('Reset', style: TextStyle(color: _kAccent, fontWeight: FontWeight.w700)),
                     ),
