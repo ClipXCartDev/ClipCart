@@ -81,7 +81,15 @@ class _EditorScreenState extends State<EditorScreen> {
   /// path that finishes an edit gets this without having to remember to.
   set _selected(Object? v) {
     _selectedLayer = v;
-    if (v == null) _openTimelineKinds.clear();
+    if (v == null) {
+      _openTimelineKinds.clear();
+    } else {
+      // Opening the layer's own kind is the other half of this: selecting a
+      // caption from the canvas used to leave the timeline showing a collapsed
+      // "Text", so its trim grips — the only way to change how long it shows —
+      // were a tap further away than they had been before grouping.
+      _openTimelineKinds.add(_layerKind(v));
+    }
   }
   bool _trimMode = false;
   int _textTab = 0; // client §3 text panel sub-tab: 0 Font · 1 Styling · 2 Advance
