@@ -16,6 +16,7 @@ import '../../core/theme.dart' show AppColors;
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
 import '../../models/video_geometry.dart';
+import 'export_progress_screen.dart';
 import '../../services/brand_kit_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
@@ -2787,41 +2788,21 @@ class _EditorScreenState extends State<EditorScreen> {
     final progress = ValueNotifier<double>(0.0);
     final phase = ValueNotifier<String>('Preparing your video…');
     var dialogOpen = true;
-    showDialog(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          backgroundColor: AppColors.surface,
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            ValueListenableBuilder<String>(
-              valueListenable: phase,
-              builder: (_, t, __) => Text(t, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(height: 14),
-            ValueListenableBuilder<double>(
-              valueListenable: progress,
-              builder: (_, v, __) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: v <= 0 ? null : v, // indeterminate until the first frame
-                    minHeight: 6,
-                    backgroundColor: AppColors.line,
-                    valueColor: const AlwaysStoppedAnimation(_kAccent),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(v <= 0 ? 'Preparing…' : '${(v * 100).round()}%  ·  keep the app open',
-                    style: const TextStyle(color: AppColors.inkMuted, fontSize: 12, fontWeight: FontWeight.w500)),
-              ]),
-            ),
-          ]),
-        ),
+    // A full screen rather than a dialog: this is what the app is for the next
+    // half-minute, and it has to say which clip, how far, how much longer and
+    // how to stop — none of which fits behind a scrim.
+    rootNav.push(MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => ExportProgressScreen(
+        progress: progress,
+        phase: phase,
+        title: (widget.title ?? widget.clip?.title ?? widget.resume?.name ?? 'Your clip').trim(),
+        // the clip's own thumbnail; the project's base path is an .mp4 and
+        // decodes to nothing but an empty dark hole
+        posterUrl: widget.clip?.thumb ?? widget.resume?.thumb,
+        onCancel: ExportService.cancel,
       ),
-    ).then((_) => dialogOpen = false);
+    )).then((_) => dialogOpen = false);
     void closeProgress() {
       if (dialogOpen) {
         dialogOpen = false;
@@ -2883,6 +2864,14 @@ class _EditorScreenState extends State<EditorScreen> {
         // a final clip has nothing left to edit — return to the player
         if (widget.clip != null && mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
       }
+    } on ExportCancelled {
+      closeProgress();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Export stopped. Your edit is still here.')),
+        );
+      }
+      return;
     } on DioException catch (e) {
       closeProgress();
       final d = e.response?.data;
@@ -2891,10 +2880,19 @@ class _EditorScreenState extends State<EditorScreen> {
           ? detail['message'].toString()
           : 'Could not fetch the original. Check your connection and try again.';
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    } catch (e) {
+    } on ExportFailure catch (e) {
       closeProgress();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (e) {
+      closeProgress();
+      // whatever this was, it is not something to read: the detail is in the log
+      debugPrint('[export] $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Export failed. Your edit is still here — try again.')),
+        );
       }
     } finally {
       // the original never outlives the render

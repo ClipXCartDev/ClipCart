@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
@@ -12,6 +14,25 @@ import '../models/editor_state.dart';
 import '../models/video_geometry.dart';
 import 'text_render.dart';
 
+/// Thrown when the user stopped the render themselves. Separate from a
+/// failure so the UI can close quietly instead of reporting an error for
+/// something that went exactly as asked.
+class ExportCancelled implements Exception {
+  const ExportCancelled();
+  @override
+  String toString() => 'Export cancelled';
+}
+
+/// A render that failed. [message] is the one sentence a person should read;
+/// the encoder's own output goes to the log, where it is useful, rather than
+/// into a snackbar, where it is not.
+class ExportFailure implements Exception {
+  const ExportFailure(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 class ExportResult {
   ExportResult(this.path, this.savedToGallery);
   final String path;
@@ -22,6 +43,32 @@ class ExportResult {
 /// transparent PNG that is scaled, rotated and time-gated — perfectly WYSIWYG
 /// with the editor canvas. Optional trim + aspect-ratio crop.
 class ExportService {
+  /// Set while a render is being stopped, so a cancelled session is reported as
+  /// a cancellation rather than as a failed encode. FFmpegKit's own cancel
+  /// return code is checked too; this covers the window before it lands.
+  static bool _cancelRequested = false;
+
+  /// Completes when a render is cancelled, so every wait in [export] has a
+  /// second way to wake. FFmpegKit does not reliably call a session's
+  /// completion callback after that session is cancelled, and a waiter that
+  /// never wakes leaves the whole export hung on "Stopping...".
+  static Completer<void>? _cancelWait;
+
+  /// Stop the render in progress. The partially written file is cleaned up by
+  /// the export itself when it unwinds.
+  static Future<void> cancel() async {
+    _cancelRequested = true;
+    try {
+      await FFmpegKit.cancel();
+    } catch (_) {/* nothing running */}
+    final w = _cancelWait;
+    if (w != null && !w.isCompleted) w.complete();
+  }
+
+  /// Waits for [done], or for a cancel, whichever comes first.
+  static Future<void> _until(Completer<void> done) =>
+      Future.any([done.future, _cancelWait?.future ?? done.future]);
+
   /// Whether this device can really encode through MediaCodec.
   ///
   /// The encoder being compiled into the FFmpeg build says nothing about the
@@ -39,14 +86,24 @@ class ExportService {
         '-y', '-f', 'lavfi', '-i', 'color=c=black:s=320x240:d=0.1',
         '-c:v', 'h264_mediacodec', '-b:v', '200k', '-pix_fmt', 'yuv420p', probe,
       ], (_) => done.complete());
-      await done.future;
-      final ok = ReturnCode.isSuccess(await session.getReturnCode());
+      await _until(done);  // a stop during the probe must not hang either
+      final ok = !_cancelRequested && ReturnCode.isSuccess(await session.getReturnCode());
       try { File(probe).deleteSync(); } catch (_) {}
       _hwEncode = ok;
     } catch (_) {
       _hwEncode = false;
     }
     return _hwEncode!;
+  }
+
+  /// The encoder's own last words, to the log where they are diagnosable.
+  /// FFmpeg front-loads its output with build configuration nobody needs; the
+  /// reason a render failed is always at the end.
+  static void _logTail(String log, [int lines = 30]) {
+    final all = log.trimRight().split('\n');
+    for (final l in all.sublist(all.length > lines ? all.length - lines : 0)) {
+      debugPrint('[export] $l');
+    }
   }
 
   /// Target bitrate for the hardware encoder, which works to a bitrate rather
@@ -84,6 +141,8 @@ class ExportService {
   /// render). Coordinates are fractions and survive the swap; pixel sizes are
   /// scaled by the probed short-edge ratio.
   Future<ExportResult> export(EditorProject p, {void Function(double)? onProgress, String? sourcePath}) async {
+    _cancelRequested = false;
+    _cancelWait = Completer<void>();
     final off = p.trimStart;
     final src = sourcePath ?? p.baseClipPath;
     double k = 1.0;
@@ -245,43 +304,70 @@ class ExportService {
     // Hand the encode to the phone's video chip where that is possible, and
     // fall back to the CPU where it is not. The fallback is not a rare path to
     // be ignored: emulators and some older devices have no usable encoder.
-    final hw = await _hardwareEncodeWorks();
-    if (hw) {
-      parts.addAll([
-        '-c:v', 'h264_mediacodec', '-b:v', _hwBitrate(p.resolution.shortEdge),
-      ]);
-    } else {
-      // crf 18 is visually lossless; medium trades a little speed for size.
-      parts.addAll(['-c:v', 'libx264', '-preset', 'medium', '-crf', '18']);
-    }
-    parts.addAll([
+    // Everything above describes the picture; what follows is only how it is
+    // encoded, which is why the two can be retried independently.
+    final common = <String>[
       '-r', '${p.fps}',
       '-pix_fmt', 'yuv420p',
-      // profile/level are x264 options; MediaCodec picks its own
-      if (!hw) ...['-profile:v', 'high', '-level', '4.1'],
-      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', output,
-    ]);
+      '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest',
+    ];
+    List<String> encoder(bool hw) => hw
+        ? ['-c:v', 'h264_mediacodec', '-b:v', _hwBitrate(p.resolution.shortEdge)]
+        // crf 18 is visually lossless; medium trades a little speed for size.
+        : ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-profile:v', 'high', '-level', '4.1'];
 
     // Total output frames (for honest progress from FFmpeg statistics).
     final totalFrames = (p.outDuration * p.fps).round().clamp(1, 1 << 30);
-    // Run async so the Statistics callback fires; await completion via a Completer.
-    final done = Completer<void>();
-    final session = await FFmpegKit.executeWithArgumentsAsync(
-      parts,
-      (_) => done.complete(),
-      (_) {},
-      (Statistics stats) {
-        if (onProgress != null) {
-          final frame = stats.getVideoFrameNumber();
-          if (frame > 0) onProgress((frame / totalFrames).clamp(0.0, 0.999));
-        }
-      },
-    );
-    await done.future;
-    final rc = await session.getReturnCode();
-    if (!ReturnCode.isSuccess(rc)) {
-      final logs = await session.getAllLogsAsString();
-      throw Exception('Export failed (rc=$rc)\n${logs ?? ''}');
+
+    /// Runs one encode. Returns null on success, or the encoder's log.
+    Future<String?> run(bool hw) async {
+      // Run async so the Statistics callback fires; await via a Completer.
+      final done = Completer<void>();
+      final session = await FFmpegKit.executeWithArgumentsAsync(
+        [...parts, ...encoder(hw), ...common, output],
+        (_) => done.complete(),
+        (_) {},
+        (Statistics stats) {
+          if (onProgress != null) {
+            final frame = stats.getVideoFrameNumber();
+            if (frame > 0) onProgress((frame / totalFrames).clamp(0.0, 0.999));
+          }
+        },
+      );
+      await _until(done);
+      final rc = _cancelRequested ? null : await session.getReturnCode();
+      if (_cancelRequested || ReturnCode.isCancel(rc)) {
+        // leave nothing half-written behind for My Clips to find
+        try { File(output).deleteSync(); } catch (_) {}
+        throw const ExportCancelled();
+      }
+      if (ReturnCode.isSuccess(rc)) return null;
+      // the graph that failed, in one piece — reconstructing it from the
+      // project afterwards is guesswork, and guesswork is what cost the time
+      debugPrint('[export] args: ${[...parts, ...encoder(hw), ...common, output].join(' ')}');
+      return 'rc=$rc\n${await session.getAllLogsAsString() ?? ''}';
+    }
+
+    // The probe proves the device HAS a MediaCodec encoder, not that it will
+    // accept these frames. When it balks, fall back instead of losing a render
+    // the CPU path can finish.
+    var failure = await run(await _hardwareEncodeWorks());
+    if (failure != null && _hwEncode == true) {
+      debugPrint('[export] hardware encode refused the render; retrying on CPU');
+      _logTail(failure);
+      _hwEncode = false; // do not pay for that attempt twice in one session
+      onProgress?.call(0);
+      failure = await run(false);
+    }
+    // a stop that arrived between the encode finishing and the work below
+    if (_cancelRequested) {
+      try { File(output).deleteSync(); } catch (_) {}
+      throw const ExportCancelled();
+    }
+    if (failure != null) {
+      _logTail(failure);
+      throw const ExportFailure(
+          'Could not finish the video on this phone. Try 720p, or close other apps and export again.');
     }
 
     // Write a poster-frame thumbnail sidecar (same name, .jpg) so the Exports tab
@@ -291,7 +377,7 @@ class ExportService {
       final tParts = ['-y', '-ss', '0.5', '-i', output, '-frames:v', '1', '-q:v', '3', thumb];
       final tDone = Completer<void>();
       await FFmpegKit.executeWithArgumentsAsync(tParts, (_) => tDone.complete());
-      await tDone.future;
+      await _until(tDone);
     } catch (_) {/* thumbnail is best-effort */}
 
     bool saved = false;
