@@ -140,4 +140,37 @@ void main() {
       expect(g.filterChain(), contains('color=0xffffff'));
     });
   });
+
+  // A letterbox that sized its box from the already-zoomed video swallowed the
+  // zoom whole (the export never zoomed while the preview did) and, once the
+  // zoomed frame outgrew the box, made FFmpeg refuse the render outright.
+  group('letterboxing survives the zoom', () {
+    String contain(double scale) =>
+        _geo(ar: 9 / 16, scale: scale, contain: true).filterChain();
+
+    test('the box is measured before the zoom, not after', () {
+      // the box must read the source's own size; a vz in the pad means the box
+      // grows with the zoom and the zoom cancels itself out
+      final pad = contain(1.5).split('pad=')[1].split(',setsar')[0];
+      expect(pad, isNot(contains('1.5')));
+    });
+
+    test('zooming past the frame crops instead of padding', () {
+      // pad cannot make a frame smaller than its input - FFmpeg errors - so the
+      // overflow has to be cropped away
+      expect(contain(1.5), contains('crop='));
+      expect(contain(1.0184), contains('crop='));
+    });
+
+    test('zooming out still pads back to the frame', () {
+      expect(contain(0.6), contains('pad=w=iw/0.6'));
+      expect(contain(0.6), isNot(contains('crop=')));
+    });
+
+    test('an unzoomed letterbox is just the box', () {
+      final c = contain(1.0);
+      expect(c, isNot(contains('crop=')));
+      expect(c, isNot(contains('scale=')));
+    });
+  });
 }

@@ -154,13 +154,29 @@ class VideoGeometry {
 
     switch (mode) {
       case VideoFitMode.contain:
-        // Scale the whole video, then pad it onto a box of the target aspect
-        // sized from the source's larger dimension so it always contains it.
-        // Pan is a fraction of the FULL output box — matching the preview's
-        // translate — not of the empty slack, which would under-pan.
-        return "scale=w='iw*${_n(vz)}':h='ih*${_n(vz)}',"
-            "pad=w='max(iw\\,ih*${_n(ar!)})':h='max(iw\\,ih*${_n(ar)})/${_n(ar)}'"
-            ":x='(ow-iw)/2+ow*$px':y='(oh-ih)/2+oh*$py':color=$bg,setsar=1";
+        // Box the SOURCE into the target aspect first, at its native size. The
+        // box must not depend on the zoom: derived from the scaled video it
+        // grew in step with the zoom, so the export never zoomed at all, and at
+        // some zooms it came out smaller than its own input, which FFmpeg
+        // refuses and the render died on.
+        final box = "pad=w='max(iw\\,ih*${_n(ar!)})':h='max(iw\\,ih*${_n(ar)})/${_n(ar)}'"
+            ":x='(ow-iw)/2':y='(oh-ih)/2':color=$bg,setsar=1";
+        // Then zoom that boxed frame, exactly as the preview scales the video
+        // inside a fixed frame. The fill is flat, so scaling it along with the
+        // video and trimming back is indistinguishable from scaling the video
+        // alone. Pan is a fraction of the FULL output box - matching the
+        // preview's translate - not of the empty slack, which would under-pan.
+        if (vz < 1.0) {
+          return "$box,scale=iw*${_n(vz)}:ih*${_n(vz)}"
+              ",pad=w=iw/${_n(vz)}:h=ih/${_n(vz)}"
+              ":x='(ow-iw)/2+ow*$px':y='(oh-ih)/2+oh*$py':color=$bg";
+        }
+        if (vz > 1.0 || panX != 0 || panY != 0) {
+          return "$box,scale=iw*${_n(vz)}:ih*${_n(vz)}"
+              ",crop=iw/${_n(vz)}:ih/${_n(vz)}"
+              ":'(iw-ow)/2-ow*$px':'(ih-oh)/2-oh*$py'";
+        }
+        return box;
 
       case VideoFitMode.fillShrink:
         // Cover-crop to the aspect, shrink, then pad back out to the box.
