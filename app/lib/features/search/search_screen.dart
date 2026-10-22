@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
 import '../../models/clip.dart';
+import '../../services/billing_service.dart';
 import '../../services/catalog_service.dart';
 import '../../widgets/premium_empty_state.dart';
 import '../../widgets/skeleton_grid.dart';
@@ -87,9 +88,22 @@ class _SearchScreenState extends State<SearchScreen> {
 
   CatalogService get _cs => context.read<CatalogService>();
 
+  /// Whether this account can open Pro clips. Home already checks this before
+  /// drawing a padlock; Explore did not, so a paying subscriber was shown a
+  /// lock on clips they had paid for.
+  bool _hasPlan = false;
+
+  Future<void> _refreshPlan() async {
+    try {
+      final s = await context.read<BillingService>().subscription();
+      if (mounted) setState(() => _hasPlan = s != null && s['status'] == 'active');
+    } catch (_) {/* the grid still works without it */}
+  }
+
   Future<void> _boot() async {
     setState(() { _loading = true; _error = null; });
     try {
+      _refreshPlan();
       try { _cats = await _cs.categories(); } catch (_) {}
       // non-fatal: without facets the sheet simply offers fewer rows
       try { _facets = await _cs.facets(); } catch (_) {}
@@ -565,6 +579,7 @@ class _SearchScreenState extends State<SearchScreen> {
           crossAxisCount: 3, mainAxisSpacing: 3, crossAxisSpacing: 3, childAspectRatio: 9 / 13),
         itemCount: _grid.length,
         itemBuilder: (context, i) => _GridThumb(
+          locked: _grid[i].isPro && !_hasPlan,
           clip: _grid[i],
           onTap: () => context.push('/player', extra: {'clips': _grid, 'index': i}),
         ),
@@ -576,9 +591,13 @@ class _SearchScreenState extends State<SearchScreen> {
 /// A dense grid tile — 9:13 media with a duration readout (bottom-left, soft
 /// shadow) and a lock badge (top-right) on gated clips. No caption.
 class _GridThumb extends StatelessWidget {
-  const _GridThumb({required this.clip, this.onTap});
+  const _GridThumb({required this.clip, this.onTap, this.locked = false});
   final Clip clip;
   final VoidCallback? onTap;
+
+  /// Pro clip AND no active plan. Decided by the screen, which knows the
+  /// subscription, rather than by the tile, which only knows the clip.
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -633,7 +652,7 @@ class _GridThumb extends StatelessWidget {
             top: 6, right: 6,
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               const _TileBadge(icon: Icons.play_arrow_rounded),
-              if (clip.isPro) ...[
+              if (locked) ...[
                 const SizedBox(width: 4),
                 const _TileBadge(icon: Icons.lock_outline_rounded),
               ],

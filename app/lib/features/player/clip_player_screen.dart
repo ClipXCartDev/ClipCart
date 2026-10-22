@@ -645,6 +645,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   // ── §11 credit confirm ──────────────────────────────────────────────────────
   void _showCreditSheet(Clip clip) {
     final left = _clipCredits(clip);
+    final unlimited = left == null;
     final leftLabel = left == null ? 'Unlimited' : '$left';
     final afterLabel = left == null ? 'Unlimited' : '${left > 0 ? left - 1 : 0}';
     showAppSheet(context, (ctx) {
@@ -655,36 +656,43 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           Container(
             width: 44, height: 44, alignment: Alignment.center,
             decoration: BoxDecoration(color: AppColors.brandTint, borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.toll_outlined, size: 22, color: AppColors.brand),
+            child: Icon(unlimited ? Icons.auto_awesome_rounded : Icons.toll_outlined,
+                size: 22, color: AppColors.brand),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Opening the editor uses 1 credit',
-            style: TextStyle(fontFamily: kSans, fontSize: 21, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink),
+          Text(
+            unlimited ? 'Open this clip in the editor?' : 'Opening the editor uses 1 credit',
+            style: const TextStyle(fontFamily: kSans, fontSize: 21, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'The credit is charged once for this clip. You can keep editing it as long as you like — but once you export, this clip is final and cannot be re-edited.',
-            style: TextStyle(fontFamily: kSans, fontSize: 13.5, height: 1.55, fontWeight: FontWeight.w400, color: AppColors.inkMuted),
+          Text(
+            unlimited
+                ? 'You can keep editing it as long as you like — but once you export, this clip is final and cannot be re-edited.'
+                : 'The credit is charged once for this clip. You can keep editing it as long as you like — but once you export, this clip is final and cannot be re-edited.',
+            style: const TextStyle(fontFamily: kSans, fontSize: 13.5, height: 1.55, fontWeight: FontWeight.w400, color: AppColors.inkMuted),
           ),
-          const SizedBox(height: 18),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.brandTint,
-              borderRadius: BorderRadius.circular(R.thumb),
+          // On an unlimited plan there is no before-and-after to show: it read
+          // "Unlimited" on both rows, which is noise dressed up as accounting.
+          if (!unlimited) ...[
+            const SizedBox(height: 18),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.brandTint,
+                borderRadius: BorderRadius.circular(R.thumb),
+              ),
+              child: Column(children: [
+                _creditRow('Credits left now', leftLabel, AppColors.ink),
+                const Divider(height: 1, thickness: 1, color: AppColors.brandBorder, indent: 16, endIndent: 16),
+                _creditRow('After opening', afterLabel, AppColors.brand),
+              ]),
             ),
-            child: Column(children: [
-              _creditRow('Credits left now', leftLabel, AppColors.ink),
-              const Divider(height: 1, thickness: 1, color: AppColors.brandBorder, indent: 16, endIndent: 16),
-              _creditRow('After opening', afterLabel, AppColors.brand),
-            ]),
-          ),
+          ],
           if (_pacePlayerHint(left) != null) ...[
             const SizedBox(height: 10),
             Text(_pacePlayerHint(left)!, style: const TextStyle(fontFamily: kSans, fontSize: 12, color: AppColors.inkMuted)),
           ],
           const SizedBox(height: 20),
-          PrimaryBtn('Use 1 credit and edit', onTap: () {
+          PrimaryBtn(unlimited ? 'Open editor' : 'Use 1 credit and edit', onTap: () {
             Navigator.of(ctx).pop();
             _openEditor(clip);
           }),

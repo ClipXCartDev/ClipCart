@@ -242,13 +242,18 @@ class _PlanCard extends StatelessWidget {
       final d = DateTime.tryParse(s);
       if (d == null) return s.length > 10 ? s.substring(0, 10) : s;
       const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${d.day} ${m[d.month - 1]}';
+      // the year matters: this is an expiry, and "22 Oct" on 22 Oct reads
+      // as expiring today when the plan actually runs to next year
+      return '${d.day} ${m[d.month - 1]} ${d.year}';
     }
 
     Widget stat(String label, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(label, style: const TextStyle(fontFamily: kSans, fontSize: 11, color: Color(0xFF8E8880))),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontFamily: kMono, fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.inkDark)),
+          Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: kMono, fontSize: 13.5, fontWeight: FontWeight.w600, color: AppColors.inkDark)),
         ]);
 
     return Container(
@@ -274,11 +279,17 @@ class _PlanCard extends StatelessWidget {
           active ? StatusPill.ok('Active') : StatusPill.err('Inactive'),
         ]),
         const SizedBox(height: 18),
+        // The stats share whatever the button leaves. Laid out loose, a longer
+        // date (the year) simply ran underneath the button.
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          stat('Edit credits', active ? (credits ?? '—') : '0 / 0'),
-          const SizedBox(width: 26),
-          stat('Active until', active ? fmtDate(until) : '—'),
-          const Spacer(),
+          Expanded(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Flexible(child: stat('Edit credits', active ? (credits ?? '—') : '0 / 0')),
+              const SizedBox(width: 14),
+              stat('Active until', active ? fmtDate(until) : '—'),
+            ]),
+          ),
+          const SizedBox(width: 10),
           EditorPill(active ? 'Manage' : 'Subscribe', onTap: () => context.push('/plans')),
         ]),
         if (_paceHint(active, credits, until) != null) ...[

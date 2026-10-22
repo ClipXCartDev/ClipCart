@@ -19,6 +19,7 @@ import '../../models/video_geometry.dart';
 import '../../models/video_look.dart';
 import 'export_progress_screen.dart';
 import '../../services/brand_kit_service.dart';
+import '../../services/billing_service.dart';
 import '../../services/catalog_service.dart';
 import '../../services/export_service.dart';
 import '../../services/font_service.dart';
@@ -62,6 +63,17 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _defaultFont;
   bool _busy = false;
   bool _finalized = false; // exported: the clip is final — no more autosaves/drafts
+
+  /// Whether this account has an active plan. Every paid plan sells "No
+  /// watermark", so it decides the watermark default on a NEW project.
+  bool _hasPlan = false;
+
+  Future<void> _refreshPlan() async {
+    try {
+      final sub = await context.read<BillingService>().subscription();
+      if (mounted) setState(() => _hasPlan = sub != null && sub['status'] == 'active');
+    } catch (_) {/* default stays on, which is the safe way round */}
+  }
   double? _dlProgress; // 0..1 while the small preview is fetched (null = not fetching)
 
   void _onDownload(int received, int total) {
@@ -176,6 +188,10 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   Future<void> _init() async {
+    // before the project is built: it decides the watermark default. Bounded,
+    // so a slow network delays the editor by at most a moment rather than
+    // holding it shut; on a timeout the mark stays on, which is the safe way.
+    await _refreshPlan().timeout(const Duration(seconds: 3), onTimeout: () {});
     try {
       final fs = context.read<FontService>();
       _defaultFont = await fs.ensureDefaultFont();
@@ -342,6 +358,9 @@ class _EditorScreenState extends State<EditorScreen> {
         duration: dur,
         // the frame the user lays text out on — export scales px values to the original
         authoredShort: sz.width > 0 && sz.height > 0 ? (sz.width < sz.height ? sz.width : sz.height) : 0.0,
+        // Every paid plan sells "No watermark". Leaving it on by default made a
+        // subscriber turn off the thing they had already paid to remove.
+        watermarkOn: !_hasPlan,
       );
       _error = null;
       _undo.clear();

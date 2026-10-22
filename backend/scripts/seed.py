@@ -4,10 +4,16 @@ Run from the backend folder:
     .venv\\Scripts\\python scripts\\seed.py       (Windows)
     .venv/bin/python scripts/seed.py             (macOS/Linux)
 
-Creates admin / editor / customer accounts (password: password123), two plans,
-one category, and clips (1 approved + 2 pending so Admin has something to review).
+Creates admin / editor / customer accounts, two plans, one category, and clips
+(1 approved + 2 pending so Admin has something to review).
+
+The password is NOT written down here. Set SEED_PASSWORD, or let the script
+generate one and print it once. A default password committed to a repository is
+a default password on whatever server the script is last run against - this one
+reached production and had to be rotated out of it.
 """
 import os
+import secrets
 import sys
 from datetime import datetime, timezone
 
@@ -24,7 +30,8 @@ from app.services.catalog import slugify
 Base.metadata.create_all(bind=engine)
 db = SessionLocal()
 
-PWD = "password123"
+PWD = os.getenv("SEED_PASSWORD") or secrets.token_urlsafe(14)
+_GENERATED = not os.getenv("SEED_PASSWORD")
 
 
 def user(email, name, role):
@@ -75,7 +82,11 @@ for title, access, st in seed_clips:
     db.add(c)
 db.commit()
 
-print("\n=== Seed complete — password for all: password123 ===")
+if _GENERATED:
+    print(f"\n=== Seed complete — generated password for all: {PWD} ===")
+    print("    (save it now; set SEED_PASSWORD to choose your own next time)")
+else:
+    print("\n=== Seed complete — password for all: $SEED_PASSWORD ===")
 print("  ADMIN     admin@clipcart.app")
 print("  EDITOR    editor@clipcart.app")
 print("  CUSTOMER  customer@clipcart.app")

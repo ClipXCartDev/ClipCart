@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/brand_logo.dart';
 import '../../core/theme.dart';
 import '../../core/ui_kit.dart';
 import '../../state/auth_controller.dart';
@@ -76,6 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (isDeviceLimit) {
       title = 'Device limit reached';
       body = 'This account is signed in on the maximum number of devices. Remove one from Account → Devices, then try again.';
+    } else if (lower.contains('not a valid email')) {
+      title = 'Check the email address';
+      body = 'That does not look like a complete email address.';
     } else if (isBadCreds) {
       title = "Those details didn't match";
       body = 'Check your email and password and try again.';
@@ -136,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 width: 38, height: 38, alignment: Alignment.center,
                 decoration: BoxDecoration(color: AppColors.brand, borderRadius: BorderRadius.circular(R.inner)),
-                child: const Text('C', style: TextStyle(fontFamily: kSans, fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                child: const ClipCartLogo(size: 24),
               ),
               TextButton(
                 onPressed: () => context.go('/home'),
