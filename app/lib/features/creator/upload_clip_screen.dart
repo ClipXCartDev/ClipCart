@@ -43,7 +43,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
       setState(() { _baseKey = key; _baseLocalPath = res.files.single.path; });
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Upload failed. Please try again.')));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -100,7 +100,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
         context.pop();
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('That did not go through. Please try again.')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

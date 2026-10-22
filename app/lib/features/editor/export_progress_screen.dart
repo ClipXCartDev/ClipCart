@@ -107,11 +107,11 @@ class _ExportProgressScreenState extends State<ExportProgressScreen> {
         backgroundColor: AppColors.surface,
         title: const Text('Stop the export?', style: TextStyle(color: AppColors.ink, fontSize: 17, fontWeight: FontWeight.w600)),
         content: const Text(
-          'Your edit is saved and you can export again whenever you like. The video being rendered now will be discarded.',
+          'Your edit is saved and you can export again whenever you like. This export will be discarded.',
           style: TextStyle(color: AppColors.inkMuted, height: 1.45),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep rendering')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep going')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Stop', style: TextStyle(color: AppColors.errText, fontWeight: FontWeight.w600)),
@@ -189,7 +189,7 @@ class _ExportProgressScreenState extends State<ExportProgressScreen> {
               ),
               const Spacer(flex: 3),
               const Text(
-                'Rendering happens on this phone, so keep ClipCart open.\nYou can turn the screen off.',
+                'Please don’t close this screen.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontFamily: kSans, fontSize: 12.5, height: 1.5, color: AppColors.inkFaint),
               ),

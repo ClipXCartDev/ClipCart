@@ -55,7 +55,7 @@ class PlansScreen extends StatelessWidget {
 
   static const _benefits = [
     ('Every layer editable', 'Text, logo, username, CTA and stickers stay separate.'),
-    ('No watermark', 'Clean renders straight to your gallery.'),
+    ('No watermark', 'No watermark on anything you export.'),
     ('A set number of edits', 'One credit per clip, valid through your plan window.'),
     ('Two devices', 'Phone and tablet on one account.'),
   ];
@@ -89,7 +89,7 @@ class PlansScreen extends StatelessWidget {
                     style: TextStyle(fontFamily: kSans, fontSize: 30, height: 1.08, fontWeight: FontWeight.w600, letterSpacing: -1.2, color: AppColors.ink)),
                 const SizedBox(height: 12),
                 const Text(
-                  'Browsing and previews stay free. Editing layers and watermark-free rendering need an active plan.',
+                  'Browsing and previews stay free. Editing and watermark-free exports need an active plan.',
                   style: TextStyle(fontFamily: kSans, fontSize: 14.5, height: 1.55, fontWeight: FontWeight.w400, color: AppColors.inkMuted),
                 ),
                 const SizedBox(height: 28),
@@ -791,7 +791,7 @@ class PaidScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: TextStyle(fontFamily: kSans, fontSize: 27, height: 1.1, fontWeight: FontWeight.w600, letterSpacing: -1, color: AppColors.ink)),
                 const SizedBox(height: 10),
-                Text('Payment confirmed on-chain. ${plan.name} is live on this device for the next 30 days.',
+                Text('Payment confirmed. ${plan.name} is active for the next 30 days.',
                     textAlign: TextAlign.center, style: T.body),
                 const SizedBox(height: 26),
                 DesignCard(

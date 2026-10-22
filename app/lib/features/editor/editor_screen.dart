@@ -2552,7 +2552,7 @@ class _EditorScreenState extends State<EditorScreen> {
               const Center(child: _Grabber()),
               const Text('Export settings', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 17)),
               const SizedBox(height: 4),
-              Text('Renders on this phone · saves to your Gallery', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+              Text('Saves to your Gallery', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
               const SizedBox(height: 18),
               optRow<int>('QUALITY', const [('720p', 720), ('1080p', 1080)], p.resolution.shortEdge,
                   (v) => p.resolution = v == 720 ? ExportResolution.p720 : ExportResolution.p1080),
@@ -2729,7 +2729,7 @@ class _EditorScreenState extends State<EditorScreen> {
           Text(
             res.savedToGallery
                 ? 'Saved to your Gallery and My Clips.'
-                : 'Saved on this device and in My Clips.',
+                : 'Saved to My Clips.',
             style: const TextStyle(color: AppColors.inkMuted, fontSize: 12.5, height: 1.4),
           ),
           if (isFinal) ...[
@@ -2787,7 +2787,7 @@ class _EditorScreenState extends State<EditorScreen> {
     // dialog itself (never the editor screen), and block the Android back button.
     final rootNav = Navigator.of(context, rootNavigator: true);
     final progress = ValueNotifier<double>(0.0);
-    final phase = ValueNotifier<String>('Preparing your video…');
+    final phase = ValueNotifier<String>('Preparing…');
     var dialogOpen = true;
     // A full screen rather than a dialog: this is what the app is for the next
     // half-minute, and it has to say which clip, how far, how much longer and
@@ -2820,9 +2820,9 @@ class _EditorScreenState extends State<EditorScreen> {
           widget.clip!.id,
           onProgress: (r, t) { if (t > 0) progress.value = (fetchShare * r / t).clamp(0.01, fetchShare); },
         );
-        phase.value = 'Rendering your video…';
+        phase.value = 'Export in progress';
       } else {
-        phase.value = 'Rendering your video…';
+        phase.value = 'Export in progress';
       }
       final base = widget.clip != null ? fetchShare : 0.0;
       final res = await ExportService().export(_project!, sourcePath: renderSrc,
@@ -2843,11 +2843,11 @@ class _EditorScreenState extends State<EditorScreen> {
           final detail = e.response?.data is Map ? (e.response!.data['detail']) : null;
           final msg = detail is Map && detail['message'] != null
               ? detail['message'].toString()
-              : 'Could not confirm this export with the server.';
+              : 'Could not confirm this export. Please try again.';
           closeProgress();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('$msg (Your video was rendered and saved on this device.)')),
+              SnackBar(content: Text('$msg Your video is saved.')),
             );
           }
           return;
@@ -2879,7 +2879,7 @@ class _EditorScreenState extends State<EditorScreen> {
       final detail = d is Map ? d['detail'] : null;
       final msg = detail is Map && detail['message'] != null
           ? detail['message'].toString()
-          : 'Could not fetch the original. Check your connection and try again.';
+          : 'Could not load the clip. Check your connection and try again.';
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } on ExportFailure catch (e) {
       closeProgress();
@@ -4661,7 +4661,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 const Center(child: _Grabber()),
                 const Text('Aspect ratio', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                 const SizedBox(height: 4),
-                Text('Pick a ratio & fit. Use Transform to scale and position the video.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+                Text('Pick a ratio & fit. Use Video to scale and position the clip.', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
                 const SizedBox(height: 14),
                 // Ratio pills
                 Wrap(spacing: 9, runSpacing: 9, children: [

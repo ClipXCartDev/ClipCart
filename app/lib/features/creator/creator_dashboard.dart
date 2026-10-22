@@ -45,7 +45,7 @@ class _CreatorDashboardState extends State<CreatorDashboard> {
         setState(_reload);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('That did not go through. Please try again.')));
     }
   }
 

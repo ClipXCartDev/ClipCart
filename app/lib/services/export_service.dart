@@ -373,8 +373,7 @@ class ExportService {
     }
     if (failure != null) {
       _logTail(failure);
-      throw const ExportFailure(
-          'Could not finish the video on this phone. Try 720p, or close other apps and export again.');
+      throw const ExportFailure('Could not finish the export. Please try again.');
     }
 
     // Write a poster-frame thumbnail sidecar (same name, .jpg) so the Exports tab
