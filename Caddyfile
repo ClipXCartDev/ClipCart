@@ -15,11 +15,22 @@
 
 	# Everything else -> static files. Domain root shows the customer web app
 	# (the product) — NOT the internal design deck.
+	#
+	# /srv is the whole deploy directory, which is this repository checked out:
+	# .env, .git, the backend source and the ops scripts all live there. A bare
+	# file_server hands every one of them to anybody who asks, so only the
+	# paths that are meant to be public are served and the rest is 404.
 	handle {
-		root * /srv
-		@root path /
-		rewrite @root /web/index.html
-		file_server
+		@public path / /web/* /admin/* /downloads/* /app-config.json /favicon.ico
+		handle @public {
+			root * /srv
+			@root path /
+			rewrite @root /web/index.html
+			file_server
+		}
+		handle {
+			respond "Not found" 404
+		}
 	}
 }
 
