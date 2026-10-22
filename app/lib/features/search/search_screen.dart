@@ -608,21 +608,38 @@ class _GridThumb extends StatelessWidget {
               ),
             ),
           ),
-          // lock badge (top-right)
-          if (clip.isPro)
-            Positioned(
-              top: 6, right: 6,
-              child: Container(
-                width: 24, height: 24,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: const Color(0x8C141129), borderRadius: BorderRadius.circular(R.pill)),
-                child: const Icon(Icons.lock_outline_rounded, size: 11, color: Colors.white),
-              ),
-            ),
+          // play badge, and the lock beside it on gated clips. The lock keeps the
+          // corner: it is the gate, and it is the one that must not be crowded
+          // out when both are present.
+          Positioned(
+            top: 6, right: 6,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const _TileBadge(icon: Icons.play_arrow_rounded),
+              if (clip.isPro) ...[
+                const SizedBox(width: 4),
+                const _TileBadge(icon: Icons.lock_outline_rounded),
+              ],
+            ]),
+          ),
         ]),
       ),
     );
   }
+}
+
+/// A small translucent chip in a tile's corner — play, or the lock on a gated
+/// clip. Same size and weight for both so a tile with two reads as one unit.
+class _TileBadge extends StatelessWidget {
+  const _TileBadge({required this.icon});
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 24, height: 24,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: const Color(0x8C141129), borderRadius: BorderRadius.circular(R.pill)),
+        child: Icon(icon, size: 13, color: Colors.white),
+      );
 }
 
 /// Trending / Newest — the one control a page that wants to be first to a

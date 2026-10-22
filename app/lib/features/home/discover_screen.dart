@@ -297,12 +297,30 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     );
   }
 
+  /// A face for each shelf, so the rails are scannable before the words are
+  /// read. Matched on the category name because categories are admin-managed
+  /// and have no emoji of their own; anything unrecognised gets the neutral
+  /// one rather than nothing, so a newly added category never looks broken.
+  static const Map<String, String> _railEmoji = {
+    'newly released': '✨',
+    'trending': '🔥',
+    'anime': '🌸',
+    'comedy': '😂',
+    'movie edits': '🎬',
+    'reactions': '😮',
+    'wholesome': '💛',
+  };
+
+  String _emojiFor(String title) => _railEmoji[title.trim().toLowerCase()] ?? '🎞️';
+
   // ── one rail — heading row + horizontal 9:16 cards with caption below ──────
   Widget _rail(String title, List<Clip> clips, VoidCallback? onSeeAll) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
         child: Row(children: [
+          Text(_emojiFor(title), style: const TextStyle(fontSize: 17, height: 1.1)),
+          const SizedBox(width: 8),
           Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: T.section)),
           if (onSeeAll != null)
             GestureDetector(
@@ -378,21 +396,38 @@ class _RailThumb extends StatelessWidget {
               child: Text(clip.durationLabel, style: const TextStyle(fontFamily: kMono, fontSize: 10, height: 1.0, fontWeight: FontWeight.w500, color: Colors.white)),
             ),
           ),
-          // lock badge (top-right)
-          if (locked)
-            Positioned(
-              top: 7, right: 7,
-              child: Container(
-                width: 24, height: 24,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: const Color(0x8C141129), borderRadius: BorderRadius.circular(R.pill)),
-                child: const Icon(Icons.lock_outline_rounded, size: 11, color: Colors.white),
-              ),
-            ),
+          // play badge, with the lock beside it on gated clips — same treatment
+          // as the Explore grid so a clip looks the same wherever it appears
+          Positioned(
+            top: 7, right: 7,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              const _CornerBadge(icon: Icons.play_arrow_rounded),
+              if (locked) ...[
+                const SizedBox(width: 4),
+                const _CornerBadge(icon: Icons.lock_outline_rounded),
+              ],
+            ]),
+          ),
         ]),
       ),
     );
   }
+}
+
+/// A small translucent chip in a card's corner — play, or the lock on a gated
+/// clip. Matches the Explore grid's badge so the same clip reads the same in
+/// both places.
+class _CornerBadge extends StatelessWidget {
+  const _CornerBadge({required this.icon});
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 24, height: 24,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: const Color(0x8C141129), borderRadius: BorderRadius.circular(R.pill)),
+        child: Icon(icon, size: 13, color: Colors.white),
+      );
 }
 
 class _ErrorState extends StatelessWidget {
