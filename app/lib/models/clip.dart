@@ -44,6 +44,24 @@ class Clip {
     return '${(s ~/ 60).toString().padLeft(1, '0')}:${(s % 60).toString().padLeft(2, '0')}';
   }
 
+  /// How many people have exported this clip, short enough for a tile corner,
+  /// or null when there is nothing worth saying.
+  ///
+  /// Below a handful it stays hidden: "3 uses" reads as a warning rather than
+  /// a recommendation, and a brand-new clip should not be marked down for
+  /// being new.
+  String? get usesLabel {
+    if (downloads < 10) return null;
+    if (downloads < 1000) return '$downloads';
+    if (downloads < 100000) {
+      final k = downloads / 1000;
+      // 1.2k up to 9.9k, then whole thousands — a tile has no room for 12.4k
+      return k < 10 ? '${k.toStringAsFixed(1)}k' : '${k.round()}k';
+    }
+    if (downloads < 1000000) return '${(downloads / 1000).round()}k';
+    return '${(downloads / 1000000).toStringAsFixed(1)}M';
+  }
+
   factory Clip.fromJson(Map<String, dynamic> j) => Clip(
         id: j['id'] as String,
         title: j['title'] as String,

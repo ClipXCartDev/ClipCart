@@ -608,6 +608,24 @@ class _GridThumb extends StatelessWidget {
               ),
             ),
           ),
+          // how many people have used it — bottom-right, opposite the
+          // duration, so the two corners read as one line without colliding
+          if (clip.usesLabel != null)
+            Positioned(
+              right: 6, bottom: 6,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.auto_awesome_rounded, size: 9, color: Colors.white,
+                    shadows: [Shadow(color: Color(0xB3141129), blurRadius: 4)]),
+                const SizedBox(width: 3),
+                Text(
+                  clip.usesLabel!,
+                  style: const TextStyle(
+                    fontFamily: kMono, fontSize: 10, height: 1.0, fontWeight: FontWeight.w500, color: Colors.white,
+                    shadows: [Shadow(color: Color(0xB3141129), blurRadius: 4)],
+                  ),
+                ),
+              ]),
+            ),
           // play badge, and the lock beside it on gated clips. The lock keeps the
           // corner: it is the gate, and it is the one that must not be crowded
           // out when both are present.

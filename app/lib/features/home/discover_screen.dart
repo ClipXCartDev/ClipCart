@@ -396,6 +396,21 @@ class _RailThumb extends StatelessWidget {
               child: Text(clip.durationLabel, style: const TextStyle(fontFamily: kMono, fontSize: 10, height: 1.0, fontWeight: FontWeight.w500, color: Colors.white)),
             ),
           ),
+          // uses — bottom-right, mirroring the duration pill opposite it
+          if (clip.usesLabel != null)
+            Positioned(
+              right: 7, bottom: 7,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(color: const Color(0xB8141129), borderRadius: BorderRadius.circular(R.pill)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.auto_awesome_rounded, size: 9, color: Colors.white),
+                  const SizedBox(width: 3),
+                  Text(clip.usesLabel!,
+                      style: const TextStyle(fontFamily: kMono, fontSize: 10, height: 1.0, fontWeight: FontWeight.w500, color: Colors.white)),
+                ]),
+              ),
+            ),
           // play badge, with the lock beside it on gated clips — same treatment
           // as the Explore grid so a clip looks the same wherever it appears
           Positioned(
