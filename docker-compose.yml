@@ -15,7 +15,11 @@ services:
       retries: 10
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      # Named explicitly: an unnamed target builds the LAST stage, so adding
+      # the worker stage below silently turned this service into a worker.
+      target: base
     restart: unless-stopped
     env_file: .env
     environment:
