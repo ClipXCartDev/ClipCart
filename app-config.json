@@ -4,9 +4,9 @@
   "support_email": "clipxcart@gmail.com",
   "maintenance": false,
   "message": "",
-  "latest_version": "3.1.0",
-  "apk_url": "https://clipscart.app/downloads/clipcart-3.1.0.apk",
-  "update_notes": "Gate rehearsal \u2014 reverted right after.",
+  "latest_version": "3.1.1",
+  "apk_url": "https://clipscart.app/downloads/clipcart-3.1.1.apk",
+  "update_notes": "Scrubbing shows the picture, captions share a track, and the app updates itself.",
   "min_version": "3.1.1",
-  "apk_url_arm32": "https://clipscart.app/downloads/clipcart-3.1.0-arm32.apk"
+  "apk_url_arm32": "https://clipscart.app/downloads/clipcart-3.1.1-arm32.apk"
 }
