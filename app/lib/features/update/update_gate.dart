@@ -64,7 +64,8 @@ class _UpdateRequiredScreen extends StatelessWidget {
                       fontFamily: kSans, fontSize: 14, height: 1.6,
                       fontWeight: FontWeight.w400, color: AppColors.inkMuted),
                 ),
-                if (u.latestVersion.isNotEmpty) ...[
+                if (u.latestVersion.isNotEmpty &&
+                    UpdateService.compareVersions(u.installedVersion, u.latestVersion) < 0) ...[
                   const SizedBox(height: 18),
                   Row(children: [
                     Text('Installed ${u.installedVersion}',
@@ -112,8 +113,12 @@ class _UpdateRequiredScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 const Center(
-                  child: Text('Android will ask you to confirm the install.',
-                      style: TextStyle(fontFamily: kSans, fontSize: 11.5, color: AppColors.inkFaint)),
+                  child: Text(
+                    'Android asks you to confirm the install. The first time, it also asks '
+                    'you to allow installs from ClipCart — tap Settings and turn it on.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontFamily: kSans, fontSize: 11.5, height: 1.45, color: AppColors.inkFaint),
+                  ),
                 ),
               ],
             ),
