@@ -17,6 +17,8 @@ import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
 import '../../models/video_geometry.dart';
 import '../../models/video_look.dart';
+import 'filmstrip.dart';
+import 'timeline_panel.dart';
 import 'export_progress_screen.dart';
 import '../../services/brand_kit_service.dart';
 import '../../services/billing_service.dart';
@@ -63,6 +65,15 @@ class _EditorScreenState extends State<EditorScreen> {
   String? _defaultFont;
   bool _busy = false;
   bool _finalized = false; // exported: the clip is final — no more autosaves/drafts
+
+  /// Playback position in seconds. Separate from the controller so the timeline
+  /// repaints on this alone — rebuilding the whole editor sixty times a second
+  /// is what makes a scrub feel heavy.
+  final ValueNotifier<double> _posSec = ValueNotifier<double>(0);
+
+  /// Real frames for the base track. Empty until extraction finishes, which it
+  /// does in the background.
+  Filmstrip _strip = Filmstrip.empty;
 
   /// Whether this account has an active plan. Every paid plan sells "No
   /// watermark", so it decides the watermark default on a NEW project.
@@ -348,6 +359,11 @@ class _EditorScreenState extends State<EditorScreen> {
       return;
     }
     c.addListener(_playbackTick);
+    // the strip arrives whenever it arrives; the timeline draws plain until then
+    final clipDur = c.value.duration.inMilliseconds / 1000.0;
+    Filmstrip.forClip(path, clipDur).then((f) {
+      if (mounted) setState(() => _strip = f);
+    });
     setState(() {
       _vc = c;
       final dur = c.value.duration.inMilliseconds / 1000.0;
@@ -424,6 +440,7 @@ class _EditorScreenState extends State<EditorScreen> {
     final v = vc?.value;
     if (vc == null || v == null || !v.isInitialized) return;
     final pos = v.position.inMilliseconds;
+    _posSec.value = pos / 1000.0;
     final atEnd = pos >= _endMs - 60;
     if (atEnd) {
       // Stop at the trim end (video may still have footage past outEnd) and rewind.
@@ -3578,123 +3595,74 @@ class _EditorScreenState extends State<EditorScreen> {
   // ---------- timeline (scrub + trim + subtitle track) ----------
   Widget _timeline() {
     final dur = _duration;
-    final p = _project!;
-    final hasLayers = p.subtitles.isNotEmpty || p.stickers.isNotEmpty || p.logoPath != null;
-    // Base video filmstrip on top, then ONE ENTRY PER KIND. A kind stays a
-    // single row until it is tapped; opening it shows its own layers, one row
-    // each, and a header row to close it again. Collapsing by default keeps the
-    // timeline the same height whether a clip carries two captions or twenty.
-    final kinds = <(String, String, List<Object>)>[
-      for (final k in kLayerKinds)
-        if (_layersOfKind(k.$1).isNotEmpty) (k.$1, k.$2, _layersOfKind(k.$1)),
-    ];
-    const trackH = 26.0;
-    const rowH = 22.0;
-    const headH = 15.0;
-    const gap = 5.0;
-    // Heights are known before layout; the rows themselves need x/sec and so are
-    // built inside the LayoutBuilder below.
-    var measured = trackH + gap;
-    for (final k in kinds) {
-      measured += _openTimelineKinds.contains(k.$1)
-          ? headH + gap + k.$3.length * (rowH + gap)
-          : rowH + gap;
+    final groups = <TimelineGroup>[];
+    for (final k in kLayerKinds) {
+      final items = _layersOfKind(k.$1);
+      if (items.isEmpty) continue;
+      groups.add(TimelineGroup(
+        id: k.$1,
+        label: k.$2,
+        icon: k.$3,
+        colour: _layerColor(items.first),
+        open: _openTimelineKinds.contains(k.$1),
+        items: [
+          for (final it in items)
+            () {
+              final (st, en) = _layerSpan(it, dur);
+              return TimelineItem(
+                ref: it,
+                label: _layerName(it),
+                start: st,
+                end: en,
+                icon: _layerIcon(it) ?? k.$3,
+                colour: _layerColor(it),
+                locked: _layerLocked(it),
+                hidden: _layerHidden(it),
+                // the logo has no window of its own: it is the whole clip
+                movable: it != 'logo',
+                resizable: it != 'logo',
+              );
+            }(),
+        ],
+      ));
     }
-    final contentH = measured;
-    final viewH = (contentH + 16).clamp(58.0, 196.0); // +16 = container 8+8 vertical pad
-    return Container(
-      color: AppColors.surfaceHover,
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-      height: viewH,
-      child: LayoutBuilder(builder: (context, c) {
-        final w = c.maxWidth;
-        final avail = c.maxHeight;
-        double x(double sec) => dur <= 0 ? 0 : (sec / dur) * w;
-        double sec(double px) => dur <= 0 ? 0 : (px / w) * dur;
-        return ValueListenableBuilder<VideoPlayerValue>(
-          valueListenable: _vc!,
-          builder: (context, v, _) {
-            final ph = x(v.position.inMilliseconds / 1000.0);
-            final stack = Stack(clipBehavior: Clip.none, children: [
-              // ---- base video track (filmstrip look) ----
-              Positioned(
-                left: 0, right: 0, top: 0, height: trackH,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(7),
-                  child: Container(
-                    decoration: const BoxDecoration(color: AppColors.bgAlt),
-                    child: Row(children: [
-                      for (int i = 0; i < 10; i++)
-                        Expanded(child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 0.5),
-                          decoration: const BoxDecoration(border: Border(right: BorderSide(color: AppColors.line))),
-                          child: Center(child: Icon(Icons.movie_creation_outlined, size: 12, color: AppColors.inkGhost.withOpacity(0.5))),
-                        )),
-                    ]),
-                  ),
-                ),
-              ),
-              // trimmed-out dim regions (over the base track)
-              if (p.trimStart > 0) Positioned(left: 0, width: x(p.trimStart), top: 0, height: trackH, child: _dim()),
-              if (p.outEnd < dur) Positioned(left: x(p.outEnd), right: 0, top: 0, height: trackH, child: _dim()),
-              // empty hint (sits ON the base track so it never overflows below)
-              if (!hasLayers)
-                Positioned(
-                  left: 0, right: 0, top: 0, height: trackH,
-                  child: IgnorePointer(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.line)),
-                        child: const Text('Tap Text or Layers to add your first layer', style: TextStyle(color: AppColors.inkMuted, fontSize: 10.5, fontWeight: FontWeight.w500)),
-                      ),
-                    ),
-                  ),
-                ),
-              // ---- one entry per kind, expanded into its layers when open ----
-              ...() {
-                var top = trackH + gap;
-                final out = <Widget>[];
-                for (final k in kinds) {
-                  if (!_openTimelineKinds.contains(k.$1)) {
-                    out.add(_kindEntryRow(k.$1, k.$2, k.$3, top, rowH, w, dur, x));
-                    top += rowH + gap;
-                    continue;
-                  }
-                  out.add(_kindHeaderRow(k.$1, k.$2, k.$3, top, headH));
-                  top += headH + gap;
-                  for (final it in k.$3) {
-                    out.add(_layerRow(it, top, rowH, w, dur, x, sec));
-                    top += rowH + gap;
-                  }
-                }
-                return out;
-              }(),
-              // playhead spanning the whole stack
-              Positioned(left: ph.clamp(0, w) - 1, top: -2, height: contentH + 4, child: IgnorePointer(child: Container(width: 2, color: AppColors.ink))),
-              Positioned(left: ph.clamp(0, w) - 5, top: -6, child: IgnorePointer(child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: AppColors.ink, shape: BoxShape.circle)))),
-              // trim handles LAST so they sit above the playhead and stay grabbable
-              if (_trimMode) ..._trimHandles(x, sec, w, p, dur, trackH),
-            ]);
-            final content = SizedBox(height: contentH, width: w, child: stack);
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              // In trim mode the parent must NOT seek — otherwise a tap/drag near a
-              // handle steals the gesture and the trim feels broken. onTapUp (not
-              // onTapDown) fires only when the parent's tap actually WINS the arena,
-              // so a press-hold / hesitant drag-start on a layer block never seeks.
-              onTapUp: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx)),
-              onHorizontalDragUpdate: _trimMode ? null : (d) => _seek(sec(d.localPosition.dx.clamp(0, w))),
-              // Many layers → scroll vertically inside the fixed viewport. The vertical
-              // scroller only claims vertical drags, so horizontal drags still seek and
-              // per-block horizontal drags still move/trim their layer. Clip.none so the
-              // playhead knob / trim bars / time bubble (negative tops) aren't clipped.
-              child: contentH > avail
-                  ? SingleChildScrollView(scrollDirection: Axis.vertical, clipBehavior: Clip.none, child: content)
-                  : content,
-            );
-          },
-        );
+    return TimelinePanel(
+      duration: dur,
+      position: _posSec,
+      isPlaying: _vc?.value.isPlaying ?? false,
+      groups: groups,
+      filmstrip: _strip,
+      trimStart: _project!.trimStart,
+      trimEnd: _project!.outEnd,
+      selected: _selected,
+      onSeek: _seek,
+      trimMode: _trimMode,
+      onTrim: (isStart, t) => setState(() {
+        final p = _project!;
+        if (isStart) {
+          p.trimStart = t.clamp(0, p.outEnd - 0.3);
+          _vc?.seekTo(Duration(milliseconds: (p.trimStart * 1000).round()));
+        } else {
+          p.trimEnd = t.clamp(p.trimStart + 0.3, dur);
+          _vc?.seekTo(Duration(milliseconds: (p.outEnd * 1000).round()));
+        }
+      }),
+      onToggleGroup: (id) => setState(() {
+        if (!_openTimelineKinds.remove(id)) _openTimelineKinds.add(id);
+      }),
+      onSelect: (ref) => setState(() => _selected = ref),
+      onEditStart: _snapshot,
+      // The panel reports where a layer should END UP; the mutators below have
+      // always taken a delta and own the clamping, so the delta is handed back
+      // to them rather than writing the model a second way.
+      onMove: (ref, start) => setState(() {
+        final (st, _) = _layerSpan(ref, dur);
+        _dragLayerTime(ref, start - st, dur);
+      }),
+      onResize: (ref, start, end) => setState(() {
+        final (st, en) = _layerSpan(ref, dur);
+        if (start != st) _resizeLayerStart(ref, start - st, dur);
+        if (end != en) _resizeLayerEnd(ref, end - en, dur);
       }),
     );
   }
@@ -3708,236 +3676,6 @@ class _EditorScreenState extends State<EditorScreen> {
     return (s.start, s.end >= 9998 ? dur : s.end);
   }
 
-  /// The collapsed row for a kind: ONE block covering everything that kind
-  /// holds, from its earliest start to its latest end. Tapping it opens the
-  /// kind. It is deliberately not draggable — moving "all the text at once" is
-  /// not a thing the user asked for, and the individual layers are one tap away.
-  Widget _kindEntryRow(String id, String label, List<Object> items, double top, double rowH, double w, double dur, double Function(double) x) {
-    var st = double.infinity, en = 0.0;
-    for (final it in items) {
-      final (a, b) = _layerSpan(it, dur);
-      if (a < st) st = a;
-      if (b > en) en = b;
-    }
-    if (st == double.infinity) st = 0;
-    final tint = _layerColor(items.first);
-    final left = x(st).clamp(0.0, w);
-    final width = (x(en) - x(st)).clamp(44.0, w - left);
-    final anySelected = items.any((it) => it == 'logo' ? _selected == 'logo' : identical(_selected, it));
-    return Positioned(
-      left: 0, right: 0, top: top, height: rowH,
-      child: Stack(clipBehavior: Clip.none, children: [
-        Positioned.fill(child: IgnorePointer(child: DecoratedBox(
-          decoration: BoxDecoration(color: tint.withOpacity(0.10), borderRadius: BorderRadius.circular(6))))),
-        Positioned(
-          left: left, width: width, top: 0, bottom: 0,
-          child: _timelineBlock(
-            label: items.length == 1 ? label : '$label  ${items.length}',
-            icon: _layerIcon(items.first),
-            selected: anySelected,
-            color: tint,
-            locked: false,
-            trailing: Icons.expand_more_rounded,
-            onTap: () => setState(() => _openTimelineKinds.add(id)),
-            onDrag: (_) {},
-          ),
-        ),
-      ]),
-    );
-  }
-
-  /// The strip that sits above an opened kind's layers and closes it again.
-  Widget _kindHeaderRow(String id, String label, List<Object> items, double top, double headH) {
-    final tint = _layerColor(items.first);
-    return Positioned(
-      left: 0, right: 0, top: top, height: headH,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => setState(() => _openTimelineKinds.remove(id)),
-        child: Row(children: [
-          Icon(Icons.expand_less_rounded, size: 14, color: tint),
-          const SizedBox(width: 3),
-          Text('$label  ${items.length}',
-              style: TextStyle(color: tint, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 0.4)),
-          const SizedBox(width: 6),
-          Expanded(child: IgnorePointer(child: DecoratedBox(
-              decoration: BoxDecoration(color: tint.withOpacity(0.22), borderRadius: BorderRadius.circular(1)),
-              child: const SizedBox(height: 1)))),
-        ]),
-      ),
-    );
-  }
-
-  /// One opened layer's own row: positioned by its time, drag = move, edge
-  /// grips = duration. A locked layer (or the logo, which has no window)
-  /// ignores both.
-  Widget _layerRow(Object it, double top, double rowH, double w, double dur, double Function(double) x, double Function(double) sec) {
-    final isLogo = it == 'logo';
-    final selected = isLogo ? _selected == 'logo' : identical(_selected, it);
-    final locked = _layerLocked(it);
-    final (st, en) = _layerSpan(it, dur);
-    final left = x(st).clamp(0.0, w);
-    final width = (x(en) - x(st)).clamp(28.0, w - left);
-    final canTime = !isLogo && !locked;
-    return Positioned(
-      left: 0, right: 0, top: top, height: rowH,
-      child: Stack(clipBehavior: Clip.none, children: [
-        Positioned.fill(child: IgnorePointer(child: DecoratedBox(
-          decoration: BoxDecoration(color: AppColors.bgAlt.withOpacity(0.45), borderRadius: BorderRadius.circular(6))))),
-        Positioned(
-          left: left, width: width, top: 0, bottom: 0,
-          child: _timelineBlock(
-            label: _layerName(it),
-            icon: _layerIcon(it),
-            selected: selected,
-            color: _layerColor(it),
-            locked: locked,
-            onTap: () => setState(() => _selected = isLogo ? 'logo' : it),
-            onDrag: canTime ? (d) => setState(() => _dragLayerTime(it, sec(d), dur)) : (_) {},
-            onResizeLeft: canTime ? (d) => setState(() => _resizeLayerStart(it, sec(d), dur)) : null,
-            onResizeRight: canTime ? (d) => setState(() => _resizeLayerEnd(it, sec(d), dur)) : null,
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _timelineBlock({
-    required String label,
-    IconData? icon,
-    required bool selected,
-    LinearGradient? gradient,
-    Color? color,
-    required VoidCallback onTap,
-    required void Function(double) onDrag,
-    void Function(double)? onResizeLeft,
-    void Function(double)? onResizeRight,
-    bool locked = false,
-    IconData? trailing,
-  }) {
-    // A block is time-draggable only if it isn't locked AND actually has a time
-    // window to move (resize grips present). The full-clip logo has neither.
-    final draggable = !locked && (onResizeLeft != null || onResizeRight != null);
-    final body = GestureDetector(
-      onTap: onTap,
-      onHorizontalDragStart: draggable ? (_) => _snapshot() : null, // fires once per drag → move is undoable
-      onHorizontalDragUpdate: draggable ? (d) => onDrag(d.delta.dx) : null,
-      child: Container(
-        alignment: Alignment.centerLeft,
-        padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 7),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          color: color,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: selected ? Colors.white : Colors.white.withOpacity(0.15), width: selected ? 1.6 : 1),
-          boxShadow: selected ? [BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 4)] : null,
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (locked) ...[const Icon(Icons.lock, size: 10, color: Colors.white), const SizedBox(width: 3)],
-          if (icon != null) ...[Icon(icon, size: 12, color: Colors.white), const SizedBox(width: 4)],
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700))),
-          // marks a collapsed kind as openable
-          if (trailing != null) ...[const SizedBox(width: 3), Icon(trailing, size: 13, color: Colors.white)],
-        ]),
-      ),
-    );
-    // When selected, show drag-to-trim grips at each edge so the user can set how
-    // long the layer shows — "jaise video length" (client §2). Delta-based so the
-    // gesture survives the block repositioning on each rebuild.
-    return Stack(fit: StackFit.expand, clipBehavior: Clip.none, children: [
-      body,
-      if (selected && onResizeLeft != null) Positioned(left: 0, top: 0, bottom: 0, child: _trimGrip(onResizeLeft)),
-      if (selected && onResizeRight != null) Positioned(right: 0, top: 0, bottom: 0, child: _trimGrip(onResizeRight)),
-    ]);
-  }
-
-  Widget _trimGrip(void Function(double) onDrag) => GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragStart: (_) => _snapshot(),
-        onHorizontalDragUpdate: (d) => onDrag(d.delta.dx),
-        child: Container(
-          width: 16, alignment: Alignment.center,
-          child: Container(width: 4, height: 14, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 2)])),
-        ),
-      );
-
-  Widget _dim() => DecoratedBox(decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(7)));
-
-  // Which trim handle is being dragged (null = none). Kept in State so the drag
-  // receiver — a STABLE full-width layer that never moves during the gesture — can
-  // route absolute finger position to the right edge. A moving GestureDetector (the
-  // old per-handle approach) lost the pointer on the rebuild that repositioned it,
-  // which is why the client's trim "didn't adjust in one swipe".
-  int _trimDrag = 0; // 0 none, 1 start, 2 end
-  double _trimStartX = 0; // finger x at drag start (local)
-  double _trimStartVal = 0; // trim value at drag start
-
-  List<Widget> _trimHandles(double Function(double) x, double Function(double) sec, double w, EditorProject p, double dur, double trackH) {
-    const barW = 18.0;
-    final startX = x(p.trimStart).clamp(0.0, w);
-    final endX = x(p.outEnd).clamp(0.0, w);
-
-    Widget bar(double leftPx, bool isStart) => Positioned(
-          left: (leftPx - barW / 2).clamp(0.0, w - barW),
-          top: -6, height: trackH + 12, width: barW,
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                color: (_trimDrag == (isStart ? 1 : 2)) ? AppColors.brandPressed : _kAccent,
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 4)]),
-              child: const Icon(Icons.drag_indicator, size: 15, color: Colors.white),
-            ),
-          ),
-        );
-
-    // STABLE full-width drag receiver — spans the whole track, never moves, so the
-    // gesture is never lost mid-drag. On start it grabs the nearer handle; on update
-    // it maps the finger's ABSOLUTE local x → time (pins the handle to the finger).
-    final receiver = Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: (d) {
-          final fx = d.localPosition.dx;
-          _trimDrag = (fx - startX).abs() <= (fx - endX).abs() ? 1 : 2;
-          _trimStartX = fx;
-          _trimStartVal = _trimDrag == 1 ? p.trimStart : p.outEnd;
-          _snapshot();
-          HapticFeedback.selectionClick();
-          setState(() {});
-        },
-        onHorizontalDragUpdate: (d) => setState(() {
-          final target = (_trimStartVal + sec(d.localPosition.dx - _trimStartX));
-          if (_trimDrag == 1) {
-            p.trimStart = target.clamp(0, p.outEnd - 0.3);
-            _vc?.seekTo(Duration(milliseconds: (p.trimStart * 1000).round()));
-          } else if (_trimDrag == 2) {
-            p.trimEnd = target.clamp(p.trimStart + 0.3, dur);
-            _vc?.seekTo(Duration(milliseconds: (p.outEnd * 1000).round()));
-          }
-        }),
-        onHorizontalDragEnd: (_) { setState(() => _trimDrag = 0); HapticFeedback.selectionClick(); },
-        onHorizontalDragCancel: () => setState(() => _trimDrag = 0),
-      ),
-    );
-
-    Widget bubble(double leftPx, double secVal) => Positioned(
-          left: (leftPx - 24).clamp(0.0, w - 48), top: -28,
-          child: IgnorePointer(child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: _kAccent, borderRadius: BorderRadius.circular(8)),
-            child: Text(_fmtSec(secVal), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
-          )),
-        );
-
-    return [
-      receiver, // must be first so the bars paint on top
-      bar(startX, true),
-      bar(endX, false),
-      if (_trimDrag == 1) bubble(startX, p.trimStart),
-      if (_trimDrag == 2) bubble(endX, p.outEnd),
-    ];
-  }
 
   String _fmtSec(double s) {
     final m = (s ~/ 60), sec = (s % 60);
