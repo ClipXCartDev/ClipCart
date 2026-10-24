@@ -84,12 +84,22 @@ class SubtitleSegment {
     this.opacity = 1.0,
     this.locked = false,
     this.kind = 'text',
+    this.line = 0,
   });
 
   /// Which add-menu button produced this layer: text, logo, handle, cta or
   /// outro. They are all the same object, so without the tag they all read as
   /// plain text and collapse into one group in the timeline and layers sheet.
   String kind;
+
+  /// Which timeline line this caption was put on.
+  ///
+  /// Captions that never coincide share a line automatically, which is right
+  /// for one person talking. It is wrong for two: a reply that happens to fall
+  /// in a gap would land in the first speaker's line and read as theirs. So the
+  /// line is the author's to choose, and the automatic packing happens inside
+  /// whichever line they chose.
+  int line;
 
   String text;
   double start; // seconds
@@ -150,7 +160,7 @@ class SubtitleSegment {
         letterSpacing: letterSpacing, lineHeight: lineHeight, bold: bold, italic: italic, shadow: shadow,
         shadowColor: shadowColor, shadowOpacity: shadowOpacity, shadowBlur: shadowBlur,
         shadowDistance: shadowDistance, shadowAngle: shadowAngle,
-        opacity: opacity, locked: locked, kind: kind,
+        opacity: opacity, locked: locked, kind: kind, line: line,
       );
 
   /// Work out what a layer saved before kinds existed actually is.
@@ -180,7 +190,7 @@ class SubtitleSegment {
         'fi': fadeIn, 'fo': fadeOut, 'an': anim.index,
         'ls': letterSpacing, 'lh': lineHeight, 'bo': bold, 'it': italic, 'sh': shadow,
         'shc': shadowColor, 'sho': shadowOpacity, 'shb': shadowBlur, 'shd': shadowDistance, 'sha': shadowAngle,
-        'op': opacity, 'lk': locked, 'k': kind,
+        'op': opacity, 'lk': locked, 'k': kind, 'ln': line,
       };
 
   factory SubtitleSegment.fromJson(Map<String, dynamic> j) => SubtitleSegment(
@@ -204,6 +214,7 @@ class SubtitleSegment {
         kind: (j['k'] as String?) ?? _inferKind(j),
         opacity: (j['op'] as num?)?.toDouble() ?? 1.0,
         locked: (j['lk'] as bool?) ?? false,
+        line: (j['ln'] as int?) ?? 0,
       );
 }
 

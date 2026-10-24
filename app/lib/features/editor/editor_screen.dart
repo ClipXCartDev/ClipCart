@@ -586,7 +586,7 @@ class _EditorScreenState extends State<EditorScreen> {
     _redo.add(_project!.snapshot());
     setState(() {
       _project!.restore(_undo.removeLast());
-      _selected = null;
+      _deselect();
     });
   }
 
@@ -595,7 +595,7 @@ class _EditorScreenState extends State<EditorScreen> {
     _undo.add(_project!.snapshot());
     setState(() {
       _project!.restore(_redo.removeLast());
-      _selected = null;
+      _deselect();
     });
   }
 
@@ -611,6 +611,69 @@ class _EditorScreenState extends State<EditorScreen> {
     return m + 1;
   }
 
+  /// The line a new caption starts on — whatever the author last put one on.
+  int _nextLine = 0;
+
+  /// The other captions that are being styled along with the selected one.
+  ///
+  /// Giving eight captions the same font, colour and place meant opening each
+  /// one and repeating the same eight changes — and getting one of them
+  /// slightly wrong is exactly how a set of captions stops looking like a set.
+  final Set<SubtitleSegment> _multi = {};
+
+  /// While on, tapping a caption adds it to [_multi] instead of replacing the
+  /// selection. A mode rather than a modifier: there is no shift key here, and
+  /// a plain tap has to keep meaning "edit that one instead".
+  bool _multiPick = false;
+
+  /// Drop the selection, companions and all. A multiple selection left behind
+  /// would silently restyle captions the author is no longer looking at.
+  void _deselect() {
+    _selected = null;
+    _multi.clear();
+    _multiPick = false;
+  }
+
+  /// Copy how it looks and where it sits from the selected caption to the rest
+  /// of the selection.
+  ///
+  /// Deliberately not the words, the timing or the line: those are what make
+  /// each caption a different caption. Everything else is the shared look the
+  /// author came here to set once.
+  void _mirrorToMulti() {
+    final lead = _selected;
+    if (_multi.isEmpty || lead is! SubtitleSegment) return;
+    for (final o in _multi) {
+      if (identical(o, lead)) continue;
+      o
+        ..fontFamily = lead.fontFamily
+        ..fontFilePath = lead.fontFilePath
+        ..fontSize = lead.fontSize
+        ..color = lead.color
+        ..bold = lead.bold
+        ..italic = lead.italic
+        ..align = lead.align
+        ..letterSpacing = lead.letterSpacing
+        ..lineHeight = lead.lineHeight
+        ..strokeWidth = lead.strokeWidth
+        ..strokeColor = lead.strokeColor
+        ..bgEnabled = lead.bgEnabled
+        ..bgColor = lead.bgColor
+        ..shadow = lead.shadow
+        ..shadowColor = lead.shadowColor
+        ..shadowOpacity = lead.shadowOpacity
+        ..shadowBlur = lead.shadowBlur
+        ..shadowDistance = lead.shadowDistance
+        ..shadowAngle = lead.shadowAngle
+        ..anim = lead.anim
+        ..opacity = lead.opacity
+        ..dx = lead.dx
+        ..dy = lead.dy
+        ..scale = lead.scale
+        ..rotation = lead.rotation;
+    }
+  }
+
   void _addSubtitle() {
     _snapshot();
     // Guarantee a usable, non-degenerate window even when parked at/near the end
@@ -619,7 +682,10 @@ class _EditorScreenState extends State<EditorScreen> {
     final dz = _duration;
     final s0 = dz <= 0 ? _t : _t.clamp(0.0, (dz - 0.5).clamp(0.0, dz));
     final e0 = (dz <= 0 || dz - s0 < 0.5) ? s0 + 3 : (s0 + 3).clamp(s0 + 0.5, dz);
-    final seg = SubtitleSegment(text: '', start: s0, end: e0, z: _topZ());
+    // Adding three replies in a row should not mean setting the line three
+    // times: the last line chosen is the one the next caption starts on.
+    final seg = SubtitleSegment(
+        text: '', start: s0, end: e0, z: _topZ(), line: _nextLine);
     setState(() {
       _project!.subtitles.add(seg);
       _project!.subtitles.sort((a, b) => a.start.compareTo(b.start));
@@ -736,7 +802,7 @@ class _EditorScreenState extends State<EditorScreen> {
       _typing = false;
       if (_selected is SubtitleSegment && (_selected as SubtitleSegment).text.trim().isEmpty) {
         _project!.subtitles.remove(_selected);
-        _selected = null;
+        _deselect();
       }
     });
   }
@@ -1183,6 +1249,31 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
               ),
             // batch action bar (multi-select)
+            if (selectMode && sel.whereType<SubtitleSegment>().length > 1) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final picked = sel.whereType<SubtitleSegment>().toList();
+                    Navigator.pop(context);
+                    setState(() {
+                      _selected = picked.first;
+                      _multi
+                        ..clear()
+                        ..addAll(picked.skip(1));
+                      _multiPick = true;
+                    });
+                  },
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: _kAccent,
+                      side: const BorderSide(color: _kAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 12)),
+                  icon: const Icon(Icons.done_all_rounded, size: 18),
+                  label: Text('Style these ${sel.whereType<SubtitleSegment>().length} together'),
+                ),
+              ),
+            ],
             if (selectMode && sel.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(children: [
@@ -1214,7 +1305,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         } else {
                           _project!.logoPath = null;
                         }
-                        if (identical(_selected, it)) _selected = null;
+                        if (identical(_selected, it)) _deselect();
                       }
                     });
                     setSheet(() { sel.clear(); selectMode = false; });
@@ -1931,7 +2022,7 @@ class _EditorScreenState extends State<EditorScreen> {
       if (_selected is SubtitleSegment) _project!.subtitles.remove(_selected);
       if (_selected is StickerOverlay) _project!.stickers.remove(_selected);
       if (_selected == 'logo') _project!.logoPath = null;
-      _selected = null;
+      _deselect();
     });
   }
 
@@ -1972,6 +2063,9 @@ class _EditorScreenState extends State<EditorScreen> {
   // ---------- unified layer helpers (multi-track timeline + pro layers panel) ----------
   // A "layer" is a SubtitleSegment | StickerOverlay | the 'logo' sentinel string.
   double _layerZ(Object it) => it is SubtitleSegment ? it.z : it is StickerOverlay ? it.z : _project!.logoZ;
+  /// Only text carries a line; everything else is one kind, one row.
+  int _layerLine(Object it) => it is SubtitleSegment ? it.line : 0;
+
   bool _layerLocked(Object it) => it is SubtitleSegment ? it.locked : it is StickerOverlay ? it.locked : _project!.logoLocked;
   bool _layerHidden(Object it) => it is SubtitleSegment ? it.hidden : it is StickerOverlay ? it.hidden : _project!.logoHidden;
   /// One colour per kind so a timeline block reads as what it is even when the
@@ -2223,7 +2317,7 @@ class _EditorScreenState extends State<EditorScreen> {
       if (it is SubtitleSegment) _project!.subtitles.remove(it);
       else if (it is StickerOverlay) _project!.stickers.remove(it);
       else if (it == 'logo') _project!.logoPath = null;
-      if (identical(_selected, it) || (it == 'logo' && _selected == 'logo')) _selected = null;
+      if (identical(_selected, it) || (it == 'logo' && _selected == 'logo')) _deselect();
     });
   }
 
@@ -2604,7 +2698,10 @@ class _EditorScreenState extends State<EditorScreen> {
 
   void _mutate(VoidCallback fn) {
     _snapshot();
-    setState(fn);
+    setState(() {
+      fn();
+      _mirrorToMulti();
+    });
   }
 
   /// Export settings sheet — resolution + fps (client-requested "export at
@@ -3059,7 +3156,7 @@ class _EditorScreenState extends State<EditorScreen> {
         // Back peels one layer of UI first (typing → panel/selection) and only
         // leaves the editor when nothing is open — the standard editor expectation.
         if (_typing) { _doneTyping(); return; }
-        if (_selected != null) { setState(() => _selected = null); return; }
+        if (_selected != null) { setState(_deselect); return; }
         if (await _confirmDiscard() && mounted) Navigator.of(context).pop();
       },
       child: Scaffold(
@@ -3167,7 +3264,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         // tap on empty canvas: if something is selected, just deselect
                         // (lets the user "finish" one edit and start another); else play/pause.
                         if (_selected != null) {
-                          setState(() => _selected = null);
+                          setState(_deselect);
                         } else {
                           _togglePlay();
                         }
@@ -3373,6 +3470,7 @@ class _EditorScreenState extends State<EditorScreen> {
             _snapHaptic(_snapX, _snapY);
             if (d.scale != 1.0) s.scale = (_gScale * d.scale).clamp(0.4, 4.0);
             if (d.rotation != 0) s.rotation = _snapAngle(_gRot + d.rotation);
+            _mirrorToMulti();
             _hint = '${(s.scale * 100).round()}%   ${_deg(s.rotation)}°';
           }),
           onScaleEnd: (_) => setState(() {
@@ -3642,7 +3740,20 @@ class _EditorScreenState extends State<EditorScreen> {
             const SizedBox(width: 2),
             _actionIcon('Redo', Icons.redo_rounded, _redo.isEmpty ? null : _redoAction),
             const SizedBox(width: 2),
-            _actionIcon('Select', Icons.check_box_outlined, () => _openLayers(startInSelect: true)),
+            // With a caption in hand this is "pick more to style with it";
+            // with nothing selected there is nothing to style with, so it
+            // stays the way into the layers list.
+            _actionIcon(
+              _multiPick ? 'Done' : 'Select',
+              _multiPick ? Icons.done_all_rounded : Icons.check_box_outlined,
+              _selected is SubtitleSegment
+                  ? () => setState(() {
+                        _multiPick = !_multiPick;
+                        if (!_multiPick) _multi.clear();
+                      })
+                  : () => _openLayers(startInSelect: true),
+              on: _multiPick,
+            ),
             const SizedBox(width: 2),
             _actionIcon('Delete', Icons.delete_outline_rounded, _selected == null ? null : _deleteSelected, danger: true),
           ]),
@@ -3706,6 +3817,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 colour: _layerColor(it),
                 locked: _layerLocked(it),
                 hidden: _layerHidden(it),
+                line: _layerLine(it),
                 // the logo has no window of its own: it is the whole clip
                 movable: it != 'logo',
                 resizable: it != 'logo',
@@ -3723,6 +3835,7 @@ class _EditorScreenState extends State<EditorScreen> {
       trimStart: _project!.trimStart,
       trimEnd: _project!.outEnd,
       selected: _selected,
+      alsoSelected: _multi.cast<Object>().toSet(),
       onSeek: _seek,
       trimMode: _trimMode,
       // a layer's panel is open: the user is on one layer, not surveying the
@@ -3741,7 +3854,17 @@ class _EditorScreenState extends State<EditorScreen> {
       onToggleGroup: (id) => setState(() {
         if (!_closedTimelineKinds.remove(id)) _closedTimelineKinds.add(id);
       }),
-      onSelect: (ref) => setState(() => _selected = ref),
+      onSelect: (ref) => setState(() {
+        // In multi-pick a tap adds or removes; the lead stays the lead so the
+        // panel keeps showing the values the rest are being matched to.
+        if (_multiPick && ref is SubtitleSegment && !identical(ref, _selected)) {
+          if (!_multi.remove(ref)) _multi.add(ref);
+          return;
+        }
+        _selected = ref;
+        _multi.clear();
+        _multiPick = false;
+      }),
       onEditStart: _snapshot,
       // The panel reports where a layer should END UP; the mutators below have
       // always taken a delta and own the clamping, so the delta is handed back
@@ -3962,7 +4085,7 @@ class _EditorScreenState extends State<EditorScreen> {
           ),
           const SizedBox(width: 4),
           GestureDetector(
-            onTap: () => setState(() => _selected = null),
+            onTap: () => setState(_deselect),
             child: Container(
               width: 40, height: 40,
               decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle),
@@ -4011,7 +4134,7 @@ class _EditorScreenState extends State<EditorScreen> {
                   ),
                   // minimal round ✓ to finish editing this layer (deselect)
                   GestureDetector(
-                    onTap: () => setState(() => _selected = null),
+                    onTap: () => setState(_deselect),
                     child: Container(
                       margin: const EdgeInsets.only(left: 8),
                       width: 40, height: 40,
@@ -4062,6 +4185,35 @@ class _EditorScreenState extends State<EditorScreen> {
         );
 
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // Who this panel is editing, when it is editing more than one. Without
+      // it, a change that lands on four captions looks like a bug.
+      if (_multiPick || _multi.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(children: [
+            Icon(Icons.done_all_rounded, size: 15, color: brand),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                _multi.isEmpty
+                    ? 'Tap more captions to style them together'
+                    : 'Styling ${_multi.length + 1} captions together',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: brand, fontWeight: FontWeight.w600),
+              ),
+            ),
+            if (_multi.isNotEmpty)
+              GestureDetector(
+                onTap: () => setState(() { _multi.clear(); _multiPick = false; }),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Text('Clear', style: TextStyle(fontSize: 12, color: mut, fontWeight: FontWeight.w600)),
+                ),
+              ),
+          ]),
+        ),
       // One rail: which controls to show, what to do to the layer, and done.
       // It scrolls rather than wrapping, so a narrow phone loses nothing.
       Row(children: [
@@ -4084,7 +4236,7 @@ class _EditorScreenState extends State<EditorScreen> {
         act(Icons.delete_outline_rounded, _deleteSelected, danger: true),
         const SizedBox(width: 8),
         GestureDetector(
-          onTap: () => setState(() => _selected = null),
+          onTap: () => setState(_deselect),
           child: Container(width: 34, height: 34, decoration: const BoxDecoration(color: brand, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 17, color: Colors.white)),
         ),
       ]),
@@ -4286,6 +4438,8 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _textAdvance(SubtitleSegment s, Color mut, Color tile, Color line, Color brand) {
     void snap() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _lineRow(s, mut, tile, line, brand),
+      const SizedBox(height: 12),
       Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(child: _NumFieldLight(label: 'X %', value: s.dx * 100, min: 0, max: 100, onChanged: (v) => _mutate(() => s.dx = (v / 100).clamp(0.0, 1.0)))),
         const SizedBox(width: 8),
@@ -4296,6 +4450,55 @@ class _EditorScreenState extends State<EditorScreen> {
       const SizedBox(height: 8),
       const Text('Position and scale only. Colour, shadow, stroke, motion & fine typography live in the Styling tab.',
           style: TextStyle(fontSize: 11, color: AppColors.inkFaint, height: 1.3)),
+    ]);
+  }
+
+  /// Which timeline line this caption sits on.
+  ///
+  /// Captions that do not coincide share a line by themselves, which is right
+  /// for one person talking and wrong for two — a reply that lands in a gap
+  /// would read as the first speaker's. Choosing a line separates them, and
+  /// the next caption added starts on the same one.
+  Widget _lineRow(SubtitleSegment s, Color mut, Color tile, Color line, Color brand) {
+    final used = <int>{for (final x in _project!.subtitles) if (x.kind == s.kind) x.line, s.line}.toList()..sort();
+    Widget chip(String label, bool on, VoidCallback onTap) => Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: GestureDetector(
+            onTap: onTap,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: on ? brand : tile,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: on ? brand : line),
+              ),
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: on ? Colors.white : AppColors.ink)),
+            ),
+          ),
+        );
+    return Row(children: [
+      SizedBox(width: 40, child: Text('Line', style: TextStyle(fontSize: 12, color: mut))),
+      Expanded(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            for (final l in used)
+              chip('${l + 1}', l == s.line, () => _mutate(() { s.line = l; _nextLine = l; })),
+            chip('+ New', false, () => _mutate(() {
+                  final n = used.last + 1;
+                  s.line = n;
+                  _nextLine = n;
+                })),
+          ]),
+        ),
+      ),
     ]);
   }
 

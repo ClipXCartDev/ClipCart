@@ -39,4 +39,18 @@ void main() {
     expect(back.fadeIn, 0.5);
     expect(back.text, 'hi');
   });
+
+  test('a caption remembers which line it was put on', () {
+    // Undo, duplicate and reopening a draft all go through copy() and json.
+    // Losing the line there drops a second speaker's captions back into the
+    // first speaker's row, silently, some time after the author set them.
+    final s = SubtitleSegment(text: 'reply', start: 2, end: 5, line: 2);
+    expect(s.copy().line, 2);
+    expect(SubtitleSegment.fromJson(s.toJson()).line, 2);
+  });
+
+  test('a caption written before lines existed reads as line 1', () {
+    final j = SubtitleSegment(text: 'old', start: 0, end: 1).toJson()..remove('ln');
+    expect(SubtitleSegment.fromJson(j).line, 0);
+  });
 }

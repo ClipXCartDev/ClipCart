@@ -22,6 +22,7 @@ class TimelineItem {
     this.hidden = false,
     this.movable = true,
     this.resizable = true,
+    this.line = 0,
   });
 
   /// Whatever the editor uses to identify this thing. Passed back untouched.
@@ -35,6 +36,10 @@ class TimelineItem {
   final bool hidden;
   final bool movable;
   final bool resizable;
+
+  /// The line its author put it on. Items on different lines never share a
+  /// row, however far apart in time they are — that is the point of choosing.
+  final int line;
 }
 
 /// A collapsed group of layers of one kind, or one expanded kind's header.
@@ -82,6 +87,7 @@ class TimelinePanel extends StatefulWidget {
     this.trimStart = 0,
     this.trimEnd,
     this.selected,
+    this.alsoSelected = const {},
     this.onMove,
     this.onResize,
     this.onEditStart,
@@ -130,6 +136,10 @@ class TimelinePanel extends StatefulWidget {
   /// open: the timeline keeps every track, but shows fewer at once and
   /// scrolls, instead of squeezing the video into a tenth of the screen.
   final bool compact;
+
+  /// Layers being styled along with [selected]. Drawn selected too, so a
+  /// multiple selection is visible where it was made.
+  final Set<Object> alsoSelected;
 
   @override
   State<TimelinePanel> createState() => _TimelinePanelState();
@@ -294,11 +304,11 @@ class _TimelinePanelState extends State<TimelinePanel> {
   /// Every layer, with where it sits. The gutter and the tracks both read
   /// this, so a tile can never drift from the lane it names.
   ///
-  /// Layers of one kind share a band. A caption that ends before the next one
-  /// starts costs no height at all — six captions down a clip are six blocks
-  /// on one track, not six tracks, which is how every editor draws them and
-  /// what makes the whole set readable at once. A second row appears only
-  /// where two of them are genuinely on screen together.
+  /// Layers of one kind share a band, one row per line its author chose. A
+  /// caption that ends before the next one on the same line starts costs no
+  /// height at all — six captions down a clip are six blocks on one row, not
+  /// six rows, which is how every editor draws them. Inside a line, a second
+  /// row appears only where two are genuinely on screen together.
   List<({double top, TimelineGroup group, TimelineItem? item})> _lanes() {
     final out = <({double top, TimelineGroup group, TimelineItem? item})>[];
     var y = _rulerH + _gap + _videoH + _gap;
@@ -308,11 +318,24 @@ class _TimelinePanelState extends State<TimelinePanel> {
         y += _rowH + _gap;
         continue;
       }
-      final rows = packRows([for (final it in g.items) (it.start, it.end)]);
-      for (var i = 0; i < g.items.length; i++) {
-        out.add((top: y + rows[i] * (_rowH + _gap), group: g, item: g.items[i]));
+      // one block of rows per line, in the order the lines are numbered
+      final lines = <int, List<TimelineItem>>{};
+      for (final it in g.items) {
+        (lines[it.line] ??= []).add(it);
       }
-      y += (rows.isEmpty ? 1 : rows.reduce(math.max) + 1) * (_rowH + _gap);
+      final keys = lines.keys.toList()..sort();
+      if (keys.isEmpty) {
+        y += _rowH + _gap;
+        continue;
+      }
+      for (final k in keys) {
+        final items = lines[k]!;
+        final rows = packRows([for (final it in items) (it.start, it.end)]);
+        for (var i = 0; i < items.length; i++) {
+          out.add((top: y + rows[i] * (_rowH + _gap), group: g, item: items[i]));
+        }
+        y += (rows.reduce(math.max) + 1) * (_rowH + _gap);
+      }
     }
     return out;
   }
@@ -328,14 +351,17 @@ class _TimelinePanelState extends State<TimelinePanel> {
     return out;
   }
 
-  /// Where two layers of one kind are on screen at the same time, and over
-  /// which rows. Drawn as a marker: overlapping captions are usually a
-  /// mistake, and until now nothing said so.
+  /// Where two layers that share a line are on screen at the same time, and
+  /// over which rows. Drawn as a marker: two captions in one line at once is
+  /// usually a mistake, and until now nothing said so.
+  ///
+  /// Across lines it is not a mistake — two speakers talking over each other
+  /// is the reason lines exist — so those are left alone.
   List<({double from, double to, double top, double bottom})> _overlaps() {
     final byGroup = <String, List<({double top, TimelineItem item})>>{};
     for (final l in _lanes()) {
       if (l.item == null) continue;
-      (byGroup[l.group.id] ??= []).add((top: l.top, item: l.item!));
+      (byGroup['${l.group.id}#${l.item!.line}'] ??= []).add((top: l.top, item: l.item!));
     }
     final out = <({double from, double to, double top, double bottom})>[];
     for (final lanes in byGroup.values) {
@@ -701,7 +727,8 @@ class _TimelinePanelState extends State<TimelinePanel> {
   }
 
   Widget _itemRow(TimelineItem it, double y) {
-    final selected = widget.selected != null && identical(widget.selected, it.ref);
+    final selected = (widget.selected != null && identical(widget.selected, it.ref)) ||
+        widget.alsoSelected.contains(it.ref);
     final left = _pad + _scale.xOf(it.start);
     final width = math.max(26.0, _scale.xOf(it.end - it.start));
     return Positioned(
