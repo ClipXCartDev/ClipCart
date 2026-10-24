@@ -3889,31 +3889,55 @@ class _EditorScreenState extends State<EditorScreen> {
         onTap: () => setState(() => _textTab = i),
         child: Container(
           height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: on ? brand : Colors.transparent,
             borderRadius: BorderRadius.circular(999),
             border: on ? null : Border.all(color: line),
           ),
-          child: Text(label, style: TextStyle(fontSize: 13, color: on ? Colors.white : ink, fontWeight: on ? FontWeight.w600 : FontWeight.w400)),
+          child: Text(label, style: TextStyle(fontSize: 12, color: on ? Colors.white : ink, fontWeight: on ? FontWeight.w600 : FontWeight.w400)),
         ),
       );
     }
 
+    /// An action on the selected layer. Icon only: these four are the ones a
+    /// glyph says faster than a word, and they used to cost a whole row.
+    Widget act(IconData icon, VoidCallback onTap, {bool danger = false}) => GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 30, height: 32, alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: danger ? AppColors.errBg : tile,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: danger ? AppColors.errBg : line),
+            ),
+            child: Icon(icon, size: 16, color: danger ? AppColors.err : ink),
+          ),
+        );
+
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // header: sub-tab pills + round ✓ done
+      // One rail: which controls to show, what to do to the layer, and done.
+      // It scrolls rather than wrapping, so a narrow phone loses nothing.
       Row(children: [
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              subTab('Font', 0), const SizedBox(width: 7),
-              subTab('Styling', 1), const SizedBox(width: 7),
-              subTab('Advance', 2),
+              subTab('Font', 0), const SizedBox(width: 5),
+              subTab('Style', 1), const SizedBox(width: 5),
+              subTab('Place', 2),
+              const SizedBox(width: 10),
+              act(Icons.content_cut_rounded, _splitAtPlayhead), const SizedBox(width: 5),
+              act(Icons.copy_rounded, _duplicateSelected), const SizedBox(width: 5),
+              act(s.hidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  () => _mutate(() => s.hidden = !s.hidden)),
             ]),
           ),
         ),
+        const SizedBox(width: 8),
+        act(Icons.delete_outline_rounded, _deleteSelected, danger: true),
         const SizedBox(width: 8),
         GestureDetector(
           onTap: () => setState(() => _selected = null),
@@ -3934,17 +3958,6 @@ class _EditorScreenState extends State<EditorScreen> {
           },
         ),
       ),
-      const SizedBox(height: 7),
-      // footer: Split · Duplicate · Hide · Delete
-      Row(children: [
-        Expanded(child: _textFootBtn('Split', tile, line, ink, _splitAtPlayhead)),
-        const SizedBox(width: 7),
-        Expanded(child: _textFootBtn('Duplicate', tile, line, ink, _duplicateSelected)),
-        const SizedBox(width: 7),
-        Expanded(child: _textFootBtn(s.hidden ? 'Show' : 'Hide', tile, line, ink, () => _mutate(() => s.hidden = !s.hidden))),
-        const SizedBox(width: 7),
-        Expanded(child: _textFootBtn('Delete', AppColors.errBg, AppColors.errBg, AppColors.err, _deleteSelected)),
-      ]),
     ]);
   }
 
