@@ -308,9 +308,9 @@ class _EditorScreenState extends State<EditorScreen> {
                 : 'Subscribe to edit this clip.';
             break;
           }
-          _error = 'Could not load the clip. Check your connection and retry.';
-        } catch (_) {
-          _error = 'Could not load the clip. Check your connection and retry.';
+          _error = _loadFailure(e);
+        } catch (e) {
+          _error = _loadFailure(e);
         }
       }
     }
@@ -351,6 +351,16 @@ class _EditorScreenState extends State<EditorScreen> {
     final res = await FilePicker.platform.pickFiles(type: FileType.video);
     if (res != null && res.files.single.path != null) await _load(res.files.single.path!);
   }
+
+  /// Why a clip would not load, in the user's terms.
+  ///
+  /// A 401 means the session ended — removing a device revokes it — and no
+  /// amount of checking the connection will help. Everything else really is
+  /// worth a retry.
+  static String _loadFailure(Object e) =>
+      (e is DioException && e.response?.statusCode == 401)
+          ? 'You have been signed out. Sign in again to keep editing.'
+          : 'Could not load the clip. Check your connection and retry.';
 
   Future<void> _load(String path) async {
     _vc?.removeListener(_playbackTick);
@@ -2917,9 +2927,11 @@ class _EditorScreenState extends State<EditorScreen> {
       closeProgress();
       final d = e.response?.data;
       final detail = d is Map ? d['detail'] : null;
-      final msg = detail is Map && detail['message'] != null
-          ? detail['message'].toString()
-          : 'Could not load the clip. Check your connection and try again.';
+      final msg = e.response?.statusCode == 401
+          ? 'You have been signed out. Sign in again and try the export.'
+          : detail is Map && detail['message'] != null
+              ? detail['message'].toString()
+              : 'Could not load the clip. Check your connection and try again.';
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } on ExportFailure catch (e) {
       closeProgress();

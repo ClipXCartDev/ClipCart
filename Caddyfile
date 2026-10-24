@@ -7,6 +7,18 @@
 (app) {
 	encode gzip
 
+	# Without this there is no record of any request, so an incident can only be
+	# guessed at after the fact. Rolled by size so it cannot fill the disk, and
+	# the Authorization header is never written down.
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 20MiB
+			roll_keep 5
+			roll_keep_for 336h
+		}
+		format json
+	}
+
 	# API + health -> FastAPI (path preserved; app is mounted at /api/v1)
 	@api path /api/* /health
 	handle @api {

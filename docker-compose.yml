@@ -61,10 +61,12 @@ services:
       - ./:/srv:ro           # serve static SPAs (/, /admin/, /web/)
       - caddy_data:/data
       - caddy_config:/config
+      - caddy_logs:/var/log/caddy
     depends_on:
       - api
 
 volumes:
+  caddy_logs:
   pgdata:
   clip_storage:
   caddy_data:
