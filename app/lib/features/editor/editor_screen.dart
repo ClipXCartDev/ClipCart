@@ -14,6 +14,8 @@ import 'package:video_player/video_player.dart';
 import '../../core/runtime_config.dart';
 import '../../core/theme.dart' show AppColors;
 import '../../core/ui_kit.dart' show GlassPlayButton;
+import '../../models/caption_preset.dart';
+import '../../services/caption_preset_service.dart';
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
 import '../../models/video_geometry.dart';
@@ -1386,7 +1388,7 @@ class _EditorScreenState extends State<EditorScreen> {
               child: const Text('A+', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 15)),
             ),
             _chipDivider(),
-            for (final p in _textPresets) _presetChip(s, p),
+            for (final p in context.watch<CaptionPresetService>().all.take(8)) _presetChip(s, p),
             _chipDivider(),
             // color dots (undoable)
             for (final c in colors)
@@ -1448,43 +1450,6 @@ class _EditorScreenState extends State<EditorScreen> {
       ]),
     );
   }
-
-  static const _textPresets = [
-    {'name': 'Clean', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0x80000000, 'sw': 0.0, 'sc': 0xFF000000},
-    {'name': 'Outline', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x80000000, 'sw': 5.0, 'sc': 0xFF000000},
-    {'name': 'Sunny', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000},
-    {'name': 'Neon', 'color': 0xFF0E9E6E, 'bg': false, 'bgc': 0x80000000, 'sw': 4.0, 'sc': 0xFFFFFFFF},
-    {'name': 'Mint', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF12B76A, 'sw': 0.0, 'sc': 0xFF000000},
-    {'name': 'Ink', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF3B9EFF, 'sw': 0.0, 'sc': 0xFF000000},
-  ];
-
-  /// Full "caption look" style templates — bundle font + color + stroke + bg +
-  /// animation into one named tap (RenderForest-style). Applied via _applyStyle.
-  static const _styleTemplates = [
-    {'name': 'Bold Meme', 'font': 'Anton', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 6.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
-    {'name': 'Subtitle', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xB3000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Impact', 'font': 'Archivo Black', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
-    {'name': 'Neon Pop', 'font': 'Bebas Neue', 'color': 0xFF0E9E6E, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.bounce},
-    {'name': 'Sunshine', 'font': 'Poppins', 'color': 0xFF17131F, 'bg': true, 'bgc': 0xFFFFC400, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideUp},
-    {'name': 'Marker', 'font': 'Permanent Marker', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.shake},
-    {'name': 'Retro', 'font': 'Lobster', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideDown},
-    {'name': 'Headline', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF0E9E6E, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.typewriter},
-    {'name': 'Handwrite', 'font': 'Caveat', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Party', 'font': 'Shrikhand', 'color': 0xFF12B886, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFFFFFFFF, 'anim': OverlayAnim.pulse},
-    {'name': 'Clean', 'font': 'Inter', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.none},
-    {'name': 'Boxed', 'font': 'Montserrat', 'color': 0xFF000000, 'bg': true, 'bgc': 0xFFFFFFFF, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
-    {'name': 'Fire', 'font': 'Anton', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFFC2272D, 'anim': OverlayAnim.zoomIn},
-    {'name': 'Mint', 'font': 'Poppins', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF12B76A, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideUp},
-    {'name': 'Ocean', 'font': 'Oswald', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFF2D7FF9, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.slideDown},
-    {'name': 'Glow', 'font': 'Bebas Neue', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF0E9E6E, 'anim': OverlayAnim.pulse},
-    {'name': 'Comic', 'font': 'Bungee', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 5.0, 'sc': 0xFF000000, 'anim': OverlayAnim.bounce},
-    {'name': 'Script', 'font': 'Pacifico', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 3.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Serif', 'font': 'Playfair Display', 'color': 0xFFFFFFFF, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Sport', 'font': 'Passion One', 'color': 0xFFFFC400, 'bg': false, 'bgc': 0x00000000, 'sw': 4.0, 'sc': 0xFF000000, 'anim': OverlayAnim.popIn},
-    {'name': 'Coral', 'font': 'Anton', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xFFFF4D6D, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.zoomIn},
-    {'name': 'Night', 'font': 'Montserrat', 'color': 0xFFFFFFFF, 'bg': true, 'bgc': 0xE6000000, 'sw': 0.0, 'sc': 0xFF000000, 'anim': OverlayAnim.fade},
-    {'name': 'Gold', 'font': 'Playfair Display', 'color': 0xFFD89A3C, 'bg': false, 'bgc': 0x00000000, 'sw': 2.0, 'sc': 0xFF3A2600, 'anim': OverlayAnim.slideUp},
-  ];
 
   /// Logo Adjust — exact X / Y (%) + Scale + Rotation numeric boxes.
   Future<void> _openLogoAdjust() async {
@@ -1788,44 +1753,54 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  void _applyStyle(SubtitleSegment s, Map<String, dynamic> t) {
-    _mutate(() {
-      s.fontFamily = t['font'] as String?;
-      // resolve font file path for FFmpeg export from the loaded builtins
-      if (s.fontFamily != null) {
-        final match = context.read<FontService>().all.where((f) => f.family == s.fontFamily);
-        s.fontFilePath = match.isNotEmpty ? match.first.path : s.fontFilePath;
-      }
-      s.color = t['color'] as int;
-      s.bgEnabled = t['bg'] as bool;
-      s.bgColor = t['bgc'] as int;
-      s.strokeWidth = t['sw'] as double;
-      s.strokeColor = t['sc'] as int;
-      s.anim = t['anim'] as OverlayAnim;
-    });
+  /// Where a font family lives on this device, so the exporter can use it.
+  String? _fontPathFor(String? family) {
+    if (family == null) return null;
+    final match = context.read<FontService>().all.where((f) => f.family == family);
+    return match.isEmpty ? null : match.first.path;
   }
 
-  Widget _styleTile(SubtitleSegment s, Map<String, dynamic> tpl, VoidCallback onTap, {VoidCallback? onLong}) {
+  /// Put a preset on a caption.
+  ///
+  /// Every value the preset decides is written. The presets this replaces set
+  /// five fields and left the rest alone, so a stroke or a shadow survived
+  /// from whatever the caption looked like before and two captions given the
+  /// same preset did not match.
+  void _applyStyle(SubtitleSegment s, CaptionPreset p) {
+    _mutate(() => p.applyTo(s, fontPath: _fontPathFor(p.font)));
+  }
+
+  Widget _styleTile(SubtitleSegment s, CaptionPreset p, VoidCallback onTap, {VoidCallback? onLong}) {
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLong,
       child: Container(
         decoration: BoxDecoration(
-          color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.bgAlt,
+          color: p.bgEnabled ? Color(p.bgColor) : AppColors.bgAlt,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: s.fontFamily == tpl['font'] ? _kAccent : AppColors.line, width: s.fontFamily == tpl['font'] ? 2 : 1),
+          border: Border.all(
+              color: s.fontFamily == p.font ? _kAccent : AppColors.line,
+              width: s.fontFamily == p.font ? 2 : 1),
         ),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(6),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('Aa', style: TextStyle(
-            fontFamily: tpl['font'] as String?,
-            color: Color(tpl['color'] as int),
-            fontSize: 26, fontWeight: FontWeight.w900,
-            shadows: (tpl['sw'] as double) > 0 ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)]) Shadow(color: Color(tpl['sc'] as int), offset: o)] : null,
+            fontFamily: p.font,
+            color: Color(p.color),
+            fontSize: 26,
+            fontWeight: p.bold ? FontWeight.w900 : FontWeight.w500,
+            fontStyle: p.italic ? FontStyle.italic : FontStyle.normal,
+            shadows: p.strokeWidth > 0
+                ? [for (final o in const [Offset(-1, -1), Offset(1, 1), Offset(1, -1), Offset(-1, 1)])
+                    Shadow(color: Color(p.strokeColor), offset: o)]
+                : null,
           )),
           const SizedBox(height: 3),
-          Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+          Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+          if (p.custom)
+            const Text('saved', style: TextStyle(color: Colors.white38, fontSize: 8.5, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
@@ -1867,12 +1842,7 @@ class _EditorScreenState extends State<EditorScreen> {
                     // "Save current" tile
                     GestureDetector(
                       onTap: () async {
-                        final name = await _promptStyleName();
-                        if (name == null || name.trim().isEmpty) return;
-                        await bk.addStyle(SavedStyle(name.trim(), {
-                          'name': name.trim(), 'font': s.fontFamily, 'color': s.color, 'bg': s.bgEnabled,
-                          'bgc': s.bgColor, 'sw': s.strokeWidth, 'sc': s.strokeColor, 'anim': s.anim.index,
-                        }));
+                        await _saveCurrentAsPreset(s);
                         setSheet(() {});
                       },
                       child: Container(
@@ -1885,15 +1855,11 @@ class _EditorScreenState extends State<EditorScreen> {
                         ]),
                       ),
                     ),
-                    // user-saved styles
-                    for (final st in bk.styles)
-                      _styleTile(s, _savedToTpl(st),
-                        () { _applyStyle(s, _savedToTpl(st)); setSheet(() {}); },
-                        onLong: () async { await bk.removeStyle(st.name); setSheet(() {}); },
-                      ),
-                    // built-in templates
-                    for (final tpl in _styleTemplates)
-                      _styleTile(s, tpl, () { _applyStyle(s, tpl); setSheet(() {}); }),
+                    for (final p in context.read<CaptionPresetService>().all)
+                      _styleTile(s, p, () { _applyStyle(s, p); setSheet(() {}); },
+                          onLong: p.custom
+                              ? () async { await _removeCustomPreset(p); setSheet(() {}); }
+                              : null),
                   ],
                 ),
               ),
@@ -1905,16 +1871,27 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Map<String, dynamic> _savedToTpl(SavedStyle st) => {
-        'name': st.name,
-        'font': st.data['font'] as String?,
-        'color': st.data['color'] as int,
-        'bg': st.data['bg'] as bool,
-        'bgc': st.data['bgc'] as int,
-        'sw': (st.data['sw'] as num).toDouble(),
-        'sc': st.data['sc'] as int,
-        'anim': OverlayAnim.values[st.data['anim'] as int],
-      };
+  /// Keep the caption's current look under a name of the author's choosing.
+  Future<void> _saveCurrentAsPreset(SubtitleSegment s) async {
+    final name = await _promptStyleName();
+    if (name == null || name.trim().isEmpty) return;
+    await context.read<CaptionPresetService>().saveCustom(
+        CaptionPreset.fromSegment(name.trim(), s));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Saved as "${name.trim()}"'),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  Future<void> _removeCustomPreset(CaptionPreset p) async {
+    await context.read<CaptionPresetService>().removeCustom(p.name);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Removed "${p.name}"'),
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
 
   Future<String?> _promptStyleName() {
     final ctl = TextEditingController(text: 'My style');
@@ -1952,36 +1929,30 @@ class _EditorScreenState extends State<EditorScreen> {
 
   Widget _chipDivider() => Container(width: 1, height: 18, margin: const EdgeInsets.only(right: 9, top: 6), color: AppColors.line);
 
-  Widget _presetChip(SubtitleSegment? s, Map<String, dynamic> p) {
-    final bg = p['bg'] as bool;
-    final color = Color(p['color'] as int);
-    final sw = p['sw'] as double;
+  Widget _presetChip(SubtitleSegment? s, CaptionPreset p) {
+    final bg = p.bgEnabled;
+    final color = Color(p.color);
+    final sw = p.strokeWidth;
     return GestureDetector(
       onTap: () {
         if (s == null) return;
-        _snapshot();
-        setState(() {
-          s.color = p['color'] as int;
-          s.bgEnabled = bg;
-          s.bgColor = p['bgc'] as int;
-          s.strokeWidth = sw;
-          s.strokeColor = p['sc'] as int;
-        });
+        _applyStyle(s, p);
       },
       child: Container(
         width: 30, height: 30,
         margin: const EdgeInsets.only(right: 7),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: bg ? Color(p['bgc'] as int) : _kChip,
+          color: bg ? Color(p.bgColor) : _kChip,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.line),
         ),
         child: Text('Aa', style: TextStyle(
+          fontFamily: p.font,
           color: color,
           fontWeight: FontWeight.w900,
           fontSize: 13,
-          shadows: sw > 0 ? [for (final o in const [Offset(-0.8, -0.8), Offset(0.8, 0.8), Offset(0.8, -0.8), Offset(-0.8, 0.8)]) Shadow(color: Color(p['sc'] as int), offset: o)] : null,
+          shadows: sw > 0 ? [for (final o in const [Offset(-0.8, -0.8), Offset(0.8, 0.8), Offset(0.8, -0.8), Offset(-0.8, 0.8)]) Shadow(color: Color(p.strokeColor), offset: o)] : null,
         )),
       ),
     );
@@ -4431,20 +4402,44 @@ class _EditorScreenState extends State<EditorScreen> {
     void snap() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } }
     const swatches = [0xFFFFFFFF, 0xFF000000, 0xFF0E9E6E, 0xFFD89A3C, 0xFFDC2626, 0xFF2D7FF9, 0xFFFFC400, 0xFF9B5DE5];
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Preset "looks" (font+colour+bg+stroke+anim in one tap)
-      const Text('Presets', style: TextStyle(fontSize: 11.5, color: AppColors.mut, fontWeight: FontWeight.w600)),
+      // One-tap looks: the business's, then this person's own saves.
+      Row(children: [
+        const Text('Presets', style: TextStyle(fontSize: 11.5, color: AppColors.mut, fontWeight: FontWeight.w600)),
+        const Spacer(),
+        GestureDetector(
+          onTap: () => _saveCurrentAsPreset(s),
+          behavior: HitTestBehavior.opaque,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.bookmark_add_outlined, size: 14, color: brand),
+            const SizedBox(width: 4),
+            Text('Save current', style: TextStyle(fontSize: 11.5, color: brand, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      ]),
       const SizedBox(height: 7),
-      SizedBox(height: 44, child: ListView(scrollDirection: Axis.horizontal, children: [
-        for (final tpl in _styleTemplates)
-          Padding(padding: const EdgeInsets.only(right: 8), child: GestureDetector(
-            onTap: () => _applyStyle(s, tpl),
-            child: Container(
-              width: 90, alignment: Alignment.center, padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(color: (tpl['bg'] as bool) ? Color(tpl['bgc'] as int) : AppColors.bgAlt, borderRadius: BorderRadius.circular(9), border: Border.all(color: s.fontFamily == tpl['font'] ? brand : line, width: s.fontFamily == tpl['font'] ? 2 : 1)),
-              child: Text(tpl['name'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: tpl['font'] as String?, color: Color(tpl['color'] as int), fontWeight: FontWeight.w700, fontSize: 13)),
-            ),
-          )),
-      ])),
+      SizedBox(height: 44, child: Consumer<CaptionPresetService>(
+        builder: (context, svc, _) => ListView(scrollDirection: Axis.horizontal, children: [
+          for (final p in svc.all)
+            Padding(padding: const EdgeInsets.only(right: 8), child: GestureDetector(
+              onTap: () => _applyStyle(s, p),
+              // a save of your own is yours to remove; the rest are not
+              onLongPress: p.custom ? () => _removeCustomPreset(p) : null,
+              child: Container(
+                width: 94, alignment: Alignment.center, padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: p.bgEnabled ? Color(p.bgColor) : AppColors.bgAlt,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                      color: s.fontFamily == p.font ? brand : line,
+                      width: s.fontFamily == p.font ? 2 : 1),
+                ),
+                child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: p.font, color: Color(p.color),
+                        fontWeight: p.bold ? FontWeight.w700 : FontWeight.w500, fontSize: 13)),
+              ),
+            )),
+        ]),
+      )),
       const SizedBox(height: 12),
       // Colour
       Row(children: [

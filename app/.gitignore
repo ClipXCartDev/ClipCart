@@ -7,3 +7,7 @@ build/
 pubspec.lock
 *.iml
 .idea/
+
+# JVM crash dumps from a Gradle worker that died
+hs_err_pid*.log
+replay_pid*.log

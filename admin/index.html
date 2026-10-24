@@ -119,7 +119,7 @@ tbody tr.sel:hover td{background:var(--brs)}
 </div>
 
 <script>
-const NAV = [['dashboard','Dashboard'],['approvals','Approvals'],['clips','Clips'],['plans','Plans'],['payouts','Payouts'],['support','Support'],['users','Users']];
+const NAV = [['dashboard','Dashboard'],['approvals','Approvals'],['clips','Clips'],['presets','Caption presets'],['plans','Plans'],['payouts','Payouts'],['support','Support'],['users','Users']];
 let API='', TOKEN='';
 // API base auto-detected: same origin when served over http(s), else localhost. ?api= overrides.
 const DEFAULT_API = (new URLSearchParams(location.search).get('api'))
@@ -172,7 +172,7 @@ function setApprovalsBadge(n){const el=document.getElementById('apCount');if(!el
 function go(k){
   document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('on'));
   document.getElementById('nav-'+k).classList.add('on');
-  ({dashboard:vDash,approvals:vApprovals,clips:vClips,plans:vPlans,payouts:vPayouts,support:vSupport,users:vUsers}[k])();
+  ({dashboard:vDash,approvals:vApprovals,clips:vClips,presets:vPresets,plans:vPlans,payouts:vPayouts,support:vSupport,users:vUsers}[k])();
 }
 const main=html=>document.getElementById('main').innerHTML=html;
 
@@ -297,6 +297,172 @@ async function vPlans(){
 async function createPlan(){
   const b={name:pn.value,price_usd:parseFloat(pp.value||'0'),export_limit:pl.value===''?null:parseInt(pl.value),quality:pq.value,max_devices:parseInt(pd.value||'2')};
   try{await api('/admin/plans','POST',b);vPlans();}catch(e){document.getElementById('pe').textContent=e.message;}
+}
+
+// -- caption presets --------------------------------------------------------
+// What a customer's captions can look like in one tap. It lives here rather
+// than in the app because it is a product decision, and a product decision
+// that needs an app release to change is one nobody makes.
+//
+// A preset is COMPLETE: every value it decides is written, so applying one
+// does not leave a stroke or a shadow behind from whatever was there before.
+// That is why this screen shows every field and not only the ones that differ
+// from the default.
+let PRE=[], PRESEL=0, PREDEF=[];
+const PRE_ANIMS=['none','fade','popIn','slideUp','slideDown','zoomIn','bounce','typewriter','shake','pulse'];
+const PRE_ALIGNS=['left','center','right'];
+// #AARRGGBB is what the API speaks; <input type=color> speaks #RRGGBB, so the
+// alpha is carried separately rather than lost on every edit.
+function preRgb(v){const t=String(v||'').replace('#','');return '#'+(t.length===8?t.slice(2):t.padStart(6,'0')).toUpperCase();}
+function preAlpha(v){return parseInt(String(v||'#FF000000').replace('#','').padStart(8,'0').slice(0,2),16)/255;}
+function preCss(v){const t=String(v||'#FF000000').replace('#','').padStart(8,'0');
+  const a=parseInt(t.slice(0,2),16)/255, r=parseInt(t.slice(2,4),16), g=parseInt(t.slice(4,6),16), b=parseInt(t.slice(6,8),16);
+  return 'rgba('+r+','+g+','+b+','+a.toFixed(3)+')';}
+
+async function vPresets(){
+  main('<h2>Caption presets</h2>'
+   +'<p style="color:var(--mut);font-size:13px;margin:-6px 0 16px">What the editor offers customers in one tap. Saving replaces the whole list, and an app picks it up the next time it opens the editor.</p>'
+   +'<div class="err" id="prErr"></div><div id="prWrap">Loading...</div>');
+  try{
+    const b=await api('/admin/caption-presets');
+    PRE=b.presets||[]; PREDEF=b.defaults||[]; PRESEL=0;
+    drawPresets();
+  }catch(e){document.getElementById('prWrap').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+
+function drawPresets(){
+  const p=PRE[PRESEL];
+  const list=PRE.map(function(x,i){
+    return '<a onclick="prPick('+i+')" style="padding:9px 10px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;'
+      +(i===PRESEL?'background:var(--brs);color:var(--ink)':'color:var(--mut)')+'">'+h(x.name)+'</a>';
+  }).join('');
+  document.getElementById('prWrap').innerHTML=
+     '<div style="display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start">'
+    +  '<div class="card" style="padding:12px">'
+    +    '<div style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow:auto">'+list+'</div>'
+    +    '<div class="row" style="margin-top:10px"><button class="btn sec sm" onclick="prAdd()">Add</button>'
+    +    '<button class="btn dan sm" onclick="prRemove()">Remove</button></div>'
+    +  '</div>'
+    +  '<div class="card">'+(p?prEditor(p):'<div style="color:var(--mut)">No presets. Add one, or reset to the defaults.</div>')+'</div>'
+    +'</div>'
+    +'<div class="row" style="margin-top:16px">'
+    +  '<button class="btn" onclick="prSave()">Save presets</button>'
+    +  '<button class="btn sec" onclick="prReset()">Reset to defaults</button>'
+    +  '<span id="prMsg" style="color:var(--mut);font-size:13px;align-self:center"></span>'
+    +'</div>';
+  prPreview();
+}
+function prPick(i){PRESEL=i;drawPresets();}
+function prAdd(){
+  let n='New preset', k=2;
+  while(PRE.some(function(x){return x.name.toLowerCase()===n.toLowerCase();})) n='New preset '+(k++);
+  PRE.push(Object.assign({},PREDEF[0]||{},{name:n}));PRESEL=PRE.length-1;drawPresets();
+}
+function prRemove(){
+  if(PRE.length<=1){alert('There has to be at least one preset.');return;}
+  PRE.splice(PRESEL,1);PRESEL=Math.max(0,PRESEL-1);drawPresets();
+}
+function prReset(){
+  if(!confirm('Replace the list with the defaults the app ships with? Nothing changes for customers until you press Save.'))return;
+  PRE=JSON.parse(JSON.stringify(PREDEF));PRESEL=0;drawPresets();
+}
+// Typing a field writes it straight back, so what the card shows is what gets
+// sent; only the name redraws the list it appears in.
+function prSet(key,val){PRE[PRESEL][key]=val;prPreview();}
+function prSetNum(key,val){const n=parseFloat(val);PRE[PRESEL][key]=isNaN(n)?0:n;prPreview();}
+function prSetName(val){PRE[PRESEL].name=val;drawPresets();}
+function prSetColour(key,rgb){
+  const a=String(PRE[PRESEL][key]||'#FF000000').replace('#','').padStart(8,'0').slice(0,2);
+  PRE[PRESEL][key]=('#'+a+String(rgb||'').replace('#','')).toUpperCase();prPreview();
+}
+function prSetAlpha(key,a){
+  const hex=Math.round(Math.max(0,Math.min(1,parseFloat(a)||0))*255).toString(16).padStart(2,'0').toUpperCase();
+  PRE[PRESEL][key]='#'+hex+String(PRE[PRESEL][key]||'#FF000000').replace('#','').padStart(8,'0').slice(2);
+  prPreview();
+}
+
+function prField(label,inner){return '<div style="min-width:0"><div style="font-size:11px;color:var(--mut);font-weight:600;margin-bottom:4px">'+label+'</div>'+inner+'</div>';}
+function prNum(key,p,step){return '<input type="number" step="'+(step||'1')+'" value="'+h(p[key])+'" oninput="prSetNum(\''+key+'\',this.value)">';}
+function prColour(key,p){
+  return '<div class="row" style="gap:6px">'
+    +'<input type="color" value="'+preRgb(p[key])+'" oninput="prSetColour(\''+key+'\',this.value)" style="width:52px;padding:4px;margin:0">'
+    +'<input type="number" min="0" max="1" step="0.05" title="opacity" value="'+preAlpha(p[key]).toFixed(2)+'" oninput="prSetAlpha(\''+key+'\',this.value)" style="width:76px;margin:0"></div>';
+}
+function prCheck(key,p,label){
+  return '<label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);margin-top:8px">'
+    +'<input type="checkbox" '+(p[key]?'checked':'')+' onchange="prSet(\''+key+'\',this.checked)" style="width:auto;min-height:0;margin:0"> '+label+'</label>';
+}
+
+function prEditor(p){
+  const g='display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px';
+  return ''
+   +'<div id="prPrev" style="border:1px solid var(--ln);border-radius:12px;padding:22px;margin-bottom:18px;background:#111;display:flex;align-items:center;justify-content:center;min-height:96px"></div>'
+   +'<div style="'+g+'">'
+   +  prField('Name','<input value="'+h(p.name)+'" onchange="prSetName(this.value)">')
+   +  prField('Font family','<input value="'+h(p.font==null?'':p.font)+'" placeholder="app default" oninput="prSet(\'font\',this.value||null)">')
+   +  prField('Size',prNum('fontSize',p,'1'))
+   +  prField('Opacity',prNum('opacity',p,'0.05'))
+   +'</div>'
+   +'<div style="'+g+'">'
+   +  prField('Text colour',prColour('color',p))
+   +  prField('Align','<select onchange="prSet(\'align\',this.value)">'+PRE_ALIGNS.map(function(a){return '<option '+(p.align===a?'selected':'')+'>'+a+'</option>';}).join('')+'</select>')
+   +  prField('Letter spacing',prNum('letterSpacing',p,'0.5'))
+   +  prField('Line height',prNum('lineHeight',p,'0.05'))
+   +'</div>'
+   +'<div style="'+g+'">'
+   +  prField('Weight',prCheck('bold',p,'Bold'))
+   +  prField('Style',prCheck('italic',p,'Italic'))
+   +  prField('Stroke width',prNum('strokeWidth',p,'0.5'))
+   +  prField('Stroke colour',prColour('strokeColor',p))
+   +'</div>'
+   +'<div style="'+g+'">'
+   +  prField('Background',prCheck('bgEnabled',p,'Box behind text'))
+   +  prField('Background colour',prColour('bgColor',p))
+   +  prField('Shadow',prCheck('shadow',p,'Drop shadow'))
+   +  prField('Shadow colour',prColour('shadowColor',p))
+   +'</div>'
+   +'<div style="'+g+'">'
+   +  prField('Shadow opacity',prNum('shadowOpacity',p,'0.05'))
+   +  prField('Shadow blur',prNum('shadowBlur',p,'0.05'))
+   +  prField('Shadow distance',prNum('shadowDistance',p,'0.5'))
+   +  prField('Shadow angle',prNum('shadowAngle',p,'5'))
+   +'</div>'
+   +'<div style="'+g+'">'
+   +  prField('Motion','<select onchange="prSet(\'anim\',this.value)">'+PRE_ANIMS.map(function(a){return '<option '+(p.anim===a?'selected':'')+'>'+a+'</option>';}).join('')+'</select>')
+   +  prField('Fade in (s)',prNum('fadeIn',p,'0.1'))
+   +  prField('Fade out (s)',prNum('fadeOut',p,'0.1'))
+   +  '<div></div>'
+   +'</div>';
+}
+
+// An approximation, not the renderer: it is here to catch "that is
+// unreadable" before it reaches a customer, not to be exact.
+function prPreview(){
+  const el=document.getElementById('prPrev'); if(!el)return;
+  const p=PRE[PRESEL]; if(!p)return;
+  const sw=Number(p.strokeWidth)||0;
+  const stroke=sw>0?'-webkit-text-stroke:'+(sw/6).toFixed(2)+'px '+preCss(p.strokeColor)+';':'';
+  const d=(Number(p.shadowDistance)||0)/4;
+  const sh=p.shadow?'text-shadow:'+d+'px '+d+'px '+((Number(p.shadowBlur)||0)*14)+'px '+preCss(p.shadowColor)+';':'';
+  const fam=p.font?("'"+String(p.font).replace(/'/g,'')+"',"):'';
+  el.innerHTML='<div style="'+(p.bgEnabled?'background:'+preCss(p.bgColor)+';padding:6px 14px;border-radius:8px;':'')+'">'
+    +'<span style="font-family:'+fam+'system-ui,sans-serif;'
+    +'font-size:'+Math.max(12,Math.min(64,Number(p.fontSize)||44))+'px;'
+    +'color:'+preCss(p.color)+';opacity:'+(Number(p.opacity)||1)+';'
+    +'font-weight:'+(p.bold?800:400)+';font-style:'+(p.italic?'italic':'normal')+';'
+    +'letter-spacing:'+(Number(p.letterSpacing)||0)+'px;line-height:'+(Number(p.lineHeight)||1.15)+';'
+    +stroke+sh+'">The quick brown fox</span></div>';
+}
+
+async function prSave(){
+  const msg=document.getElementById('prMsg'), err=document.getElementById('prErr');
+  err.textContent=''; msg.textContent='Saving...';
+  try{
+    const b=await api('/admin/caption-presets','PUT',{presets:PRE});
+    PRE=b.presets||PRE;
+    drawPresets();
+    document.getElementById('prMsg').textContent='Saved. '+PRE.length+' presets are live.';
+  }catch(e){msg.textContent=''; err.textContent=e.message;}
 }
 
 async function vPayouts(){

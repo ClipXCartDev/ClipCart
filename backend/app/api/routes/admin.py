@@ -26,6 +26,7 @@ from app.models import (
 from app.schemas.billing import GrantIn, PlanCreate, PlanOut, PlanUpdate
 from app.schemas.catalog import CategoryCreate, CategoryOut, ClipOut, ReviewIn
 from app.schemas.payout import PayoutOut
+from app.services import presets as preset_service
 from app.services.catalog import clip_to_out
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -255,3 +256,28 @@ def stats(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> dict:
         "pending_payouts": count(Payout, Payout.status == PayoutStatus.pending),
         "approved_clips": count(Clip, Clip.status == ClipStatus.approved),
     }
+
+
+# ── caption presets ──────────────────────────────────────────────────────────
+# What a customer's captions can look like in one tap is a product decision,
+# and a product decision that needs an app release to change is one nobody
+# makes. These two endpoints are the whole mechanism.
+
+
+@router.get("/caption-presets")
+def get_caption_presets(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> dict:
+    return {"presets": preset_service.get(db), "defaults": preset_service.defaults()}
+
+
+@router.put("/caption-presets")
+def put_caption_presets(
+    body: dict,
+    _: User = Depends(admin_only),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        saved = preset_service.put(db, body.get("presets"))
+    except ValueError as e:
+        # The message names the preset and the field; it is written to be shown.
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    return {"presets": saved}

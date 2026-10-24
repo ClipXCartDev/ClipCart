@@ -10,6 +10,7 @@ import 'services/billing_service.dart';
 import 'services/catalog_service.dart';
 import 'services/creator_service.dart';
 import 'services/brand_kit_service.dart';
+import 'services/caption_preset_service.dart';
 import 'services/font_service.dart';
 import 'services/layout_template_service.dart';
 import 'services/project_store.dart';
@@ -39,6 +40,7 @@ void main() async {
       ChangeNotifierProvider<FontService>(create: (_) => FontService()),
       ChangeNotifierProvider<StickerService>(create: (_) => StickerService(api)),
       ChangeNotifierProvider<BrandKitService>(create: (_) => BrandKitService()..ensureLoaded()),
+      ChangeNotifierProvider<CaptionPresetService>(create: (_) => CaptionPresetService()..ensureLoaded()),
       ChangeNotifierProvider<LayoutTemplateService>(create: (_) => LayoutTemplateService()..ensureLoaded()),
       ChangeNotifierProvider<AuthController>.value(value: authController),
     ],
