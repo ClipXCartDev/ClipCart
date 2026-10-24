@@ -117,4 +117,39 @@ void main() {
       }
     });
   });
+
+  group('packRows — layers of one kind share a track', () {
+    test('captions that never coincide all sit on one row', () {
+      expect(packRows([(0, 2), (2, 4), (4, 6.5), (7, 9)]),
+          [0, 0, 0, 0]);
+    });
+
+    test('touching exactly is not overlapping', () {
+      // one ends where the next begins: a cut, not two captions at once
+      expect(packRows([(0, 3), (3, 6)]), [0, 0]);
+    });
+
+    test('a real overlap costs a second row, and only the overlap does', () {
+      //  a ──────
+      //     b ──────        (overlaps a)
+      //              c ──   (clear of both)
+      expect(packRows([(0, 4), (2, 6), (7, 9)]), [0, 1, 0]);
+    });
+
+    test('rows are reused as soon as they are free', () {
+      expect(packRows([(0, 5), (1, 2), (3, 4)]), [0, 1, 1]);
+    });
+
+    test('three at once need three rows', () {
+      expect(packRows([(0, 9), (1, 9), (2, 9)]), [0, 1, 2]);
+    });
+
+    test('the answer does not depend on the order they were written in', () {
+      expect(packRows([(7, 9), (0, 4), (2, 6)]), [0, 0, 1]);
+    });
+
+    test('nothing to place is no rows', () {
+      expect(packRows([]), isEmpty);
+    });
+  });
 }

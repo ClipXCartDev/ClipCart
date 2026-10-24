@@ -92,3 +92,36 @@ class TimelineScale {
     return steps.last.toDouble();
   }
 }
+
+/// Which row each span belongs on when spans that are never on screen at the
+/// same time share one.
+///
+/// Returns a row index per span, in the order the spans were given. This is
+/// what lets a kind of layer be a *track*: six captions down a clip are six
+/// blocks on one row, and a second row appears only where two of them really
+/// do overlap. Drawing one row per layer instead made a handful of captions
+/// taller than the panel, so the whole set could never be seen at once.
+///
+/// First fit over the rows, earliest start first — the standard interval
+/// partition, which uses the fewest rows the overlaps allow.
+List<int> packRows(List<(double, double)> spans) {
+  final order = List.generate(spans.length, (i) => i)
+    ..sort((a, b) => spans[a].$1.compareTo(spans[b].$1));
+  final rowEnd = <double>[];
+  final rows = List.filled(spans.length, 0);
+  for (final i in order) {
+    final (start, end) = spans[i];
+    var row = 0;
+    // touching exactly is not overlapping: one ends where the next begins
+    while (row < rowEnd.length && rowEnd[row] > start + 1e-6) {
+      row++;
+    }
+    if (row == rowEnd.length) {
+      rowEnd.add(end);
+    } else if (end > rowEnd[row]) {
+      rowEnd[row] = end;
+    }
+    rows[i] = row;
+  }
+  return rows;
+}

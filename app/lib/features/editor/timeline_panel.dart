@@ -291,8 +291,14 @@ class _TimelinePanelState extends State<TimelinePanel> {
     );
   }
 
-  /// Every lane, in order, with where it sits. The gutter and the tracks both
-  /// read this, so a tile can never drift from the lane it names.
+  /// Every layer, with where it sits. The gutter and the tracks both read
+  /// this, so a tile can never drift from the lane it names.
+  ///
+  /// Layers of one kind share a band. A caption that ends before the next one
+  /// starts costs no height at all — six captions down a clip are six blocks
+  /// on one track, not six tracks, which is how every editor draws them and
+  /// what makes the whole set readable at once. A second row appears only
+  /// where two of them are genuinely on screen together.
   List<({double top, TimelineGroup group, TimelineItem? item})> _lanes() {
     final out = <({double top, TimelineGroup group, TimelineItem? item})>[];
     var y = _rulerH + _gap + _videoH + _gap;
@@ -302,9 +308,50 @@ class _TimelinePanelState extends State<TimelinePanel> {
         y += _rowH + _gap;
         continue;
       }
-      for (final it in g.items) {
-        out.add((top: y, group: g, item: it));
-        y += _rowH + _gap;
+      final rows = packRows([for (final it in g.items) (it.start, it.end)]);
+      for (var i = 0; i < g.items.length; i++) {
+        out.add((top: y + rows[i] * (_rowH + _gap), group: g, item: g.items[i]));
+      }
+      y += (rows.isEmpty ? 1 : rows.reduce(math.max) + 1) * (_rowH + _gap);
+    }
+    return out;
+  }
+
+  /// The distinct bands, top to bottom. Several layers can share one, so this
+  /// is what the gutter labels and what the lane colour is painted on.
+  List<({double top, TimelineGroup group})> _bands() {
+    final seen = <double>{};
+    final out = <({double top, TimelineGroup group})>[];
+    for (final l in _lanes()) {
+      if (seen.add(l.top)) out.add((top: l.top, group: l.group));
+    }
+    return out;
+  }
+
+  /// Where two layers of one kind are on screen at the same time, and over
+  /// which rows. Drawn as a marker: overlapping captions are usually a
+  /// mistake, and until now nothing said so.
+  List<({double from, double to, double top, double bottom})> _overlaps() {
+    final byGroup = <String, List<({double top, TimelineItem item})>>{};
+    for (final l in _lanes()) {
+      if (l.item == null) continue;
+      (byGroup[l.group.id] ??= []).add((top: l.top, item: l.item!));
+    }
+    final out = <({double from, double to, double top, double bottom})>[];
+    for (final lanes in byGroup.values) {
+      for (var i = 0; i < lanes.length; i++) {
+        for (var j = i + 1; j < lanes.length; j++) {
+          final a = lanes[i], b = lanes[j];
+          final from = math.max(a.item.start, b.item.start);
+          final to = math.min(a.item.end, b.item.end);
+          if (to - from <= 1e-6) continue;
+          out.add((
+            from: from,
+            to: to,
+            top: math.min(a.top, b.top),
+            bottom: math.max(a.top, b.top) + _rowH,
+          ));
+        }
       }
     }
     return out;
@@ -312,7 +359,9 @@ class _TimelinePanelState extends State<TimelinePanel> {
 
   double _rowsHeight() {
     final l = _lanes();
-    return l.isEmpty ? 0 : (l.last.top + _rowH + _gap) - (_rulerH + _gap + _videoH + _gap);
+    if (l.isEmpty) return 0;
+    final deepest = l.map((e) => e.top).reduce(math.max);
+    return (deepest + _rowH + _gap) - (_rulerH + _gap + _videoH + _gap);
   }
 
   Widget _zoomBar() => SizedBox(
@@ -353,7 +402,7 @@ class _TimelinePanelState extends State<TimelinePanel> {
   /// the chevron that folds them into a single row. Without it the lanes were
   /// unlabelled strips and a layer looked like it was floating.
   Widget _gutter() {
-    final lanes = _lanes();
+    final lanes = _bands();
     return Stack(clipBehavior: Clip.none, children: [
       // aligns with the video track, so the column starts where the tracks do
       Positioned(
@@ -424,15 +473,33 @@ class _TimelinePanelState extends State<TimelinePanel> {
                 // seek handler underneath instead of being eaten by the track
                 child: IgnorePointer(child: _videoTrack())),
             // the bands first: a layer should sit ON a track, not float
-            for (final lane in _lanes())
+            for (final band in _bands())
               Positioned(
-                left: _pad, top: lane.top, height: _rowH,
+                left: _pad, top: band.top, height: _rowH,
                 width: _scale.contentWidth(widget.duration),
                 child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: lane.group.colour.withValues(alpha: 0.10),
+                      color: band.group.colour.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
+            // under the blocks, so it marks them without hiding them
+            for (final o in _overlaps())
+              Positioned(
+                left: _pad + _scale.xOf(o.from),
+                top: o.top - 2,
+                width: math.max(2.0, _scale.xOf(o.to - o.from)),
+                height: o.bottom - o.top + 4,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.warnIcon.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(
+                          color: AppColors.warnIcon.withValues(alpha: 0.75), width: 1),
                     ),
                   ),
                 ),
@@ -761,7 +828,11 @@ class _TimelinePanelState extends State<TimelinePanel> {
         decoration: BoxDecoration(
           color: colour.withValues(alpha: selected ? 1 : 0.82),
           borderRadius: BorderRadius.circular(7),
-          border: selected ? Border.all(color: Colors.white, width: 2) : null,
+          // Sharing a track means neighbours can touch. The dark seam is what
+          // keeps "two captions back to back" from reading as one long one.
+          border: selected
+              ? Border.all(color: Colors.white, width: 2)
+              : Border.all(color: AppColors.bg, width: 1),
         ),
         padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 7),
         child: Row(children: [

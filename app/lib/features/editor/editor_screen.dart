@@ -442,6 +442,10 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   bool _endHandled = false;
+  DateTime? _lastSeekAt;
+  DateTime? _seekHoldUntil;
+  Timer? _seekTail;
+  double? _pendingSeek;
   // Trim window in ms. When no trim is set, outEnd == full duration and trimStart
   // == 0, so all of this collapses to normal full-clip behavior.
   int get _startMs => ((_project?.trimStart ?? 0) * 1000).round();
@@ -454,7 +458,12 @@ class _EditorScreenState extends State<EditorScreen> {
     final v = vc?.value;
     if (vc == null || v == null || !v.isInitialized) return;
     final pos = v.position.inMilliseconds;
-    _posSec.value = pos / 1000.0;
+    // While a scrub is in flight the finger is the truth, not the decoder.
+    if (v.isPlaying ||
+        _seekHoldUntil == null ||
+        DateTime.now().isAfter(_seekHoldUntil!)) {
+      _posSec.value = pos / 1000.0;
+    }
     final atEnd = pos >= _endMs - 60;
     if (atEnd) {
       // Stop at the trim end (video may still have footage past outEnd) and rewind.
@@ -477,6 +486,7 @@ class _EditorScreenState extends State<EditorScreen> {
   @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _seekTail?.cancel();
     _vc?.removeListener(_playbackTick);
     _vc?.dispose();
     _textCtl.dispose();
@@ -3714,11 +3724,48 @@ class _EditorScreenState extends State<EditorScreen> {
     return '${m}:${sec.toStringAsFixed(1).padLeft(4, '0')}';
   }
 
+  /// Scrubbing.
+  ///
+  /// A drag across the timeline fires on every pixel, and sending every one of
+  /// those to the player was why the picture did not move: an exact seek has to
+  /// decode from the preceding keyframe, so a flood of them leaves the decoder
+  /// permanently behind and the same frame on screen the whole way across. The
+  /// overlays updated because they are drawn from the position alone — which is
+  /// what made it look like only the text was alive.
+  ///
+  /// So the position is published immediately, and the player is asked for a
+  /// frame on a fixed cadence it can actually keep, with a tail seek so the
+  /// frame under the finger is the one left on screen when the drag stops.
+  static const _seekEveryMs = 70;
+
   void _seek(double s) {
     // Clamp tap/drag seeks to the trim window so the preview stays inside the cut.
     final lo = _startMs / 1000.0, hi = _endMs / 1000.0;
-    final ms = (s.clamp(lo, hi) * 1000).round();
-    _vc!.seekTo(Duration(milliseconds: ms));
+    final t = s.clamp(lo, hi);
+
+    // The playhead and every overlay follow the finger with no round trip.
+    _posSec.value = t;
+    // and the tick must not drag them back to where the decoder has got to
+    _seekHoldUntil = DateTime.now().add(const Duration(milliseconds: 400));
+
+    final now = DateTime.now();
+    final due = _lastSeekAt == null ||
+        now.difference(_lastSeekAt!).inMilliseconds >= _seekEveryMs;
+    if (due) {
+      _lastSeekAt = now;
+      _pendingSeek = null;
+      _vc!.seekTo(Duration(milliseconds: (t * 1000).round()));
+      return;
+    }
+    _pendingSeek = t;
+    _seekTail?.cancel();
+    _seekTail = Timer(const Duration(milliseconds: _seekEveryMs), () {
+      final p = _pendingSeek;
+      if (p == null || !mounted) return;
+      _pendingSeek = null;
+      _lastSeekAt = DateTime.now();
+      _vc?.seekTo(Duration(milliseconds: (p * 1000).round()));
+    });
   }
 
   /// "More" tools sheet — the less-frequent add options in a compact grid so the
