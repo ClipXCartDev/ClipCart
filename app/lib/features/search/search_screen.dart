@@ -319,8 +319,6 @@ class _SearchScreenState extends State<SearchScreen> {
             );
 
         final genres = _facets['genres'] ?? const <String>[];
-        final languages = _facets['languages'] ?? const <String>[];
-        final movies = _facets['movies'] ?? const <String>[];
 
         return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Padding(padding: EdgeInsets.only(left: 2), child: Text('Filters', style: T.section)),
@@ -338,16 +336,6 @@ class _SearchScreenState extends State<SearchScreen> {
                   section('Genre', [
                     chip('Any', genre == null, () => genre = null),
                     for (final g in genres) chip(g, genre == g, () => genre = g),
-                  ]),
-                if (languages.isNotEmpty)
-                  section('Language', [
-                    chip('Any', language == null, () => language = null),
-                    for (final l in languages) chip(l, language == l, () => language = l),
-                  ]),
-                if (movies.isNotEmpty)
-                  section('Movie', [
-                    chip('Any', movie == null, () => movie = null),
-                    for (final m in movies) chip(m, movie == m, () => movie = m),
                   ]),
                 section('Length', [
                   chip('Any', maxDur == null, () => maxDur = null),

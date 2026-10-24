@@ -61,7 +61,9 @@ class SubtitleSegment {
     this.rotation = 0.0,
     this.strokeWidth = 0,
     this.strokeColor = 0xFF000000,
-    this.bgEnabled = true,
+    // A caption arrives plain. The presets are there for a look; applying
+    // one unasked means the first thing a user does is take it off.
+    this.bgEnabled = false,
     this.bgColor = 0x80000000,
     this.align = TextAlignH.center,
     this.z = 0,

@@ -154,7 +154,12 @@ class _TimelinePanelState extends State<TimelinePanel> {
 
   final _scroll = ScrollController();
   TimelineScale _scale = TimelineScale();
-  bool _fitted = false;
+
+  /// The width the current fit was computed for, and whether the user has
+  /// since chosen a zoom. A fit taken at the wrong width must not survive;
+  /// a zoom the user picked must.
+  double _fitWidth = 0;
+  bool _userZoomed = false;
 
   /// Set while a pinch is in progress so the horizontal scroller lets go.
   bool _zooming = false;
@@ -233,9 +238,12 @@ class _TimelinePanelState extends State<TimelinePanel> {
         Expanded(
           child: LayoutBuilder(builder: (context, c) {
             // Start showing the whole clip; after that the zoom is the user's.
-            if (!_fitted && widget.duration > 0 && c.maxWidth > 0) {
+            if (!_userZoomed &&
+                widget.duration > 0 &&
+                c.maxWidth > 0 &&
+                (c.maxWidth - _fitWidth).abs() > 8) {
               _scale = TimelineScale.fit(widget.duration, c.maxWidth - _pad * 2);
-              _fitted = true;
+              _fitWidth = c.maxWidth;
             }
             return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SizedBox(width: _gutterW, child: _gutter()),
@@ -253,7 +261,10 @@ class _TimelinePanelState extends State<TimelinePanel> {
               },
               onScaleUpdate: (d) {
                 if (!_zooming || d.pointerCount < 2) return;
-                setState(() => _scale = TimelineScale(_zoomStart * d.horizontalScale));
+                setState(() {
+                  _userZoomed = true;
+                  _scale = TimelineScale(_zoomStart * d.horizontalScale);
+                });
               },
               onScaleEnd: (_) => setState(() => _zooming = false),
               child: SingleChildScrollView(
@@ -303,10 +314,20 @@ class _TimelinePanelState extends State<TimelinePanel> {
         height: 26,
         child: Row(children: [
           const Spacer(),
-          _zoomBtn(Icons.remove_rounded, () => setState(() => _scale = _scale.scaled(1 / 1.6))),
-          _zoomBtn(Icons.add_rounded, () => setState(() => _scale = _scale.scaled(1.6))),
+          _zoomBtn(Icons.remove_rounded, () => setState(() {
+                _userZoomed = true;
+                _scale = _scale.scaled(1 / 1.6);
+              })),
+          _zoomBtn(Icons.add_rounded, () => setState(() {
+                _userZoomed = true;
+                _scale = _scale.scaled(1.6);
+              })),
           _zoomBtn(Icons.fit_screen_outlined, () {
-            setState(() => _fitted = false); // re-fits on the next layout
+            // back to automatic: re-fits on the next layout and tracks width again
+            setState(() {
+              _userZoomed = false;
+              _fitWidth = 0;
+            });
           }),
           const SizedBox(width: 8),
         ]),
@@ -654,8 +675,8 @@ class _TimelinePanelState extends State<TimelinePanel> {
             ),
           ),
           if (selected && it.resizable && !it.locked && widget.onResize != null) ...[
-            Positioned(left: -8, top: 0, bottom: 0, child: _grip(it, left: true)),
-            Positioned(right: -8, top: 0, bottom: 0, child: _grip(it, left: false)),
+            Positioned(left: -10, top: 0, bottom: 0, child: _grip(it, left: true)),
+            Positioned(right: -10, top: 0, bottom: 0, child: _grip(it, left: false)),
           ],
         ]),
       ),
@@ -688,11 +709,24 @@ class _TimelinePanelState extends State<TimelinePanel> {
           _snapBuzzed = false;
         }),
         child: SizedBox(
-          width: 16,
+          // wider than it looks: the grip is the only way to set a layer's
+          // duration, and a 4-pixel target on a 34-pixel track is a miss
+          width: 20,
           child: Center(
             child: Container(
-              width: 4, height: _rowH - 8,
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2)),
+              width: 7, height: _rowH - 4,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(3.5),
+                boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 4)],
+              ),
+              child: Center(
+                child: Container(
+                  width: 1.5, height: (_rowH - 4) * 0.45,
+                  decoration: BoxDecoration(
+                    color: AppColors.inkMuted, borderRadius: BorderRadius.circular(1)),
+                ),
+              ),
             ),
           ),
         ),
@@ -709,7 +743,10 @@ class _TimelinePanelState extends State<TimelinePanel> {
         decoration: BoxDecoration(
           color: colour.withValues(alpha: selected ? 1 : 0.82),
           borderRadius: BorderRadius.circular(7),
-          border: selected ? Border.all(color: Colors.white, width: 2) : null,
+          border: selected ? Border.all(color: Colors.white, width: 2.5) : null,
+          boxShadow: selected
+              ? const [BoxShadow(color: Color(0x66000000), blurRadius: 6, spreadRadius: 1)]
+              : null,
         ),
         padding: const EdgeInsets.symmetric(horizontal: 7),
         child: Row(children: [

@@ -883,6 +883,19 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       );
 
+  /// A slider whose number reads as a percentage. "1.2x" is a developer's way
+  /// of saying 120%, and the client asked for the one people use.
+  Widget _fadeRowPercent(String label, double value, double min, double max, ValueChanged<double> onChanged) => Row(children: [
+        SizedBox(width: 108, child: Text(label, style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 13))),
+        Expanded(
+          child: SliderTheme(
+            data: SliderThemeData(activeTrackColor: _kAccent, thumbColor: Colors.white, inactiveTrackColor: AppColors.line, trackHeight: 4, overlayColor: _kAccent.withOpacity(0.15), thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7.5, elevation: 1.5)),
+            child: Slider(value: value.clamp(min, max), min: min, max: max, onChanged: onChanged),
+          ),
+        ),
+        SizedBox(width: 52, child: Text('${(value * 100).round()}%', textAlign: TextAlign.right, style: const TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 12, fontFamily: 'IBMPlexMono'))),
+      ]);
+
   Widget _fadeRowGeneric(String label, double value, double min, double max, ValueChanged<double> onChanged, {String suffix = ''}) => Row(children: [
         SizedBox(width: 108, child: Text(label, style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 13))),
         Expanded(
@@ -1889,7 +1902,7 @@ class _EditorScreenState extends State<EditorScreen> {
   /// Every kind a layer can belong to, in add-menu order. The layers sheet and
   /// the timeline both read this, so they cannot end up grouping differently.
   static const List<(String, String, IconData)> kLayerKinds = [
-    ('text', 'Text', Icons.title_rounded),
+    ('text', 'Subtitles', Icons.title_rounded),
     ('logo', 'Logo', Icons.verified_outlined),
     ('handle', 'Handle', Icons.alternate_email_rounded),
     ('cta', 'CTA', Icons.campaign_rounded),
@@ -3855,7 +3868,7 @@ class _EditorScreenState extends State<EditorScreen> {
           ? SizedBox(
               height: 60,
               child: Row(children: [
-                _barTile(Icons.title_rounded, 'Text', _addSubtitle),
+                _barTile(Icons.title_rounded, 'Subtitles', _addSubtitle),
                 _barTile(Icons.content_cut_rounded, 'Trim', () => setState(() => _trimMode = !_trimMode), on: _trimMode),
                 _barTile(Icons.call_split_rounded, 'Split', _splitAtPlayhead),
                 _barTile(Icons.crop_rounded, _project!.aspect.isOriginal ? 'Aspect' : _project!.aspect.label, _pickAspect, on: !_project!.aspect.isOriginal),
@@ -4140,16 +4153,6 @@ class _EditorScreenState extends State<EditorScreen> {
       _lightSlider('Opacity', s.opacity, 0.1, 1.0, (v) => setState(() { snap(); s.opacity = v; }), display: '${(s.opacity * 100).round()}%'),
       _lightSlider('Letter', s.letterSpacing, -3, 12, (v) => setState(() { snap(); s.letterSpacing = v; }), display: s.letterSpacing.toStringAsFixed(1)),
       _lightSlider('Line', s.lineHeight, 0.8, 2.0, (v) => setState(() { snap(); s.lineHeight = v; }), display: s.lineHeight.toStringAsFixed(2)),
-      const SizedBox(height: 12),
-      const Text('Motion', style: TextStyle(fontSize: 11.5, color: AppColors.mut, fontWeight: FontWeight.w600)),
-      const SizedBox(height: 7),
-      Row(children: [
-        _animChip(s, 'None', OverlayAnim.none, tile, line, brand), const SizedBox(width: 6),
-        _animChip(s, 'Fade', OverlayAnim.fade, tile, line, brand), const SizedBox(width: 6),
-        _animChip(s, 'Pop', OverlayAnim.popIn, tile, line, brand), const SizedBox(width: 6),
-        _animChip(s, 'Slide', OverlayAnim.slideUp, tile, line, brand), const SizedBox(width: 6),
-        _animChip(s, 'Zoom', OverlayAnim.zoomIn, tile, line, brand),
-      ]),
     ]);
   }
 
@@ -4394,7 +4397,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 _lookStrip((id) { _mutate(() => p.lookId = id); setSheet(() {}); }),
                 const SizedBox(height: 16),
                 // Scale — now goes BELOW 1× (client: scale the video down).
-                _fadeRowGeneric('Scale', p.videoScale, 0.25, 4.0, (v) {
+                _fadeRowPercent('Scale', p.videoScale, 0.25, 4.0, (v) {
                   snap();
                   setSheet(() {
                     p.videoScale = v;
@@ -4403,9 +4406,23 @@ class _EditorScreenState extends State<EditorScreen> {
                     p.videoDy = p.videoDy.clamp(-l, l);
                     setState(() {});
                   });
-                }, suffix: 'x'),
+                }),
                 posSlider('Position X', p.videoDx, lim, (v) { snap(); setSheet(() { p.videoDx = v; setState(() {}); }); }),
                 posSlider('Position Y', p.videoDy, lim, (v) { snap(); setSheet(() { p.videoDy = v; setState(() {}); }); }),
+                if (lim > 0.0001) ...[
+                  const SizedBox(height: 8),
+                  // Typed as well as dragged: a slider cannot hit a round number,
+                  // and lining two clips up by eye is not a thing anyone enjoys.
+                  Row(children: [
+                    Expanded(child: _NumField(
+                      label: 'X %', value: p.videoDx * 100, min: -lim * 100, max: lim * 100,
+                      onChanged: (v) { snap(); setSheet(() { p.videoDx = (v / 100).clamp(-lim, lim); setState(() {}); }); })),
+                    const SizedBox(width: 10),
+                    Expanded(child: _NumField(
+                      label: 'Y %', value: p.videoDy * 100, min: -lim * 100, max: lim * 100,
+                      onChanged: (v) { snap(); setSheet(() { p.videoDy = (v / 100).clamp(-lim, lim); setState(() {}); }); })),
+                  ]),
+                ],
                 if (lim <= 0.0001)
                   const Padding(padding: EdgeInsets.only(top: 2), child: Text('Zoom in or scale down to reposition.', style: TextStyle(color: AppColors.inkFaint, fontSize: 11, fontFamily: 'IBMPlexMono'))),
                 const SizedBox(height: 14),
@@ -4464,7 +4481,15 @@ class _EditorScreenState extends State<EditorScreen> {
                 Wrap(spacing: 9, runSpacing: 9, children: [
                   for (final opt in AspectOption.all)
                     GestureDetector(
-                      onTap: () { _mutate(() => p.aspect = opt); setSheet(() {}); },
+                      onTap: () {
+                        _mutate(() {
+                          p.aspect = opt;
+                          // Fit, not Fill: choosing a ratio should show the whole
+                          // frame, not silently crop the sides off someone's clip.
+                          if (!opt.isOriginal) p.videoFitContain = true;
+                        });
+                        setSheet(() {});
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
