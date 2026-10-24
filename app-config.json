@@ -6,7 +6,7 @@
   "message": "",
   "latest_version": "3.1.0",
   "apk_url": "https://clipscart.app/downloads/clipcart-3.1.0.apk",
-  "update_notes": "",
-  "min_version": "3.1.0",
+  "update_notes": "Gate rehearsal \u2014 reverted right after.",
+  "min_version": "3.1.1",
   "apk_url_arm32": "https://clipscart.app/downloads/clipcart-3.1.0-arm32.apk"
 }
