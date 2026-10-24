@@ -311,7 +311,10 @@ class _TimelinePanelState extends State<TimelinePanel> {
             ),
             Positioned(left: 0, right: 0, top: 0, height: _rulerH, child: _ruler()),
             Positioned(left: _pad, top: _rulerH + _gap, height: _videoH,
-                width: _scale.contentWidth(widget.duration), child: _videoTrack()),
+                width: _scale.contentWidth(widget.duration),
+                // the strip is a picture, not a control: let the tap reach the
+                // seek handler underneath instead of being eaten by the track
+                child: IgnorePointer(child: _videoTrack())),
             ..._layerRows(_rulerH + _gap + _videoH + _gap),
             if (widget.trimMode && widget.onTrim != null)
               Positioned(

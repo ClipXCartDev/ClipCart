@@ -3928,8 +3928,10 @@ class _EditorScreenState extends State<EditorScreen> {
         ),
       ),
       const SizedBox(height: 10),
-      // footer: Duplicate · Hide · Delete
+      // footer: Split · Duplicate · Hide · Delete
       Row(children: [
+        Expanded(child: _textFootBtn('Split', tile, line, ink, _splitAtPlayhead)),
+        const SizedBox(width: 7),
         Expanded(child: _textFootBtn('Duplicate', tile, line, ink, _duplicateSelected)),
         const SizedBox(width: 7),
         Expanded(child: _textFootBtn(s.hidden ? 'Show' : 'Hide', tile, line, ink, () => _mutate(() => s.hidden = !s.hidden))),
