@@ -44,7 +44,6 @@ design-preview/shots/
 downloads/*.apk
 
 # Local working folders — never part of a release
-.claude/
 design/
 design-preview/
 qa/
