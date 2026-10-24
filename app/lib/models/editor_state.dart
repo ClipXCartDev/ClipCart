@@ -170,13 +170,20 @@ class SubtitleSegment {
   /// Text layer. The presets each left a recognisable fingerprint — the logo its
   /// corner position, the others their distinctive background — so the tag can
   /// be recovered once, on load, instead of being lost.
+  /// Drafts and published clips written while Logo was its own tool carry
+  /// `logo`. Nothing makes that layer any more, so it is read as a handle.
+  static String _migrateKind(String k) => k == 'logo' ? 'handle' : k;
+
   static String _inferKind(Map<String, dynamic> j) {
     double num_(String k, [double d = -1]) => (j[k] as num?)?.toDouble() ?? d;
     bool near(double a, double b) => (a - b).abs() < 0.02;
     final dx = num_('dx'), dy = num_('dy');
     final bgc = (j['bgc'] as int?) ?? 0;
     final text = (j['t'] as String?) ?? '';
-    if (near(dx, 0.20) && near(dy, 0.07)) return 'logo';
+    // The Logo tool was a second way to stamp the page's name, which is what
+    // the handle already is. One tool now, so an old logo mark comes back as
+    // the handle it always was - in the place its author left it.
+    if (near(dx, 0.20) && near(dy, 0.07)) return 'handle';
     if (bgc == 0xFF0E9E6E) return 'cta';
     if (bgc == 0xE60B0A0C) return 'outro';
     if (text.startsWith('@') && near(dy, 0.93)) return 'handle';
@@ -211,7 +218,7 @@ class SubtitleSegment {
         shadowBlur: (j['shb'] as num?)?.toDouble() ?? 0.5,
         shadowDistance: (j['shd'] as num?)?.toDouble() ?? 0.0,
         shadowAngle: (j['sha'] as num?)?.toDouble() ?? 45.0,
-        kind: (j['k'] as String?) ?? _inferKind(j),
+        kind: _migrateKind((j['k'] as String?) ?? _inferKind(j)),
         opacity: (j['op'] as num?)?.toDouble() ?? 1.0,
         locked: (j['lk'] as bool?) ?? false,
         line: (j['ln'] as int?) ?? 0,

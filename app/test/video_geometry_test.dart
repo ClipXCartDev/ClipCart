@@ -173,4 +173,57 @@ void main() {
       expect(c, isNot(contains('scale=')));
     });
   });
+
+  group('contentRect — where the picture is, for the mark that sits on it', () {
+    VideoGeometry g({double? ar, double scale = 1, bool contain = false, double dx = 0, double dy = 0}) =>
+        VideoGeometry.resolve(
+            aspectRatio: ar, scale: scale, dx: dx, dy: dy, fitContain: contain, bgColor: 0xFF000000);
+
+    test('untouched, the picture is the whole frame', () {
+      final r = g().contentRect(9 / 16);
+      expect(r.left, 0);
+      expect(r.top, 0);
+      expect(r.width, 1);
+      expect(r.height, 1);
+    });
+
+    test('cover-cropped and zoomed in, it is still the whole frame', () {
+      final r = g(ar: 1.0, scale: 2).contentRect(9 / 16);
+      expect(r.width, 1);
+      expect(r.height, 1);
+    });
+
+    test('letterboxed, the bars are not part of the picture', () {
+      // a 16:9 clip in a 9:16 frame: full width, bars above and below
+      final r = g(ar: 9 / 16, contain: true).contentRect(16 / 9);
+      expect(r.width, closeTo(1, 1e-9));
+      expect(r.height, closeTo((9 / 16) / (16 / 9), 1e-9));
+      expect(r.top, closeTo((1 - r.height) / 2, 1e-9));
+    });
+
+    test('pillarboxed, the bars are on the sides', () {
+      final r = g(ar: 16 / 9, contain: true).contentRect(9 / 16);
+      expect(r.height, closeTo(1, 1e-9));
+      expect(r.width, closeTo((9 / 16) / (16 / 9), 1e-9));
+      expect(r.left, closeTo((1 - r.width) / 2, 1e-9));
+    });
+
+    test('shrunk, the picture is smaller and centred', () {
+      final r = g(ar: 1.0, scale: 0.5).contentRect(1.0);
+      expect(r.width, closeTo(0.5, 1e-9));
+      expect(r.left, closeTo(0.25, 1e-9));
+    });
+
+    test('panned, the picture moves with it and never leaves the frame', () {
+      final r = g(ar: 1.0, scale: 0.5, dx: 0.2).contentRect(1.0);
+      expect(r.left, closeTo(0.45, 1e-9));
+      expect(r.left + r.width, lessThanOrEqualTo(1.0));
+    });
+
+    test('a source with no aspect to speak of does not produce nonsense', () {
+      final r = g(ar: 9 / 16, contain: true).contentRect(0);
+      expect(r.width, inInclusiveRange(0, 1));
+      expect(r.height, inInclusiveRange(0, 1));
+    });
+  });
 }

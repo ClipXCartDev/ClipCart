@@ -697,14 +697,16 @@ class _EditorScreenState extends State<EditorScreen> {
   /// Client-required overlay presets. All reuse SubtitleSegment (styled text that
   /// exports through the same PNG-overlay path) so they're fully editable after.
   /// Logo = the page's name as a text mark (top corner, whole clip). Meme pages
-  /// stamp their handle/name, not an image — so the Logo tool is text.
-  /// Finds this project's logo-mark layer (top-left, whole-clip text at the
-  /// fixed logo position) if one exists, else creates it — at most one per
-  /// project. Shared by the Logo tool (blank placeholder, opens for typing)
-  /// and Brand Kit's "Apply brand" (supplies the saved handle/colour/font and
-  /// updates it silently instead of stacking a second mark).
-  SubtitleSegment _logoTextLayer({String? text, int? color, String? fontFamily, String? fontFilePath}) {
-    final existing = _project!.subtitles.where((s) => s.kind == 'logo').toList();
+  /// stamp their handle/name, not an image — so the page's mark is text.
+  ///
+  /// Logo and Handle were two tools that did the same thing in two places,
+  /// and a page has one name, so there is one now. Finds this project's
+  /// handle if it has one, else creates it — at most one per project. Shared
+  /// by the Handle tool (blank placeholder, opens for typing) and Brand Kit's
+  /// "Apply brand" (supplies the saved handle/colour/font and updates it
+  /// silently instead of stacking a second mark).
+  SubtitleSegment _handleTextLayer({String? text, int? color, String? fontFamily, String? fontFilePath}) {
+    final existing = _project!.subtitles.where((s) => s.kind == 'handle').toList();
     if (existing.isNotEmpty) {
       final s = existing.first;
       if (text != null) s.text = text;
@@ -713,31 +715,20 @@ class _EditorScreenState extends State<EditorScreen> {
       return s;
     }
     final seg = SubtitleSegment(
-      text: text ?? '@yourpage', start: 0, end: _duration <= 0 ? 3 : _duration,
-      fontSize: 30, dx: 0.20, dy: 0.07, bold: true, shadow: true,
+      text: text ?? '@yourhandle', start: 0, end: _duration <= 0 ? 3 : _duration,
+      fontSize: 34, dx: 0.5, dy: 0.93, bold: true,
+      bgEnabled: true, bgColor: 0x99000000,
       color: color ?? 0xFFFFFFFF, fontFamily: fontFamily, fontFilePath: fontFilePath, z: _topZ(),
-      kind: 'logo',
+      kind: 'handle',
     );
     _project!.subtitles.add(seg);
     return seg;
   }
 
-  void _addLogoText() {
-    _snapshot();
-    final seg = _logoTextLayer();
-    setState(() => _selected = seg);
-    _startTyping(seg);
-  }
-
   void _addUsername() {
     _snapshot();
-    final seg = SubtitleSegment(
-      text: '@yourhandle', start: 0, end: _duration <= 0 ? 3 : _duration,
-      fontSize: 34, dx: 0.5, dy: 0.93, bold: true,
-      bgEnabled: true, bgColor: 0x99000000, color: 0xFFFFFFFF, z: _topZ(),
-      kind: 'handle',
-    );
-    setState(() { _project!.subtitles.add(seg); _selected = seg; });
+    final seg = _handleTextLayer();
+    setState(() => _selected = seg);
     _startTyping(seg);
   }
 
@@ -772,7 +763,25 @@ class _EditorScreenState extends State<EditorScreen> {
     _startTyping(card);
   }
 
+  /// The page's own mark: a handle layer with something written on it.
+  SubtitleSegment? get _handleLayer {
+    for (final s in _project!.subtitles) {
+      if (s.kind == 'handle' && !s.hidden && s.text.trim().isNotEmpty) return s;
+    }
+    return null;
+  }
+
   void _toggleWatermark() {
+    // Removing the mark is what a plan buys. Offering the switch to everyone
+    // and then quietly putting the mark back at export would be worse than
+    // not offering it.
+    if (!_hasPlan && _project!.watermarkOn) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('The ClipCart mark stays on free exports.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     _mutate(() => _project!.watermarkOn = !_project!.watermarkOn);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1028,7 +1037,6 @@ class _EditorScreenState extends State<EditorScreen> {
         // Whatever the Add row can create, its layers get their own group.
         VoidCallback addFor(String id) => switch (id) {
               'text' => _addSubtitle,
-              'logo' => _addLogoText,
               'handle' => _addUsername,
               'cta' => _addCta,
               'outro' => _addEndingScreen,
@@ -1207,7 +1215,6 @@ class _EditorScreenState extends State<EditorScreen> {
                     children: [
                       for (final t in <(IconData, String, VoidCallback, bool)>[
                         (Icons.title_rounded, 'Text', () { Navigator.pop(context); _addSubtitle(); }, false),
-                        (Icons.verified_outlined, 'Logo', () { Navigator.pop(context); _addLogoText(); }, false),
                         (Icons.emoji_emotions_outlined, 'Emoji', () { Navigator.pop(context); _openEmojiPicker(); }, false),
                         (Icons.auto_awesome_motion, 'Sticker', () { Navigator.pop(context); _pickSticker(); }, false),
                         (Icons.alternate_email_rounded, 'Handle', () { Navigator.pop(context); _addUsername(); }, false),
@@ -1651,7 +1658,7 @@ class _EditorScreenState extends State<EditorScreen> {
       // Logo tool itself, not an image (kit.logoPath is legacy-only, see model).
       final handle = kit.handle?.trim();
       if (handle != null && handle.isNotEmpty) {
-        _logoTextLayer(text: handle, color: kit.primary, fontFamily: kit.fontFamily, fontFilePath: kit.fontPath);
+        _handleTextLayer(text: handle, color: kit.primary, fontFamily: kit.fontFamily, fontFilePath: kit.fontPath);
       }
     });
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Brand applied')));
@@ -1693,7 +1700,7 @@ class _EditorScreenState extends State<EditorScreen> {
       for (final json in tpl.subtitles) {
         final src = SubtitleSegment.fromJson(json);
         if (src.dx == 0.20 && src.dy == 0.07) {
-          _logoTextLayer(text: src.text, color: src.color, fontFamily: src.fontFamily, fontFilePath: src.fontFilePath);
+          _handleTextLayer(text: src.text, color: src.color, fontFamily: src.fontFamily, fontFilePath: src.fontFilePath);
           continue;
         }
         final copy = src.copy();
@@ -2030,7 +2037,6 @@ class _EditorScreenState extends State<EditorScreen> {
   /// the timeline both read this, so they cannot end up grouping differently.
   static const List<(String, String, IconData)> kLayerKinds = [
     ('text', 'Subtitles', Icons.title_rounded),
-    ('logo', 'Logo', Icons.verified_outlined),
     ('handle', 'Handle', Icons.alternate_email_rounded),
     ('cta', 'CTA', Icons.campaign_rounded),
     ('outro', 'Outro', Icons.movie_filter_rounded),
@@ -2071,7 +2077,6 @@ class _EditorScreenState extends State<EditorScreen> {
   /// One colour per kind so a timeline block reads as what it is even when the
   /// label is clipped to a few characters.
   Color _layerColor(Object it) => switch (_layerKind(it)) {
-        'logo' => const Color(0xFF17A2A2),
         'handle' => const Color(0xFF2E8BD6),
         'cta' => const Color(0xFF0E9E6E),
         'outro' => const Color(0xFFB2642E),
@@ -2757,9 +2762,14 @@ class _EditorScreenState extends State<EditorScreen> {
               Row(children: [
                 const Text('Watermark', style: TextStyle(color: AppColors.ink, fontSize: 14, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 6),
-                Text(p.watermarkOn ? 'On' : 'Off', style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
+                Text(_hasPlan ? (p.watermarkOn ? 'On' : 'Off') : 'On — included in free exports',
+                    style: const TextStyle(color: AppColors.inkMuted, fontSize: 12)),
                 const Spacer(),
-                Switch(value: p.watermarkOn, activeColor: _kAccent, onChanged: (v) => setSheet(() => p.watermarkOn = v)),
+                Switch(
+                  value: p.watermarkOn,
+                  activeColor: _kAccent,
+                  onChanged: _hasPlan ? (v) => setSheet(() => p.watermarkOn = v) : null,
+                ),
               ]),
               const SizedBox(height: 14),
               // §18 gold final-warning notice (display only)
@@ -2810,6 +2820,56 @@ class _EditorScreenState extends State<EditorScreen> {
   /// asks. Returns true to go ahead — including when the user chooses to export
   /// anyway, because this warns rather than blocks: a placeholder is sometimes
   /// exactly what someone wants in a draft.
+  /// What a free export must carry before it can start.
+  ///
+  /// A free clip goes out with the app's mark and the page's handle on it —
+  /// that is what makes it free. Checked here rather than at render time so
+  /// the author is told before they wait for an encode, and offered the one
+  /// thing that fixes it.
+  Future<bool> _confirmFreeRequirements() async {
+    if (_hasPlan) return true;
+    if (!_project!.watermarkOn) setState(() => _project!.watermarkOn = true);
+    if (_handleLayer != null) return true;
+    final add = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+            color: AppColors.bg, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        padding: EdgeInsets.fromLTRB(18, 10, 18, 16 + MediaQuery.of(ctx).viewPadding.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Center(child: _Grabber()),
+          const SizedBox(height: 6),
+          const Text('Add your handle to export',
+              style: TextStyle(color: AppColors.ink, fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text(
+              'Free exports carry the page they came from. Add your handle and it goes on the clip — '
+              'you can place and style it like any other layer.',
+              style: TextStyle(color: AppColors.inkMuted, fontSize: 12.5, height: 1.4)),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: PrimaryButton(
+                label: 'Add handle',
+                icon: Icons.alternate_email_rounded,
+                onPressed: () => Navigator.pop(ctx, true)),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not now', style: TextStyle(color: AppColors.inkMuted)),
+            ),
+          ),
+        ]),
+      ),
+    );
+    if (add == true && mounted) _addUsername();
+    return false;
+  }
+
   Future<bool> _confirmBeforeExport() async {
     final unfilled = _unfilledLayers();
     if (unfilled.isEmpty) return true;
@@ -2975,6 +3035,7 @@ class _EditorScreenState extends State<EditorScreen> {
     // is the user's own content with no creator to pay, so it stays ungated.
     // Required-field validation before the render starts (build contract,
     // phase 6). It warns and lets the user through; it does not block.
+    if (!await _confirmFreeRequirements()) return;
     if (!await _confirmBeforeExport()) return;
     if (!await _openExportSettings()) return;
     setState(() => _busy = true);
@@ -3374,15 +3435,23 @@ class _EditorScreenState extends State<EditorScreen> {
                       ),
                     if (!v.isPlaying && _selected == null)
                       const IgnorePointer(child: Center(child: GlassPlayButton(size: 58))),
-                    // App watermark (Pro can turn it off via the 'Mark' tool)
+                    // App watermark (a plan turns it off via the 'Mark' tool).
+                    // Inset a tenth of the PICTURE from the picture's own
+                    // edge: eight pixels from the frame put it on a letterbox
+                    // bar, off the video entirely, where it marks nothing.
                     if (_project!.watermarkOn)
-                      Positioned(
-                        right: 8, bottom: 8,
-                        child: IgnorePointer(child: Text('ClipCart',
-                          style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: (h * 0.028).clamp(9, 20),
-                            fontWeight: FontWeight.w800, letterSpacing: 0.3,
-                            shadows: const [Shadow(color: Colors.black54, blurRadius: 3)]))),
-                      ),
+                      () {
+                        final r = geo.contentRect(nativeAr);
+                        return Positioned(
+                          right: w * (1 - r.left - r.width) + w * r.width * kWatermarkInset,
+                          bottom: h * (1 - r.top - r.height) + h * r.height * kWatermarkInset,
+                          child: IgnorePointer(child: Text('ClipCart',
+                            style: TextStyle(color: Colors.white.withOpacity(0.55),
+                              fontSize: (h * r.height * 0.030).clamp(9, 20),
+                              fontWeight: FontWeight.w800, letterSpacing: 0.3,
+                              shadows: const [Shadow(color: Colors.black54, blurRadius: 3)]))),
+                        );
+                      }(),
                   ],
                 );
               },
@@ -4056,7 +4125,6 @@ class _EditorScreenState extends State<EditorScreen> {
         _tool(Icons.text_fields, 'Text', _addSubtitle),
         _tool(Icons.emoji_emotions_outlined, 'Emoji', _openEmojiPicker),
         _tool(Icons.auto_awesome_motion, 'Sticker', _pickSticker),
-        _tool(Icons.verified_outlined, 'Logo', _addLogoText),
         _tool(Icons.layers_rounded, layerCount > 0 ? 'Layers ($layerCount)' : 'Layers', _openLayers, active: layerCount > 0),
         _tool(Icons.more_horiz_rounded, 'More', _openMoreTools),
       ]);

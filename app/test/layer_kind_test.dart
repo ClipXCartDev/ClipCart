@@ -35,15 +35,23 @@ void main() {
   });
 
   group('recovering the kind of an untagged layer', () {
-    test('the logo is known by its corner', () {
-      expect(_kindOf(_legacy(text: '@yourpage', dx: 0.20, dy: 0.07)), 'logo');
+    test('the old logo mark is known by its corner, and is a handle now', () {
+      // Logo and Handle were two tools for the one name a page has, so there
+      // is one. An old mark keeps its place and comes back as what it was.
+      expect(_kindOf(_legacy(text: '@yourpage', dx: 0.20, dy: 0.07)), 'handle');
     });
 
-    test('a nudged logo is still a logo', () {
+    test('a nudged logo mark is still that mark', () {
       // users move it; the match has to tolerate that without swallowing
       // unrelated layers that merely sit near the top left
-      expect(_kindOf(_legacy(dx: 0.21, dy: 0.06)), 'logo');
+      expect(_kindOf(_legacy(dx: 0.21, dy: 0.06)), 'handle');
       expect(_kindOf(_legacy(dx: 0.30, dy: 0.07)), 'text');
+    });
+
+    test('a layer still tagged logo is read as the handle it is', () {
+      // drafts and published clips written while Logo was its own tool
+      final j = _legacy(text: '@page', dx: 0.5, dy: 0.5)..['k'] = 'logo';
+      expect(_kindOf(j), 'handle');
     });
 
     test('the CTA and outro are known by their backgrounds', () {

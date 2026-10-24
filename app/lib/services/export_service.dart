@@ -115,6 +115,21 @@ class ExportService {
 
   /// [onProgress] receives 0.0..1.0 during the render (from real FFmpeg frame
   /// statistics — honest progress, no fake bar). It may not reach exactly 1.0.
+  /// Width over height of the source's video stream, or null if it cannot be
+  /// probed. The mark needs it to know where the picture is inside the frame.
+  static Future<double?> _sourceAspect(String path) async {
+    try {
+      final session = await FFprobeKit.getMediaInformation(path);
+      for (final st in session.getMediaInformation()?.getStreams() ?? const []) {
+        if (st.getType() == 'video') {
+          final w = st.getWidth(), h = st.getHeight();
+          if (w != null && h != null && w > 0 && h > 0) return w / h;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Short edge of the source's video stream, or null if it can't be probed.
   static Future<int?> _shortEdge(String path) async {
     try {
@@ -188,6 +203,9 @@ class ExportService {
       bgColor: p.videoBgColor,
     );
     final cropFilter = geo.filterChain();
+    // Where the picture actually is in the frame, so the mark lands on it and
+    // not on a letterbox bar. Same answer the editor preview draws from.
+    final content = geo.contentRect(await _sourceAspect(p.baseClipPath) ?? 9 / 16);
     double cropDx(double dx) => dx;
     double cropDy(double dy) => dy;
     const cropScaleW = 1.0;
@@ -281,13 +299,15 @@ class ExportService {
       }
       cur = 'o$k';
     }
-    // App watermark (bottom-right), burned only when enabled. Uses drawtext with the
-    // bundled default font; escape the font path for the filtergraph.
+    // App watermark, burned only when enabled. Inset a tenth of the PICTURE
+    // from the picture's own bottom-right: measured from the frame instead, a
+    // letterboxed clip put the mark on a black bar, marking nothing.
     if (p.watermarkOn && p.defaultFontPath.isNotEmpty && File(p.defaultFontPath).existsSync()) {
       final fp = p.defaultFontPath.replaceAll('\\', '/').replaceAll(':', '\\:');
       fc.write("[$cur]drawtext=fontfile='$fp':text='ClipCart':"
-          "fontcolor=white@0.55:fontsize=h*0.030:"
-          "x=w-tw-h*0.02:y=h-th-h*0.02:"
+          "fontcolor=white@0.55:fontsize=h*${_f(content.height * 0.030, 5)}:"
+          "x=w*${_f(content.left + content.width, 5)}-tw-w*${_f(content.width * kWatermarkInset, 5)}:"
+          "y=h*${_f(content.top + content.height, 5)}-th-h*${_f(content.height * kWatermarkInset, 5)}:"
           "shadowcolor=black@0.5:shadowx=2:shadowy=2[wm];");
       cur = 'wm';
     }

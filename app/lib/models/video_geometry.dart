@@ -24,6 +24,10 @@ const double kMaxVideoScale = 4.0;
 /// How the video is placed in the frame. The branch is named once here so the
 /// preview and the filtergraph can never pick different branches for the same
 /// project.
+/// How far inside the picture the app's mark sits, as a fraction of the
+/// picture's own width and height. Free exports carry it; a plan removes it.
+const double kWatermarkInset = 0.10;
+
 enum VideoFitMode {
   /// Letterboxed onto a background fill of the target aspect.
   contain,
@@ -139,6 +143,60 @@ class VideoGeometry {
   /// the same fraction of its own output box.
   double panPixelsX(double width) => panX * width;
   double panPixelsY(double height) => panY * height;
+
+  /// Where the picture actually sits inside the output frame, as fractions of
+  /// that frame.
+  ///
+  /// A mark that is "10% in from the edge" has to be 10% in from the edge of
+  /// the *picture*. Letterboxed, the frame's edge is a bar the picture never
+  /// reaches, so measuring from it would float the mark off the video
+  /// entirely. Both renderers ask this so they agree on where the picture is.
+  ///
+  /// [sourceAspect] is the clip's own width over height.
+  ({double left, double top, double width, double height}) contentRect(
+      double sourceAspect) {
+    final src = sourceAspect > 0 ? sourceAspect : 16 / 9;
+    final out = aspectRatio ?? src;
+    double w, h;
+    switch (mode) {
+      case VideoFitMode.contain:
+        // boxed into the target aspect: whichever side runs out first leaves
+        // the bar on the other
+        if (src > out) {
+          w = 1.0;
+          h = out / src;
+        } else {
+          w = src / out;
+          h = 1.0;
+        }
+        // then the zoom, which in this mode pads below 1 and crops above it
+        if (scale < 1.0) {
+          w *= scale;
+          h *= scale;
+        } else if (scale > 1.0) {
+          w = w * scale > 1 ? 1.0 : w * scale;
+          h = h * scale > 1 ? 1.0 : h * scale;
+        }
+      case VideoFitMode.fillShrink:
+      case VideoFitMode.originalShrink:
+        // cover-cropped to the frame first, so the only gap is the shrink
+        w = scale;
+        h = scale;
+      case VideoFitMode.fillZoom:
+      case VideoFitMode.originalZoom:
+      case VideoFitMode.passthrough:
+        w = 1.0;
+        h = 1.0;
+    }
+    final left = ((1 - w) / 2 + panX).clamp(0.0, 1.0).toDouble();
+    final top = ((1 - h) / 2 + panY).clamp(0.0, 1.0).toDouble();
+    return (
+      left: left,
+      top: top,
+      width: w.clamp(0.0, 1 - left).toDouble(),
+      height: h.clamp(0.0, 1 - top).toDouble(),
+    );
+  }
 
   /// The FFmpeg filter chain that places the source in the frame.
   ///
