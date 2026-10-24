@@ -428,13 +428,10 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
           // white disc over a playing clip read as a stuck overlay in the QA recording.
           if (ready && !c.value.isPlaying)
             Center(
-              child: GestureDetector(
+              child: GlassPlayButton(
+                playing: c.value.isPlaying,
+                size: 64,
                 onTap: () => setState(() { c.value.isPlaying ? c.pause() : c.play(); }),
-                child: Container(
-                  width: 60, height: 60,
-                  decoration: const BoxDecoration(color: Color(0xF0FCFAF6), shape: BoxShape.circle),
-                  child: Icon(c.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: AppColors.ink),
-                ),
               ),
             ),
           // caption + scrubber, directly on the video near the bottom

@@ -398,3 +398,63 @@ class StepperSliderRow extends StatelessWidget {
     ]);
   }
 }
+
+// ── transport ──────────────────────────────────────────────────────────────
+
+/// The play/pause control that sits on top of a frame.
+///
+/// A filled disc cannot be read over footage: a near-white circle on a pale
+/// frame is a smudge, and a solid brand circle is a sticker stuck to the
+/// picture. Players draw this as glass — the frame stays visible through it, a
+/// hairline keeps the edge legible on any footage, and the glyph is white with
+/// a shadow so it holds over a white frame as well as a black one.
+class GlassPlayButton extends StatelessWidget {
+  const GlassPlayButton({
+    super.key,
+    this.playing = false,
+    this.size = 60,
+    this.icon,
+    this.onTap,
+    this.blur = true,
+  });
+
+  final bool playing;
+  final double size;
+
+  /// Overrides the play/pause glyph — for a replay control, say.
+  final IconData? icon;
+  final VoidCallback? onTap;
+
+  /// Off for the small badges on grid tiles: a blur per tile in a scrolling
+  /// list costs more than the look is worth at that size.
+  final bool blur;
+
+  @override
+  Widget build(BuildContext context) {
+    final glyph = icon ?? (playing ? Icons.pause_rounded : Icons.play_arrow_rounded);
+    Widget face = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0x4D000000),
+        border: Border.all(color: const Color(0x59FFFFFF), width: 1),
+      ),
+      child: Icon(
+        glyph,
+        // the play triangle reads smaller than the pause bars at equal size
+        size: size * (glyph == Icons.play_arrow_rounded ? 0.56 : 0.5),
+        color: Colors.white,
+        shadows: const [Shadow(color: Color(0x80000000), blurRadius: 6)],
+      ),
+    );
+    if (blur) {
+      face = BackdropFilter(filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12), child: face);
+    }
+    face = ClipOval(child: face);
+    return onTap == null
+        ? face
+        : GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: face);
+  }
+}

@@ -191,12 +191,29 @@ class _PlansRouterState extends State<PlansRouter> {
 
 /// Active-member management — shows the live plan + a single "change / renew"
 /// path, instead of the "Subscribe to edit and export" paywall.
-class ManageSubscriptionScreen extends StatelessWidget {
+class ManageSubscriptionScreen extends StatefulWidget {
   const ManageSubscriptionScreen({super.key, required this.sub});
   final Map<String, dynamic> sub;
 
   @override
+  State<ManageSubscriptionScreen> createState() => _ManageSubscriptionScreenState();
+}
+
+class _ManageSubscriptionScreenState extends State<ManageSubscriptionScreen> {
+  // What else is on offer belongs on this screen, not one tap further in.
+  // A member who wants a longer plan had to guess that "Change or renew"
+  // was where the catalogue lived.
+  late Future<List<Plan>> _plans;
+
+  @override
+  void initState() {
+    super.initState();
+    _plans = context.read<BillingService>().plans();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final sub = widget.sub;
     final planName = (sub['plan_name'] ?? sub['plan'] ?? 'Pro').toString();
     final until = (sub['expires_at'] ?? sub['active_until'] ?? sub['current_period_end'])?.toString();
     final unlimited = sub.containsKey('edit_credits') && sub['edit_credits'] == null;
@@ -236,17 +253,103 @@ class ManageSubscriptionScreen extends StatelessWidget {
                     Row(children: [Expanded(child: stat('Edit credits', credits)), Expanded(child: stat('Active until', fmt(until)))]),
                   ]),
                 ),
+                const SizedBox(height: 22),
+                const Text('Available plans', style: T.section),
+                const SizedBox(height: 4),
+                const Text('Pay for any of these to extend your access.', style: T.bodySmall),
+                const SizedBox(height: 12),
+                FutureBuilder<List<Plan>>(
+                  future: _plans,
+                  builder: (context, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 22),
+                        child: Center(child: CircularProgressIndicator(color: AppColors.brand)),
+                      );
+                    }
+                    final plans = snap.data ?? const <Plan>[];
+                    // A plan list that will not load must not read as "there
+                    // are none" on the screen of somebody who is paying.
+                    if (snap.hasError) {
+                      return Row(children: [
+                        const Expanded(child: Text("Couldn't load the other plans.", style: T.body)),
+                        TextButton(
+                          onPressed: () => setState(
+                              () => _plans = context.read<BillingService>().plans()),
+                          child: const Text('Retry',
+                              style: TextStyle(fontFamily: kSans, fontWeight: FontWeight.w600, color: AppColors.brand)),
+                        ),
+                      ]);
+                    }
+                    if (plans.isEmpty) {
+                      return const Text('No other plans available yet.', style: T.body);
+                    }
+                    return Column(children: [
+                      for (final p in plans)
+                        _planRow(
+                          p,
+                          current: p.name.trim().toLowerCase() == planName.trim().toLowerCase(),
+                          onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => CheckoutScreen(plan: p))),
+                        ),
+                    ]);
+                  },
+                ),
                 const SizedBox(height: 14),
                 const InfoPanel('Plans do not auto-renew. Pay again any time to extend your access by another 30 days.'),
               ],
             ),
           ),
           _footer(children: [
-            PrimaryBtn('Change or renew plan', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlansListScreen()))),
+            PrimaryBtn('Compare plans', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlansListScreen()))),
             const SizedBox(height: 6),
             GhostBtn('Done', onTap: () => Navigator.of(context).maybePop()),
           ]),
         ]),
+      ),
+    );
+  }
+
+  /// One line per plan: enough to choose by, without repeating the full
+  /// comparison card the catalogue screen already draws.
+  Widget _planRow(Plan p, {required bool current, required VoidCallback onTap}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: current ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(R.large),
+            border: Border.all(color: current ? AppColors.brand : AppColors.line, width: current ? 1.5 : 1),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Flexible(
+                    child: Text(p.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontFamily: kSans, fontSize: 15.5, fontWeight: FontWeight.w600, color: AppColors.ink)),
+                  ),
+                  if (current) ...[const SizedBox(width: 8), StatusPill.ok('Current')],
+                ]),
+                const SizedBox(height: 3),
+                Text('${p.exportLabel} · ${p.quality} · ${p.maxDevices} device${p.maxDevices == 1 ? '' : 's'}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: T.bodySmall),
+              ]),
+            ),
+            const SizedBox(width: 10),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('${_fmtPrice(p.priceUsd)} USDT',
+                  style: const TextStyle(fontFamily: kMono, fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink)),
+              const SizedBox(height: 2),
+              Text(current ? 'Active' : 'Tap to pay', style: T.caption),
+            ]),
+          ]),
+        ),
       ),
     );
   }

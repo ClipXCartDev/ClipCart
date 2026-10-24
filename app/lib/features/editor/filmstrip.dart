@@ -46,12 +46,22 @@ class Filmstrip {
 
   /// Roughly one frame per [targetCount] across the clip, capped so a long clip
   /// does not spend ages extracting images nobody will look at closely.
-  static const int targetCount = 40;
+  ///
+  /// These are no longer only track decoration: they are also what the preview
+  /// shows while a scrub is in flight, so the spacing is what the picture's
+  /// granularity feels like under the finger. Forty across a clip was a visible
+  /// jump every time; the floor below caps the count whatever the duration.
+  static const int targetCount = 120;
 
-  /// Height of each extracted frame. Small on purpose: these are thumbnails
-  /// behind a 56-pixel track, and decoding forty large JPEGs on a phone to draw
-  /// them two centimetres tall is wasted work.
-  static const int frameHeight = 72;
+  /// Height of each extracted frame. Small on purpose - but not as small as a
+  /// track tile needs, because the scrub preview blows one of these up to the
+  /// whole canvas.
+  static const int frameHeight = 160;
+
+  /// Bumped whenever the two numbers above change, so a clip cached under the
+  /// old density is re-extracted instead of being read back at the wrong
+  /// spacing.
+  static const String _cacheVersion = 'v2';
 
   static final Map<String, Future<Filmstrip>> _inFlight = {};
 
@@ -91,7 +101,7 @@ class Filmstrip {
   /// a dependency. Length is mixed in so two paths that collide on hashCode
   /// still get their own folder.
   static String _dirNameFor(String videoPath) =>
-      '${videoPath.hashCode.toUnsigned(32).toRadixString(16)}_${videoPath.length}';
+      '${videoPath.hashCode.toUnsigned(32).toRadixString(16)}_${videoPath.length}_$_cacheVersion';
 
   static Future<Filmstrip> _extract(String videoPath, double duration) async {
     if (duration <= 0 || !File(videoPath).existsSync()) return empty;
@@ -105,7 +115,7 @@ class Filmstrip {
       if (dir.existsSync()) {
         final cached = _sortedFrames(dir);
         if (cached.isNotEmpty) {
-          return Filmstrip._(cached, interval, await _aspectOf(videoPath));
+          return Filmstrip._(cached, duration / cached.length, await _aspectOf(videoPath));
         }
       }
       dir.createSync(recursive: true);
@@ -125,7 +135,9 @@ class Filmstrip {
         debugPrint('[filmstrip] extraction failed; the track stays plain');
         return empty;
       }
-      return Filmstrip._(_sortedFrames(dir), interval, await _aspectOf(videoPath));
+      final frames = _sortedFrames(dir);
+      return Filmstrip._(frames, frames.isEmpty ? interval : duration / frames.length,
+          await _aspectOf(videoPath));
     } catch (e) {
       debugPrint('[filmstrip] $e');
       return empty;

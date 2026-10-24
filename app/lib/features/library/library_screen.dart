@@ -186,14 +186,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(color: AppColors.mediaPlaceholder)))
           else
             const DecoratedBox(decoration: BoxDecoration(color: AppColors.mediaPlaceholder)),
-          Center(
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(color: Color(0xF2FFFFFF), shape: BoxShape.circle),
-              child: const Icon(Icons.play_arrow_rounded, size: 16, color: AppColors.ink),
-            ),
-          ),
+          const Center(child: GlassPlayButton(size: 28, blur: false)),
         ]),
       ),
     );

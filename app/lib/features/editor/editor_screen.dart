@@ -13,6 +13,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../core/runtime_config.dart';
 import '../../core/theme.dart' show AppColors;
+import '../../core/ui_kit.dart' show GlassPlayButton;
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
 import '../../models/video_geometry.dart';
@@ -442,6 +443,18 @@ class _EditorScreenState extends State<EditorScreen> {
   }
 
   bool _endHandled = false;
+
+  /// The frame shown over the player while a scrub is in flight.
+  ///
+  /// Throttling the seeks was not enough: an exact seek has to decode from the
+  /// preceding keyframe, and on a 1080p original that is far slower than a
+  /// finger moves, so the picture only caught up once the drag stopped. The
+  /// strip already holds a frame every fraction of a second, and it is the
+  /// same footage - so the preview shows that while the finger is down and
+  /// hands back to the decoder once it has arrived at the same place.
+  final ValueNotifier<File?> _scrubFrame = ValueNotifier<File?>(null);
+  Timer? _scrubSettle;
+  double _scrubTarget = 0;
   DateTime? _lastSeekAt;
   DateTime? _seekHoldUntil;
   Timer? _seekTail;
@@ -487,6 +500,7 @@ class _EditorScreenState extends State<EditorScreen> {
   void dispose() {
     _autosaveTimer?.cancel();
     _seekTail?.cancel();
+    _scrubSettle?.cancel();
     _vc?.removeListener(_playbackTick);
     _vc?.dispose();
     _textCtl.dispose();
@@ -749,6 +763,10 @@ class _EditorScreenState extends State<EditorScreen> {
                 Row(children: [
                   const Text('Font', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600, fontSize: 16)),
                   const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    child: const Text('Done', style: TextStyle(color: AppColors.ink, fontWeight: FontWeight.w600)),
+                  ),
                   TextButton.icon(
                     onPressed: () async {
                       final f = await fs.uploadFont();
@@ -768,8 +786,8 @@ class _EditorScreenState extends State<EditorScreen> {
                     childAspectRatio: 0.92,
                     children: [
                       // Default (system) option
-                      _fontChip('Default', null, null, s, setSheet),
-                      for (final f in fs.all) _fontChip(f.name, f.family, f.path, s, setSheet),
+                      _fontChip('Default', null, null, s, setSheet, context),
+                      for (final f in fs.all) _fontChip(f.name, f.family, f.path, s, setSheet, context),
                     ],
                   ),
                 ),
@@ -781,10 +799,18 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
-  Widget _fontChip(String label, String? family, String? path, SubtitleSegment s, void Function(void Function()) setSheet) {
+  Widget _fontChip(String label, String? family, String? path, SubtitleSegment s,
+      void Function(void Function()) setSheet, BuildContext sheetCtx) {
     final selected = s.fontFamily == family;
     return GestureDetector(
-      onTap: () { _mutate(() { s.fontFamily = family; s.fontFilePath = path; }); setSheet(() {}); },
+      // Picking is the whole point of being here, and the sheet covers the
+      // canvas - leaving it up hid the very change it had just made, which
+      // read as the font not applying at all.
+      onTap: () {
+        _mutate(() { s.fontFamily = family; s.fontFilePath = path; });
+        setSheet(() {});
+        Navigator.of(sheetCtx).maybePop();
+      },
       child: Container(
         decoration: BoxDecoration(
           color: _kChip,
@@ -3196,12 +3222,33 @@ class _EditorScreenState extends State<EditorScreen> {
                                   // the look grades the video and nothing else:
                                   // not the letterbox fill, not the overlays -
                                   // the same place the export applies it
-                                  child: look.isIdentity
-                                      ? VideoPlayer(_vc!)
-                                      : ColorFiltered(
-                                          colorFilter: ColorFilter.matrix(look.matrix),
-                                          child: VideoPlayer(_vc!),
-                                        ),
+                                  // The scrub frame goes INSIDE this box, so it
+                                  // inherits the same fit, pan and zoom as the
+                                  // video and lands on exactly the same pixels.
+                                  child: () {
+                                    final painted = ValueListenableBuilder<File?>(
+                                      valueListenable: _scrubFrame,
+                                      child: VideoPlayer(_vc!),
+                                      builder: (context, f, child) => f == null
+                                          ? child!
+                                          : Stack(fit: StackFit.expand, children: [
+                                              child!,
+                                              // gapless: hold the last thumbnail
+                                              // until the next one has decoded,
+                                              // or the scrub flickers white
+                                              Image.file(f,
+                                                  fit: BoxFit.fill,
+                                                  gaplessPlayback: true,
+                                                  filterQuality: FilterQuality.low),
+                                            ]),
+                                    );
+                                    return look.isIdentity
+                                        ? painted
+                                        : ColorFiltered(
+                                            colorFilter: ColorFilter.matrix(look.matrix),
+                                            child: painted,
+                                          );
+                                  }(),
                                 ),
                               ),
                             ),
@@ -3229,7 +3276,7 @@ class _EditorScreenState extends State<EditorScreen> {
                         ),
                       ),
                     if (!v.isPlaying && _selected == null)
-                      IgnorePointer(child: Center(child: Icon(Icons.play_arrow_rounded, size: 54, color: Colors.white.withOpacity(0.5)))),
+                      const IgnorePointer(child: Center(child: GlassPlayButton(size: 58))),
                     // App watermark (Pro can turn it off via the 'Mark' tool)
                     if (_project!.watermarkOn)
                       Positioned(
@@ -3578,14 +3625,16 @@ class _EditorScreenState extends State<EditorScreen> {
           color: _kBg,
           padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
           child: Row(children: [
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              icon: Icon(v.isPlaying ? Icons.pause_circle_filled : (ended ? Icons.replay_circle_filled : Icons.play_circle_fill), color: _kAccent, size: 32),
-              onPressed: _togglePlay,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: GlassPlayButton(
+                playing: v.isPlaying,
+                size: 36,
+                icon: ended ? Icons.replay_rounded : null,
+                onTap: _togglePlay,
+              ),
             ),
-            const SizedBox(width: 2),
+            const SizedBox(width: 4),
             Text('${_fmt(Duration(milliseconds: (v.position.inMilliseconds - _startMs).clamp(0, _endMs - _startMs)))} / ${_fmt(Duration(milliseconds: _endMs - _startMs))}', style: const TextStyle(color: AppColors.inkMuted, fontWeight: FontWeight.w500, fontSize: 12, fontFamily: 'IBMPlexMono')),
             const Spacer(),
             // Client §4: transport row carries Undo · Redo · Select · Delete.
@@ -3738,6 +3787,28 @@ class _EditorScreenState extends State<EditorScreen> {
   /// frame under the finger is the one left on screen when the drag stops.
   static const _seekEveryMs = 70;
 
+  /// Put the strip's frame for [t] on the canvas, and take it down again once
+  /// the player has actually arrived there.
+  void _showScrubFrame(double t) {
+    if (!_strip.isReady) return;
+    _scrubTarget = t;
+    final f = _strip.frameAt(t);
+    if (f != null) _scrubFrame.value = f;
+    _scrubSettle?.cancel();
+    _scrubSettle = Timer.periodic(const Duration(milliseconds: 90), (timer) {
+      final v = _vc?.value;
+      if (!mounted || v == null) { timer.cancel(); return; }
+      final arrived =
+          (v.position.inMilliseconds / 1000.0 - _scrubTarget).abs() < 0.2;
+      // Give up after a while rather than leave a still frame over a player
+      // that, for whatever reason, never reports the position asked for.
+      if (arrived || timer.tick > 18) {
+        timer.cancel();
+        _scrubFrame.value = null;
+      }
+    });
+  }
+
   void _seek(double s) {
     // Clamp tap/drag seeks to the trim window so the preview stays inside the cut.
     final lo = _startMs / 1000.0, hi = _endMs / 1000.0;
@@ -3745,6 +3816,7 @@ class _EditorScreenState extends State<EditorScreen> {
 
     // The playhead and every overlay follow the finger with no round trip.
     _posSec.value = t;
+    _showScrubFrame(t);
     // and the tick must not drag them back to where the decoder has got to
     _seekHoldUntil = DateTime.now().add(const Duration(milliseconds: 400));
 
