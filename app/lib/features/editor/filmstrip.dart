@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +19,7 @@ import 'package:path_provider/path_provider.dart';
 /// arrive, then fills in. The result is cached per clip, so reopening a draft
 /// is instant.
 class Filmstrip {
-  const Filmstrip._(this.frames, this.interval);
+  const Filmstrip._(this.frames, this.interval, [this.aspect = 16 / 9]);
 
   /// Frame images in time order. Empty while extraction is still running, or
   /// if it failed — the timeline simply stays plain in that case.
@@ -27,6 +28,10 @@ class Filmstrip {
   /// Seconds between consecutive frames, so a frame can be placed on the
   /// timeline without storing a timestamp per image.
   final double interval;
+
+  /// Width over height of a frame. The strip draws its tiles at this shape, so
+  /// a face stays a face instead of being cropped to a strip.
+  final double aspect;
 
   static const empty = Filmstrip._(<File>[], 1);
 
@@ -99,7 +104,9 @@ class Filmstrip {
       // already extracted for this clip
       if (dir.existsSync()) {
         final cached = _sortedFrames(dir);
-        if (cached.isNotEmpty) return Filmstrip._(cached, interval);
+        if (cached.isNotEmpty) {
+          return Filmstrip._(cached, interval, await _aspectOf(videoPath));
+        }
       }
       dir.createSync(recursive: true);
 
@@ -118,11 +125,26 @@ class Filmstrip {
         debugPrint('[filmstrip] extraction failed; the track stays plain');
         return empty;
       }
-      return Filmstrip._(_sortedFrames(dir), interval);
+      return Filmstrip._(_sortedFrames(dir), interval, await _aspectOf(videoPath));
     } catch (e) {
       debugPrint('[filmstrip] $e');
       return empty;
     }
+  }
+
+  /// The source's shape. Falls back to 16:9, which is only ever used to lay
+  /// out tiles, so a wrong guess costs a little cropping and nothing else.
+  static Future<double> _aspectOf(String videoPath) async {
+    try {
+      final info = await FFprobeKit.getMediaInformation(videoPath);
+      for (final st in info.getMediaInformation()?.getStreams() ?? const []) {
+        if (st.getType() == 'video') {
+          final w = st.getWidth(), h = st.getHeight();
+          if (w != null && h != null && w > 0 && h > 0) return w / h;
+        }
+      }
+    } catch (_) {/* the default is fine */}
+    return 16 / 9;
   }
 
   static List<File> _sortedFrames(Directory dir) {

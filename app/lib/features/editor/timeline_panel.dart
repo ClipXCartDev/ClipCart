@@ -152,6 +152,11 @@ class _TimelinePanelState extends State<TimelinePanel> {
   /// playhead, and this one moves with the time.
   static const double _pad = 10;
 
+  /// The zoom row above the tracks. It is part of the panel, so the panel's
+  /// height has to include it - left out, it ate the bottom of the last lane,
+  /// and the lane that gets selected is usually the last one.
+  static const double _zoomH = 26;
+
   final _scroll = ScrollController();
   TimelineScale _scale = TimelineScale();
 
@@ -227,8 +232,8 @@ class _TimelinePanelState extends State<TimelinePanel> {
   @override
   Widget build(BuildContext context) {
     final rows = _rowsHeight();
-    final h = (_rulerH + _gap + _videoH + _gap + rows + 16)
-        .clamp(110.0, widget.compact ? 215.0 : 300.0)
+    final h = (_zoomH + _rulerH + _gap + _videoH + _gap + rows + 12)
+        .clamp(136.0, widget.compact ? 241.0 : 326.0)
         .toDouble();
     return Container(
       color: AppColors.surfaceHover,
@@ -311,7 +316,7 @@ class _TimelinePanelState extends State<TimelinePanel> {
   }
 
   Widget _zoomBar() => SizedBox(
-        height: 26,
+        height: _zoomH,
         child: Row(children: [
           const Spacer(),
           _zoomBtn(Icons.remove_rounded, () => setState(() {
@@ -568,19 +573,27 @@ class _TimelinePanelState extends State<TimelinePanel> {
       child: Stack(fit: StackFit.expand, children: [
         const ColoredBox(color: AppColors.bgAlt),
         if (strip.isReady)
-          // Each frame covers the slice of time it was taken from, so what is
-          // under the playhead is what is on screen.
-          ...List.generate(strip.frames.length, (i) {
-            final x = _scale.xOf(i * strip.interval);
-            final fw = _scale.xOf(strip.interval);
-            if (x > w) return const SizedBox.shrink();
-            return Positioned(
-              left: x, top: 0, bottom: 0, width: math.min(fw, w - x) + 0.5,
-              child: Image.file(strip.frames[i], fit: BoxFit.cover,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-            );
-          }),
+          // Tiles the width of a whole frame, each showing the one nearest its
+          // own position. Sizing a tile to the time it covers meant squeezing a
+          // 16:9 picture into sixteen pixels, which shredded the strip into
+          // slivers; this is the shape a filmstrip is supposed to have.
+          ...() {
+            final tileW = math.max(24.0, _videoH * strip.aspect);
+            final count = (w / tileW).ceil();
+            return List.generate(count, (i) {
+              final x = i * tileW;
+              final f = strip.frameAt(_scale.secondsOf(x));
+              if (f == null) return const SizedBox.shrink();
+              return Positioned(
+                left: x, top: 0, bottom: 0,
+                width: math.min(tileW, w - x) + 0.5,
+                child: Image.file(f, fit: BoxFit.cover,
+                    alignment: Alignment.centerLeft,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+              );
+            });
+          }(),
         // trimmed-away parts, dimmed rather than hidden so the whole clip is
         // still there to drag the trim back out of
         if (widget.trimStart > 0)
@@ -665,7 +678,7 @@ class _TimelinePanelState extends State<TimelinePanel> {
           _snapBuzzed = false;
         }),
         child: Stack(clipBehavior: Clip.none, children: [
-          Opacity(
+          Positioned.fill(child: Opacity(
             opacity: it.hidden ? 0.35 : 1,
             child: _block(
               colour: it.colour,
@@ -673,10 +686,10 @@ class _TimelinePanelState extends State<TimelinePanel> {
               label: it.label,
               selected: selected,
             ),
-          ),
+          )),
           if (selected && it.resizable && !it.locked && widget.onResize != null) ...[
-            Positioned(left: -10, top: 0, bottom: 0, child: _grip(it, left: true)),
-            Positioned(right: -10, top: 0, bottom: 0, child: _grip(it, left: false)),
+            Positioned(left: 0, top: 0, bottom: 0, child: _grip(it, left: true)),
+            Positioned(right: 0, top: 0, bottom: 0, child: _grip(it, left: false)),
           ],
         ]),
       ),
@@ -708,23 +721,28 @@ class _TimelinePanelState extends State<TimelinePanel> {
           _snapGuide = null;
           _snapBuzzed = false;
         }),
+        // The target is 22 wide; the handle drawn inside it is 11 and sits on
+        // the block's own edge, so the frame reads as one shape rather than a
+        // block held between two posts.
         child: SizedBox(
-          // wider than it looks: the grip is the only way to set a layer's
-          // duration, and a 4-pixel target on a 34-pixel track is a miss
-          width: 20,
-          child: Center(
+          width: 22,
+          child: Align(
+            alignment: left ? Alignment.centerLeft : Alignment.centerRight,
             child: Container(
-              width: 7, height: _rowH - 4,
+              width: 11,
+              height: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(3.5),
-                boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 4)],
+                borderRadius: BorderRadius.horizontal(
+                  left: Radius.circular(left ? 7 : 0),
+                  right: Radius.circular(left ? 0 : 7),
+                ),
               ),
               child: Center(
                 child: Container(
-                  width: 1.5, height: (_rowH - 4) * 0.45,
+                  width: 2, height: _rowH * 0.42,
                   decoration: BoxDecoration(
-                    color: AppColors.inkMuted, borderRadius: BorderRadius.circular(1)),
+                    color: AppColors.inkFaint, borderRadius: BorderRadius.circular(1)),
                 ),
               ),
             ),
@@ -743,12 +761,9 @@ class _TimelinePanelState extends State<TimelinePanel> {
         decoration: BoxDecoration(
           color: colour.withValues(alpha: selected ? 1 : 0.82),
           borderRadius: BorderRadius.circular(7),
-          border: selected ? Border.all(color: Colors.white, width: 2.5) : null,
-          boxShadow: selected
-              ? const [BoxShadow(color: Color(0x66000000), blurRadius: 6, spreadRadius: 1)]
-              : null,
+          border: selected ? Border.all(color: Colors.white, width: 2) : null,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 7),
+        padding: EdgeInsets.symmetric(horizontal: selected ? 14 : 7),
         child: Row(children: [
           Icon(icon, size: 13, color: Colors.white),
           const SizedBox(width: 5),
