@@ -11,6 +11,8 @@ from app.core.security import create_access_token
 from app.models import Role, User
 
 API = "/api/v1"
+
+from tests.conftest import media_ready
 SECRET = "testsecret"
 
 
@@ -36,8 +38,9 @@ def _plan(client, admin, name="Professional", price=9, export_limit=None):
     ).json()
 
 
-def _approved_clip(client, editor, admin, access="free"):
+def _approved_clip(client, db, editor, admin, access="free"):
     cid = client.post(API + "/creator/clips", json={"title": "Clip", "access": access}, headers=_auth(editor)).json()["id"]
+    media_ready(db, cid)
     client.post(f"{API}/admin/clips/{cid}/approve", headers=_auth(admin))
     return cid
 
@@ -99,7 +102,7 @@ def test_pro_clip_requires_subscription(client, db, monkeypatch):
     editor = _mk(client, db, "e@x.com", Role.editor)
     admin = _mk(client, db, "a@x.com", Role.admin)
     cust = _mk(client, db, "c@x.com")
-    pro = _approved_clip(client, editor, admin, access="pro")
+    pro = _approved_clip(client, db, editor, admin, access="pro")
 
     # blocked without subscription
     r = client.post(f"{API}/clips/{pro}/download", headers=_auth(cust))
@@ -117,12 +120,12 @@ def test_monthly_quota(client, db, monkeypatch):
     editor = _mk(client, db, "e@x.com", Role.editor)
     admin = _mk(client, db, "a@x.com", Role.admin)
     cust = _mk(client, db, "c@x.com")
-    free = _approved_clip(client, editor, admin, access="free")
+    free = _approved_clip(client, db, editor, admin, access="free")
     plan = _plan(client, admin, name="Basic", price=4, export_limit=1)
     co = client.post(API + "/billing/checkout", json={"plan_id": plan["id"]}, headers=_auth(cust)).json()
     _webhook(client, co["order_id"])
 
-    other = _approved_clip(client, editor, admin, access="free")
+    other = _approved_clip(client, db, editor, admin, access="free")
 
     assert client.post(f"{API}/clips/{free}/download", headers=_auth(cust)).status_code == 201
     # the same clip again is NOT a second purchase (one credit per clip) ...
@@ -143,6 +146,7 @@ def test_one_credit_per_clip_and_final(client, db, monkeypatch):
     a = client.post(API + "/creator/clips", json={"title": "A", "access": "free", "base_clip_path": uu["key"]}, headers=_auth(editor)).json()["id"]
     b = client.post(API + "/creator/clips", json={"title": "B", "access": "free", "base_clip_path": uu["key"]}, headers=_auth(editor)).json()["id"]
     for cid in (a, b):
+        media_ready(db, cid)
         client.post(f"{API}/admin/clips/{cid}/approve", headers=_auth(admin))
     plan = _plan(client, admin, name="Basic", price=4, export_limit=1)
     co = client.post(API + "/billing/checkout", json={"plan_id": plan["id"]}, headers=_auth(cust)).json()

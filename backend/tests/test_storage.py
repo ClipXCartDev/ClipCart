@@ -9,6 +9,8 @@ from app.models import Role, User
 
 API = "/api/v1"
 
+from tests.conftest import media_ready
+
 
 def _auth(uid: str) -> dict:
     token, _, _ = create_access_token(uid)
@@ -40,6 +42,7 @@ def test_upload_then_download(client, db, monkeypatch, tmp_path):
 
     # 3) create the clip pointing at the uploaded key, admin approves
     cid = client.post(API + "/creator/clips", json={"title": "C", "access": "free", "base_clip_path": uu["key"]}, headers=_auth(editor)).json()["id"]
+    media_ready(db, cid)
     client.post(f"{API}/admin/clips/{cid}/approve", headers=_auth(admin))
 
     # 4) customer gets an access-gated download URL and fetches the file
@@ -56,10 +59,20 @@ def test_tampered_token_rejected(client, db, monkeypatch, tmp_path):
 
 
 def test_download_url_without_file_conflicts(client, db):
+    """A published clip can no longer lack its file - approval refuses that -
+    but the endpoint keeps its own guard, so the state is built directly."""
+    import uuid as _uuid
+
+    from app.models import Clip, ClipStatus
+
     editor = _mk(client, db, "e@x.com", Role.editor)
-    admin = _mk(client, db, "a@x.com", Role.admin)
     cust = _mk(client, db, "c@x.com")
     cid = client.post(API + "/creator/clips", json={"title": "C", "access": "free"}, headers=_auth(editor)).json()["id"]
-    client.post(f"{API}/admin/clips/{cid}/approve", headers=_auth(admin))
+    clip = db.get(Clip, _uuid.UUID(cid))
+    clip.status = ClipStatus.approved
+    clip.media_status = "ready"
+    clip.base_clip_path = None
+    db.commit()
+
     r = client.post(f"{API}/clips/{cid}/download-url", headers=_auth(cust))
     assert r.status_code == 409

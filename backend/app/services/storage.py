@@ -22,6 +22,18 @@ class Storage:
     def presign_download(self, key: str, expires: int | None = None) -> str:
         raise NotImplementedError
 
+    # Direct access, for work that happens inside the stack rather than in a
+    # browser: the derive worker reads a raw upload and writes back the preview
+    # and poster it makes from it.
+    def get_bytes(self, key: str) -> bytes:
+        raise NotImplementedError
+
+    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+        raise NotImplementedError
+
+    def exists(self, key: str) -> bool:
+        raise NotImplementedError
+
 
 class LocalStorage(Storage):
     def _token(self, key: str, method: str, exp: int) -> str:
@@ -45,6 +57,19 @@ class LocalStorage(Storage):
 
     def path(self, key: str) -> str:
         return os.path.join(settings.STORAGE_DIR, key)
+
+    def get_bytes(self, key: str) -> bytes:
+        with open(self.path(key), "rb") as f:
+            return f.read()
+
+    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+        p = self.path(key)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "wb") as f:
+            f.write(data)
+
+    def exists(self, key: str) -> bool:
+        return os.path.exists(self.path(key))
 
 
 class R2Storage(Storage):
@@ -73,6 +98,19 @@ class R2Storage(Storage):
             Params={"Bucket": self.bucket, "Key": key},
             ExpiresIn=expires or settings.PRESIGN_EXPIRE_SECONDS,
         )
+
+    def get_bytes(self, key: str) -> bytes:
+        return self.client.get_object(Bucket=self.bucket, Key=key)["Body"].read()
+
+    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
+        self.client.put_object(Bucket=self.bucket, Key=key, Body=data, ContentType=content_type)
+
+    def exists(self, key: str) -> bool:
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except Exception:
+            return False
 
 
 def _build() -> Storage:

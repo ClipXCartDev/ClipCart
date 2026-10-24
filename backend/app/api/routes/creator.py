@@ -101,6 +101,12 @@ def update_clip(clip_id: uuid.UUID, body: ClipUpdate, user: User = Depends(edito
     data = body.model_dump(exclude_unset=True)
     if "base_clip_path" in data:
         _validate_base_clip_path(data["base_clip_path"])
+        if data["base_clip_path"] != clip.base_clip_path:
+            # the preview and poster belong to the file that was replaced
+            clip.media_status = "pending"
+            clip.media_error = None
+            clip.media_attempts = 0
+            clip.media_claimed_at = None
     if "access" in data:
         data["access"] = Access(data["access"])
     for k, v in data.items():

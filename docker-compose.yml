@@ -28,6 +28,24 @@ services:
     volumes:
       - clip_storage:/app/storage   # persist uploaded/base clips (local storage mode)
 
+  # Turns a creator's raw upload into the preview and poster the catalogue
+  # needs. Separate from the API so an encode never blocks a request, and so it
+  # can be scaled out on its own: the claim uses SKIP LOCKED, so running more
+  # than one is safe without any coordination.
+  worker:
+    build:
+      context: ./backend
+      target: worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-clipcart}:${POSTGRES_PASSWORD:-clipcart}@db:5432/${POSTGRES_DB:-clipcart}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - clip_storage:/app/storage   # same objects the API serves in local mode
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped

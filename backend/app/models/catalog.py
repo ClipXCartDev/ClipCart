@@ -79,6 +79,17 @@ class Clip(Base):
     review_note: Mapped[Optional[str]] = mapped_column(String(400), nullable=True)
 
     base_clip_path: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    # ---- derived media ------------------------------------------------------
+    # The preview and poster are made from base_clip_path by the derive worker.
+    # pending -> ready, or failed after the attempt cap. Approval is gated on
+    # ready, which is what stops a clip reaching customers without media.
+    media_status: Mapped[str] = mapped_column(String(12), default="pending", index=True)
+    media_error: Mapped[Optional[str]] = mapped_column(String(400), nullable=True)
+    media_attempts: Mapped[int] = mapped_column(Integer, default=0)
+    # Set when a worker takes the job, so a crashed worker's claim can expire
+    # and another can pick it up instead of the clip sitting pending forever.
+    media_claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     thumb: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

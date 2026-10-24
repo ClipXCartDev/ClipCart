@@ -8,6 +8,8 @@ from app.models import Role, User
 
 API = "/api/v1"
 
+from tests.conftest import media_ready
+
 
 def _auth(user_id: str) -> dict:
     token, _, _ = create_access_token(user_id)
@@ -46,6 +48,7 @@ def test_full_flow_upload_approve_browse(client, db):
     assert ups[0]["status"] == "pending"
 
     # admin approves
+    media_ready(db, clip_id)
     r = client.post(f"{API}/admin/clips/{clip_id}/approve", headers=_auth(admin))
     assert r.status_code == 200 and r.json()["status"] == "approved"
 
@@ -79,6 +82,7 @@ def test_favorite_and_download(client, db):
     admin = _make_user(client, db, "a@x.com", Role.admin)
     cust = _make_user(client, db, "c@x.com", Role.customer)
     clip_id = _new_clip(client, editor)
+    media_ready(db, clip_id)
     client.post(f"{API}/admin/clips/{clip_id}/approve", headers=_auth(admin))
 
     assert client.post(f"{API}/clips/{clip_id}/favorite", headers=_auth(cust)).status_code == 201
@@ -97,6 +101,7 @@ def test_filter_by_category_and_feature(client, db):
     admin = _make_user(client, db, "a@x.com", Role.admin)
     cat = client.post(API + "/admin/categories", json={"name": "Comedy"}, headers=_auth(admin)).json()
     clip_id = _new_clip(client, editor, "Comedy Cut", category_id=cat["id"])
+    media_ready(db, clip_id)
     client.post(f"{API}/admin/clips/{clip_id}/approve", headers=_auth(admin))
 
     assert client.get(API + "/clips", params={"category": "comedy"}).json()["total"] == 1

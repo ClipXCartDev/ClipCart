@@ -50,6 +50,23 @@ def admin_list_clips(status_filter: str | None = None, _: User = Depends(admin_o
 @router.post("/clips/{clip_id}/approve", response_model=ClipOut)
 def approve(clip_id: uuid.UUID, _: User = Depends(admin_only), db: Session = Depends(get_db)) -> ClipOut:
     clip = _get_clip(db, clip_id)
+    # A clip with no preview and no poster reaches the customer as a blank tile
+    # whose player shows nothing and whose editor refuses to open - and the
+    # credit is spent getting there. Approval is the one place that can stop it.
+    if clip.media_status != "ready":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={
+                "code": "media_not_ready",
+                "message": {
+                    "pending": "This clip's preview is still being prepared. Try again shortly.",
+                    "failed": "This clip's preview could not be made, so it cannot be published. "
+                              "Ask the creator to re-upload.",
+                }.get(clip.media_status, "This clip has no preview yet."),
+                "media_status": clip.media_status,
+                "media_error": clip.media_error,
+            },
+        )
     clip.status = ClipStatus.approved
     clip.review_note = None
     clip.published_at = datetime.now(timezone.utc)

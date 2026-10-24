@@ -85,7 +85,9 @@ def browse_query(
     sort: str = "trending",
 ) -> Select:
     """Approved clips only, with filters + sort. Returns a Select of Clip."""
-    stmt = select(Clip).where(Clip.status == ClipStatus.approved)
+    # ready media as well as approval: a clip whose preview never got made
+    # would otherwise sit in the grid as a tile that plays nothing
+    stmt = select(Clip).where(Clip.status == ClipStatus.approved, Clip.media_status == "ready")
 
     if q:
         like = f"%{q.lower()}%"

@@ -9,6 +9,8 @@ from app.models import Role, User
 
 API = "/api/v1"
 
+from tests.conftest import media_ready
+
 
 def _auth(uid: str) -> dict:
     token, _, _ = create_access_token(uid)
@@ -24,8 +26,9 @@ def _mk(client, db, email, role=Role.customer) -> str:
     return uid
 
 
-def _approved_clip(client, editor, admin):
+def _approved_clip(client, db, editor, admin):
     cid = client.post(API + "/creator/clips", json={"title": "Clip", "access": "free"}, headers=_auth(editor)).json()["id"]
+    media_ready(db, cid)
     client.post(f"{API}/admin/clips/{cid}/approve", headers=_auth(admin))
     return cid
 
@@ -35,7 +38,7 @@ def test_earnings_and_payout_flow(client, db, monkeypatch):
     editor = _mk(client, db, "e@x.com", Role.editor)
     admin = _mk(client, db, "a@x.com", Role.admin)
     cust = _mk(client, db, "c@x.com")
-    cid = _approved_clip(client, editor, admin)
+    cid = _approved_clip(client, db, editor, admin)
 
     for _ in range(5):
         assert client.post(f"{API}/clips/{cid}/download", headers=_auth(cust)).status_code == 201
@@ -70,7 +73,7 @@ def test_reject_frees_balance(client, db, monkeypatch):
     editor = _mk(client, db, "e@x.com", Role.editor)
     admin = _mk(client, db, "a@x.com", Role.admin)
     cust = _mk(client, db, "c@x.com")
-    cid = _approved_clip(client, editor, admin)
+    cid = _approved_clip(client, db, editor, admin)
     for _ in range(2):
         client.post(f"{API}/clips/{cid}/download", headers=_auth(cust))
 

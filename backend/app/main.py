@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import api_router
 from app.core.config import settings
+from app.db import bootstrap
 from app.db.base import Base
 from app.db.session import engine
 
@@ -11,6 +12,9 @@ from app.db.session import engine
 import app.models  # noqa: F401  (register models on Base metadata)
 
 Base.metadata.create_all(bind=engine)
+# create_all makes missing tables but never alters an existing one, so columns
+# added to a model after a deploy have to be put on by hand. Idempotent.
+bootstrap.run()
 
 app = FastAPI(title=settings.PROJECT_NAME)
 

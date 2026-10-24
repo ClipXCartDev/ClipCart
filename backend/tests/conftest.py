@@ -48,3 +48,18 @@ def client(session_factory):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+def media_ready(db, clip_id):
+    """Stand in for the derive worker: the clip now has a preview and poster.
+
+    Approval refuses a clip without them, so any test that publishes one has to
+    say that step happened.
+    """
+    import uuid as _uuid
+    from app.models import Clip
+    clip = db.get(Clip, clip_id if isinstance(clip_id, _uuid.UUID) else _uuid.UUID(str(clip_id)))
+    clip.base_clip_path = clip.base_clip_path or f"clips/{clip.id}/raw.mp4"
+    clip.media_status = "ready"
+    db.commit()
+    return clip
