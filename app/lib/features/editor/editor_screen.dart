@@ -107,13 +107,15 @@ class _EditorScreenState extends State<EditorScreen> {
   set _selected(Object? v) {
     _selectedLayer = v;
     if (v == null) {
-      _openTimelineKinds.clear();
+      // Deselecting used to collapse every group, which hid the user's layers
+      // the moment they finished with one. Lanes stay open; collapsing is the
+      // chevron's job now.
     } else {
       // Opening the layer's own kind is the other half of this: selecting a
       // caption from the canvas used to leave the timeline showing a collapsed
       // "Text", so its trim grips — the only way to change how long it shows —
       // were a tap further away than they had been before grouping.
-      _openTimelineKinds.add(_layerKind(v));
+      _closedTimelineKinds.remove(_layerKind(v));
     }
   }
   bool _trimMode = false;
@@ -186,9 +188,11 @@ class _EditorScreenState extends State<EditorScreen> {
         bgColor: _project!.videoBgColor,
       );
 
-  /// Timeline kinds the user has opened. Collapsed is the default: a kind is
-  /// one entry until it is tapped, then it shows its own layers.
-  final Set<String> _openTimelineKinds = <String>{};
+  /// Timeline kinds the user has collapsed. Open is the default: every layer
+  /// gets its own lane, as a timeline is supposed to look, and a kind becomes a
+  /// single entry only when its chevron is tapped — which is what you want on a
+  /// clip carrying a dozen captions.
+  final Set<String> _closedTimelineKinds = <String>{};
 
   double _videoPanLimit(double s) => VideoGeometry.panLimitFor(s);
 
@@ -3596,15 +3600,21 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _timeline() {
     final dur = _duration;
     final groups = <TimelineGroup>[];
+    // Editing one layer: show that lane alone. Every other lane is noise at
+    // that moment, and the picture needs the height more than they do.
+    final focus = _selected;
     for (final k in kLayerKinds) {
-      final items = _layersOfKind(k.$1);
+      var items = _layersOfKind(k.$1);
+      if (focus != null) {
+        items = items.where((it) => identical(it, focus) || it == focus).toList();
+      }
       if (items.isEmpty) continue;
       groups.add(TimelineGroup(
         id: k.$1,
         label: k.$2,
         icon: k.$3,
         colour: _layerColor(items.first),
-        open: _openTimelineKinds.contains(k.$1),
+        open: !_closedTimelineKinds.contains(k.$1),
         items: [
           for (final it in items)
             () {
@@ -3651,7 +3661,7 @@ class _EditorScreenState extends State<EditorScreen> {
         }
       }),
       onToggleGroup: (id) => setState(() {
-        if (!_openTimelineKinds.remove(id)) _openTimelineKinds.add(id);
+        if (!_closedTimelineKinds.remove(id)) _closedTimelineKinds.add(id);
       }),
       onSelect: (ref) => setState(() => _selected = ref),
       onEditStart: _snapshot,
@@ -3913,15 +3923,15 @@ class _EditorScreenState extends State<EditorScreen> {
         const SizedBox(width: 8),
         GestureDetector(
           onTap: () => setState(() => _selected = null),
-          child: Container(width: 36, height: 36, decoration: const BoxDecoration(color: brand, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 18, color: Colors.white)),
+          child: Container(width: 34, height: 34, decoration: const BoxDecoration(color: brand, shape: BoxShape.circle), child: const Icon(Icons.check_rounded, size: 17, color: Colors.white)),
         ),
       ]),
-      const SizedBox(height: 12),
+      const SizedBox(height: 8),
       // sub-tab content: a FIXED height so Font ↔ Styling ↔ Advance never move
       // the canvas, timeline or the footer buttons under the user's finger
       // (QA recording: the panel grew on Styling and a tap landed on Delete).
       SizedBox(
-        height: 150,
+        height: 124,
         child: SingleChildScrollView(
           child: switch (_textTab.clamp(0, 2)) {
             0 => _textFont(s, ink, mut, tile, line, brand),
@@ -3930,7 +3940,7 @@ class _EditorScreenState extends State<EditorScreen> {
           },
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: 7),
       // footer: Split · Duplicate · Hide · Delete
       Row(children: [
         Expanded(child: _textFootBtn('Split', tile, line, ink, _splitAtPlayhead)),
@@ -3947,7 +3957,7 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _textFootBtn(String label, Color bg, Color border, Color fg, VoidCallback onTap) => GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 38, alignment: Alignment.center,
+          height: 34, alignment: Alignment.center,
           decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(9), border: Border.all(color: border)),
           child: Text(label, style: TextStyle(fontSize: 13, color: fg, fontWeight: FontWeight.w500)),
         ),
@@ -4011,27 +4021,27 @@ class _EditorScreenState extends State<EditorScreen> {
     Widget bi(String t, bool on, VoidCallback tap, {bool italic = false}) => GestureDetector(
           onTap: tap,
           child: Container(
-            width: 44, height: 42, alignment: Alignment.center,
+            width: 42, height: 38, alignment: Alignment.center,
             decoration: BoxDecoration(color: on ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? brand : line)),
             child: Text(t, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontStyle: italic ? FontStyle.italic : FontStyle.normal, color: on ? brand : ink)),
           ),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 42, padding: const EdgeInsets.symmetric(horizontal: 12), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: line)), child: Row(children: [Text('Aa', style: TextStyle(fontFamily: s.fontFamily, fontSize: 17, color: ink, fontWeight: FontWeight.w700)), const SizedBox(width: 10), Expanded(child: Text(s.fontFamily ?? 'Default', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: s.fontFamily, fontSize: 14, color: ink))), const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.mut)])))),
+        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 38, padding: const EdgeInsets.symmetric(horizontal: 12), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: line)), child: Row(children: [Text('Aa', style: TextStyle(fontFamily: s.fontFamily, fontSize: 17, color: ink, fontWeight: FontWeight.w700)), const SizedBox(width: 10), Expanded(child: Text(s.fontFamily ?? 'Default', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: s.fontFamily, fontSize: 14, color: ink))), const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.mut)])))),
         const SizedBox(width: 7),
         bi('B', s.bold, () => _mutate(() => s.bold = !s.bold)),
         const SizedBox(width: 7),
         bi('I', s.italic, () => _mutate(() => s.italic = !s.italic), italic: true),
       ]),
-      const SizedBox(height: 14),
+      const SizedBox(height: 6),
       _lightSlider('Size', s.scale, 0.4, 4.0, (v) => setState(() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } s.scale = v; }), display: '${(s.fontSize * s.scale).round()}', labelW: 40),
-      const SizedBox(height: 14),
+      const SizedBox(height: 6),
       Row(children: [
         for (final a in TextAlignH.values) ...[
           Expanded(child: GestureDetector(
             onTap: () => _mutate(() => s.align = a),
-            child: Container(height: 42, alignment: Alignment.center, decoration: BoxDecoration(color: s.align == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: s.align == a ? brand : line)), child: Icon(_alignIcon(a), size: 19, color: s.align == a ? brand : ink)),
+            child: Container(height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: s.align == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: s.align == a ? brand : line)), child: Icon(_alignIcon(a), size: 19, color: s.align == a ? brand : ink)),
           )),
           if (a != TextAlignH.right) const SizedBox(width: 8),
         ],

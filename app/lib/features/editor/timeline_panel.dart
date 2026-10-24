@@ -218,7 +218,7 @@ class _TimelinePanelState extends State<TimelinePanel> {
   Widget build(BuildContext context) {
     final rows = _rowsHeight();
     final h = (_rulerH + _gap + _videoH + _gap + rows + 16)
-        .clamp(110.0, widget.compact ? 150.0 : 260.0)
+        .clamp(110.0, widget.compact ? 215.0 : 300.0)
         .toDouble();
     return Container(
       color: AppColors.surfaceHover,
