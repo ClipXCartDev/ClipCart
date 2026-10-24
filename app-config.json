@@ -5,8 +5,8 @@
   "maintenance": false,
   "message": "",
   "latest_version": "3.1.0",
-  "apk_url": "https://clipscart.app/downloads/clipcart.apk",
+  "apk_url": "https://clipscart.app/downloads/clipcart-3.1.0.apk",
   "update_notes": "",
   "min_version": "3.1.0",
-  "apk_url_arm32": "https://clipscart.app/downloads/clipcart-arm32.apk"
+  "apk_url_arm32": "https://clipscart.app/downloads/clipcart-3.1.0-arm32.apk"
 }

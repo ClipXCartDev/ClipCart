@@ -59,13 +59,16 @@ echo "==> uploading"
 # on the way in.
 scp -q "$ARM64" "$HOST:/tmp/.upload-arm64.apk"
 scp -q "$ARM32" "$HOST:/tmp/.upload-arm32.apk"
+# The version is in the filename, so a release is a new URL. The old one was
+# a fixed name behind a CDN that caches for four hours - a client who updated
+# in that window got handed the build they already had.
 ssh "$HOST" "
   set -e
   cd $REMOTE_DIR
-  sudo -n install -o deploy -g deploy -m 644 /tmp/.upload-arm64.apk clipcart.apk
-  sudo -n install -o deploy -g deploy -m 644 /tmp/.upload-arm32.apk clipcart-arm32.apk
+  sudo -n install -o deploy -g deploy -m 644 /tmp/.upload-arm64.apk clipcart-$VERSION.apk
+  sudo -n install -o deploy -g deploy -m 644 /tmp/.upload-arm32.apk clipcart-$VERSION-arm32.apk
   rm -f /tmp/.upload-arm64.apk /tmp/.upload-arm32.apk
-  ls -la clipcart.apk clipcart-arm32.apk
+  ls -la clipcart-$VERSION.apk clipcart-$VERSION-arm32.apk
 "
 
 # The builds live on the server, not in git: at ~70 MB and ~105 MB a release,
@@ -80,6 +83,8 @@ d = json.load(io.open(f, encoding="utf-8"))
 d["latest_version"] = v
 d["min_version"] = v          # everyone older is stopped until they update
 d["update_notes"] = notes
+d["apk_url"] = f"https://clipscart.app/downloads/clipcart-{v}.apk"
+d["apk_url_arm32"] = f"https://clipscart.app/downloads/clipcart-{v}-arm32.apk"
 io.open(f, "w", encoding="utf-8", newline="\n").write(json.dumps(d, indent=2) + "\n")
 PY
 
@@ -91,8 +96,8 @@ cat <<EOF
 
 Released $VERSION.
 
-  arm64  https://clipscart.app/downloads/clipcart.apk
-  arm32  https://clipscart.app/downloads/clipcart-arm32.apk
+  arm64  https://clipscart.app/downloads/clipcart-$VERSION.apk
+  arm32  https://clipscart.app/downloads/clipcart-$VERSION-arm32.apk
 
 Every install older than $VERSION now opens on the update screen. The config
 reaches phones on their next launch, so give it a minute before testing.
