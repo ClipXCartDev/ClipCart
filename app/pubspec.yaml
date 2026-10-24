@@ -1,7 +1,7 @@
 name: clipcart
 description: ClipCart — funny movie clip marketplace (mobile app).
 publish_to: 'none'
-version: 1.0.0+1
+version: 3.1.0+2
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -28,6 +28,8 @@ dependencies:
   cached_network_image: ^3.4.1  # cache + downscale thumbnails (perf)
   shimmer: ^3.0.0               # skeleton loaders (premium loading feel)
   qr_flutter: ^4.1.0            # render Binance Pay checkout QR on the crypto pay screen
+  package_info_plus: ^9.0.1
+  open_filex: ^5.0.0
 
 dev_dependencies:
   flutter_test:

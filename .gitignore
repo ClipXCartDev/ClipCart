@@ -39,3 +39,13 @@ app/font_detail.txt
 app/qa3.txt
 app/trim_lens.txt
 design-preview/shots/
+
+# Release builds live on the server, not in git: ~70 MB and ~105 MB each.
+downloads/*.apk
+
+# Local working folders — never part of a release
+.claude/
+design/
+design-preview/
+qa/
+ops/server/known_hosts

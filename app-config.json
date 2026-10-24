@@ -2,7 +2,11 @@
   "api_base_url": "https://clipscart.app/api/v1",
   "google_server_client_id": "1007670242898-o4eucmra0nst1hh9okg1apr98ficp9o9.apps.googleusercontent.com",
   "support_email": "clipxcart@gmail.com",
-  "min_app_version": "1.0.0",
   "maintenance": false,
-  "message": ""
+  "message": "",
+  "latest_version": "3.1.0",
+  "apk_url": "https://clipscart.app/downloads/clipcart.apk",
+  "update_notes": "",
+  "min_version": "3.1.0",
+  "apk_url_arm32": "https://clipscart.app/downloads/clipcart-arm32.apk"
 }

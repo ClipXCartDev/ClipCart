@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme.dart';
+import '../../services/update_service.dart';
 import '../../core/ui_kit.dart';
 import '../../services/billing_service.dart';
 import '../../state/auth_controller.dart';
@@ -221,7 +222,18 @@ class _AccountTabState extends State<_AccountTab> {
           ListRowTile(label: 'Log out', danger: true, chevron: false, onTap: () => context.read<AuthController>().logout()),
         ]),
         const SizedBox(height: 20),
-        const Center(child: Text('ClipCart 3.0.0 · Android + iOS', style: TextStyle(fontFamily: kMono, fontSize: 11, color: AppColors.inkGhost))),
+        Center(
+          child: Consumer<UpdateService>(
+            // The build it actually is, not a number somebody has to remember
+            // to edit in two places.
+            builder: (context, u, _) => Text(
+              u.installedVersion.isEmpty
+                  ? 'ClipCart · Android + iOS'
+                  : 'ClipCart ${u.installedVersion} (${u.installedBuild}) · Android + iOS',
+              style: const TextStyle(fontFamily: kMono, fontSize: 11, color: AppColors.inkGhost),
+            ),
+          ),
+        ),
       ],
     );
   }

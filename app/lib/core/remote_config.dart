@@ -14,6 +14,34 @@ class RemoteConfig {
   static const _store = FlutterSecureStorage();
 
   static Future<void> load() async {
+    await _loadBootstrap();
+    await _loadFromApi();
+  }
+
+  /// The config that lives beside the API.
+  ///
+  /// The bootstrap URL's job is to say where the server is, and it is hosted
+  /// somewhere that outlives any server; this one is deployed WITH the server,
+  /// so it is what carries values that change release to release. Merged over
+  /// the bootstrap, except for the pointer itself - taking the API's address
+  /// from the API would defeat the whole arrangement.
+  static Future<void> _loadFromApi() async {
+    try {
+      final r = await Dio().get(
+        '${RuntimeConfig.origin}/app-config.json',
+        options: Options(
+          responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 8),
+          sendTimeout: const Duration(seconds: 8),
+        ),
+      );
+      final data = jsonDecode(r.data as String) as Map<String, dynamic>;
+      data.remove('api_base_url');
+      RuntimeConfig.values = {...RuntimeConfig.values, ...data};
+    } catch (_) {/* the bootstrap values stand */}
+  }
+
+  static Future<void> _loadBootstrap() async {
     // 1) network
     try {
       final r = await Dio().get(

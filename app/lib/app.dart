@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme.dart';
+import 'features/update/update_gate.dart';
 import 'features/auth/devices_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_screen.dart';
@@ -141,6 +142,10 @@ class _ClipCartAppState extends State<ClipCartApp> {
       themeMode: ThemeMode.dark, // ClipCart is a dark-themed app
 
       routerConfig: _router,
+      // Nothing is reachable on a build the server has retired - including
+      // the routes, which is why this wraps the whole app rather than sitting
+      // on one screen.
+      builder: (context, child) => UpdateGate(child: child ?? const SizedBox.shrink()),
     );
   }
 }
