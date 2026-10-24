@@ -34,6 +34,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // A QA build installs beside the real one instead of replacing it,
+            // so verifying against a local server cannot disturb whatever is
+            // signed in on the device.
+            if (project.hasProperty("qa")) applicationIdSuffix = ".qa"
         }
     }
 }

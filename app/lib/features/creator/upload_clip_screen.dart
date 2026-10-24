@@ -7,7 +7,11 @@ import '../../core/theme.dart';
 import '../../services/creator_service.dart';
 import '../../widgets/primary_button.dart';
 
-const _allLayers = ['subtitle', 'logo', 'username', 'cta', 'ending', 'aspect'];
+// What a customer can change about this clip. 'logo' and 'username' were two
+// labels for the page's one name, matching two editor tools that are now one,
+// so they are one here too. Clips uploaded under the old labels keep them;
+// they are free text that only an admin reads.
+const _allLayers = ['subtitle', 'handle', 'cta', 'ending', 'aspect'];
 
 class UploadClipScreen extends StatefulWidget {
   const UploadClipScreen({super.key});
