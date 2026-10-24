@@ -85,7 +85,16 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   bool _subLoading = true; // first subscription fetch in flight → never flash "Unlock"
 
   // ── plan / credit state ────────────────────────────────────────────────────
-  bool get _editable => (_sub?['status']?.toString())?.toLowerCase() == 'active';
+  bool get _hasPlan => (_sub?['status']?.toString())?.toLowerCase() == 'active';
+
+  /// Whether this account may take this clip into the editor.
+  ///
+  /// A plan is what Pro clips cost. A free clip is free: the server has always
+  /// allowed it without one (only `access == pro` is refused), and the free
+  /// export is what the app's own mark and the mandatory handle are the price
+  /// of. The app was refusing every clip without a plan, which made those two
+  /// rules unreachable - nobody could ever be the free user they describe.
+  bool _editableFor(Clip clip) => _hasPlan || !clip.isPro;
 
   /// Remaining edit credits — an int when the server sends a finite quota, or
   /// null when the plan is unlimited / the quota is unknown. Never fabricated.
@@ -543,7 +552,7 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   }
 
   Widget _bottomBar(Clip clip) {
-    final editable = _editable;
+    final editable = _editableFor(clip);
     final st = _edit[clip.id];
     final charged = st?['charged'] == true;
     final exported = st?['exported'] == true;
@@ -575,11 +584,17 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
       sub = 'Subscribe to edit and export';
       label = 'Unlock';
       onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(force: true); _loadEditState(clip, force: true); } };
-    } else if (credits != null && credits <= 0) {
+    } else if (_hasPlan && credits != null && credits <= 0) {
+      // Only a plan has credits to run out of.
       title = 'No credits left';
       sub = 'Renew your plan to edit more clips';
       label = 'Renew';
       onTap = () async { await context.push('/plans'); if (mounted) { _loadSub(force: true); _loadEditState(clip, force: true); } };
+    } else if (!_hasPlan) {
+      title = 'Ready to edit';
+      sub = 'Free export — carries the mark and your handle';
+      label = 'Edit';
+      onTap = () => _showCreditSheet(clip);
     } else {
       title = 'Ready to edit';
       sub = 'Opening the editor uses 1 credit';
@@ -640,7 +655,61 @@ class _ReelsPlayerScreenState extends State<ReelsPlayerScreen> {
   }
 
   // ── §11 credit confirm ──────────────────────────────────────────────────────
+  /// What opening a free clip without a plan means, said before it happens.
+  void _showFreeEditSheet(Clip clip) {
+    showAppSheet(context, (ctx) {
+      Widget point(IconData icon, String text) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, size: 17, color: AppColors.brand),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(text,
+                    style: const TextStyle(
+                        fontFamily: kSans, fontSize: 13, height: 1.5,
+                        fontWeight: FontWeight.w400, color: AppColors.inkMuted)),
+              ),
+            ]),
+          );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44, height: 44, alignment: Alignment.center,
+            decoration: BoxDecoration(color: AppColors.brandTint, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.auto_awesome_rounded, size: 22, color: AppColors.brand),
+          ),
+          const SizedBox(height: 16),
+          const Text('Edit this clip for free',
+              style: TextStyle(fontFamily: kSans, fontSize: 21, fontWeight: FontWeight.w600, letterSpacing: -0.6, color: AppColors.ink)),
+          const SizedBox(height: 12),
+          point(Icons.branding_watermark_outlined, 'Free exports carry the ClipCart mark.'),
+          point(Icons.alternate_email_rounded, 'Add your handle — it goes on the clip, and the export needs it.'),
+          point(Icons.lock_outline_rounded, 'Once you export, this clip is final and cannot be re-edited.'),
+          const SizedBox(height: 10),
+          PrimaryBtn('Open editor', onTap: () {
+            Navigator.of(ctx).pop();
+            _openEditor(clip);
+          }),
+          const SizedBox(height: 4),
+          GhostBtn('See plans', onTap: () async {
+            Navigator.of(ctx).pop();
+            await context.push('/plans');
+            if (mounted) { _loadSub(force: true); _loadEditState(clip, force: true); }
+          }),
+        ],
+      );
+    });
+  }
+
   void _showCreditSheet(Clip clip) {
+    // Without a plan there are no credits to spend, so there is no accounting
+    // to show - only what a free export will carry.
+    if (!_hasPlan) {
+      _showFreeEditSheet(clip);
+      return;
+    }
     final left = _clipCredits(clip);
     final unlimited = left == null;
     final leftLabel = left == null ? 'Unlimited' : '$left';
