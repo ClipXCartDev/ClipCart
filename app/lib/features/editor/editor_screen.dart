@@ -3637,6 +3637,9 @@ class _EditorScreenState extends State<EditorScreen> {
       selected: _selected,
       onSeek: _seek,
       trimMode: _trimMode,
+      // a layer's panel is open: the user is on one layer, not surveying the
+      // whole clip, so the timeline gives its height back to the picture
+      compact: _selected != null,
       onTrim: (isStart, t) => setState(() {
         final p = _project!;
         if (isStart) {
@@ -3918,7 +3921,7 @@ class _EditorScreenState extends State<EditorScreen> {
       // the canvas, timeline or the footer buttons under the user's finger
       // (QA recording: the panel grew on Styling and a tap landed on Delete).
       SizedBox(
-        height: 210,
+        height: 150,
         child: SingleChildScrollView(
           child: switch (_textTab.clamp(0, 2)) {
             0 => _textFont(s, ink, mut, tile, line, brand),

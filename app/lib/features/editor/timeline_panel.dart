@@ -88,6 +88,7 @@ class TimelinePanel extends StatefulWidget {
     this.isPlaying = false,
     this.trimMode = false,
     this.onTrim,
+    this.compact = false,
   });
 
   final double duration;
@@ -124,6 +125,11 @@ class TimelinePanel extends StatefulWidget {
 
   /// A trim handle moved: true for the in point, false for the out point.
   final void Function(bool isStart, double seconds)? onTrim;
+
+  /// Give the picture back its room. Set while a layer's property panel is
+  /// open: the timeline keeps every track, but shows fewer at once and
+  /// scrolls, instead of squeezing the video into a tenth of the screen.
+  final bool compact;
 
   @override
   State<TimelinePanel> createState() => _TimelinePanelState();
@@ -211,7 +217,9 @@ class _TimelinePanelState extends State<TimelinePanel> {
   @override
   Widget build(BuildContext context) {
     final rows = _rowsHeight();
-    final h = (_rulerH + _gap + _videoH + _gap + rows + 16).clamp(120.0, 260.0).toDouble();
+    final h = (_rulerH + _gap + _videoH + _gap + rows + 16)
+        .clamp(110.0, widget.compact ? 150.0 : 260.0)
+        .toDouble();
     return Container(
       color: AppColors.surfaceHover,
       height: h,
