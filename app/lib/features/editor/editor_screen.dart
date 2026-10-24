@@ -3600,14 +3600,8 @@ class _EditorScreenState extends State<EditorScreen> {
   Widget _timeline() {
     final dur = _duration;
     final groups = <TimelineGroup>[];
-    // Editing one layer: show that lane alone. Every other lane is noise at
-    // that moment, and the picture needs the height more than they do.
-    final focus = _selected;
     for (final k in kLayerKinds) {
-      var items = _layersOfKind(k.$1);
-      if (focus != null) {
-        items = items.where((it) => identical(it, focus) || it == focus).toList();
-      }
+      final items = _layersOfKind(k.$1);
       if (items.isEmpty) continue;
       groups.add(TimelineGroup(
         id: k.$1,
@@ -3931,7 +3925,7 @@ class _EditorScreenState extends State<EditorScreen> {
       // the canvas, timeline or the footer buttons under the user's finger
       // (QA recording: the panel grew on Styling and a tap landed on Delete).
       SizedBox(
-        height: 124,
+        height: 102,
         child: SingleChildScrollView(
           child: switch (_textTab.clamp(0, 2)) {
             0 => _textFont(s, ink, mut, tile, line, brand),
@@ -4021,31 +4015,37 @@ class _EditorScreenState extends State<EditorScreen> {
     Widget bi(String t, bool on, VoidCallback tap, {bool italic = false}) => GestureDetector(
           onTap: tap,
           child: Container(
-            width: 42, height: 38, alignment: Alignment.center,
+            width: 34, height: 38, alignment: Alignment.center,
             decoration: BoxDecoration(color: on ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: on ? brand : line)),
             child: Text(t, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontStyle: italic ? FontStyle.italic : FontStyle.normal, color: on ? brand : ink)),
           ),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // One row: the font, its weight, and where the line sits. Three of these
+      // used to be full-width buttons carrying a single icon each.
       Row(children: [
-        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 38, padding: const EdgeInsets.symmetric(horizontal: 12), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: line)), child: Row(children: [Text('Aa', style: TextStyle(fontFamily: s.fontFamily, fontSize: 17, color: ink, fontWeight: FontWeight.w700)), const SizedBox(width: 10), Expanded(child: Text(s.fontFamily ?? 'Default', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: s.fontFamily, fontSize: 14, color: ink))), const Icon(Icons.expand_more_rounded, size: 20, color: AppColors.mut)])))),
-        const SizedBox(width: 7),
+        Expanded(child: GestureDetector(onTap: _openFontPicker, child: Container(height: 38, padding: const EdgeInsets.symmetric(horizontal: 10), alignment: Alignment.centerLeft, decoration: BoxDecoration(color: tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: line)), child: Row(children: [Text('Aa', style: TextStyle(fontFamily: s.fontFamily, fontSize: 16, color: ink, fontWeight: FontWeight.w700)), const SizedBox(width: 7), Expanded(child: Text(s.fontFamily ?? 'Default', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: s.fontFamily, fontSize: 13, color: ink))), const Icon(Icons.expand_more_rounded, size: 18, color: AppColors.mut)])))),
+        const SizedBox(width: 6),
         bi('B', s.bold, () => _mutate(() => s.bold = !s.bold)),
-        const SizedBox(width: 7),
+        const SizedBox(width: 5),
         bi('I', s.italic, () => _mutate(() => s.italic = !s.italic), italic: true),
-      ]),
-      const SizedBox(height: 6),
-      _lightSlider('Size', s.scale, 0.4, 4.0, (v) => setState(() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } s.scale = v; }), display: '${(s.fontSize * s.scale).round()}', labelW: 40),
-      const SizedBox(height: 6),
-      Row(children: [
+        const SizedBox(width: 6),
         for (final a in TextAlignH.values) ...[
-          Expanded(child: GestureDetector(
+          GestureDetector(
             onTap: () => _mutate(() => s.align = a),
-            child: Container(height: 38, alignment: Alignment.center, decoration: BoxDecoration(color: s.align == a ? AppColors.brandSurface : tile, borderRadius: BorderRadius.circular(10), border: Border.all(color: s.align == a ? brand : line)), child: Icon(_alignIcon(a), size: 19, color: s.align == a ? brand : ink)),
-          )),
-          if (a != TextAlignH.right) const SizedBox(width: 8),
+            child: Container(
+              width: 34, height: 38, alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: s.align == a ? AppColors.brandSurface : tile,
+                borderRadius: BorderRadius.circular(9),
+                border: Border.all(color: s.align == a ? brand : line)),
+              child: Icon(_alignIcon(a), size: 17, color: s.align == a ? brand : ink)),
+          ),
+          if (a != TextAlignH.right) const SizedBox(width: 4),
         ],
       ]),
+      const SizedBox(height: 6),
+      _lightSlider('Size', s.scale, 0.4, 4.0, (v) => setState(() { if (!_gestureSnapped) { _snapshot(); _gestureSnapped = true; } s.scale = v; }), display: '${(s.fontSize * s.scale).round()}', labelW: 36),
     ]);
   }
 
