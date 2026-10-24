@@ -138,9 +138,14 @@ class TimelinePanel extends StatefulWidget {
 class _TimelinePanelState extends State<TimelinePanel> {
   static const double _rulerH = 20;
   static const double _videoH = 46;
-  static const double _rowH = 32;
-  static const double _headH = 18;
-  static const double _gap = 6;
+  static const double _rowH = 34;
+  /// Lanes sit flush, like tracks. A gap between them reads as separate
+  /// objects; touching bands read as a stack.
+  static const double _gap = 2;
+
+  /// The fixed column of lane tiles down the left. It does not scroll with the
+  /// time, which is what makes it a track header rather than a label.
+  static const double _gutterW = 46;
 
   /// A small lead-in so the very start of the clip is still grabbable, and the
   /// same at the end. Not half a screen: that belongs to a fixed centre
@@ -232,7 +237,9 @@ class _TimelinePanelState extends State<TimelinePanel> {
               _scale = TimelineScale.fit(widget.duration, c.maxWidth - _pad * 2);
               _fitted = true;
             }
-            return GestureDetector(
+            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SizedBox(width: _gutterW, child: _gutter()),
+              Expanded(child: GestureDetector(
               // Two fingers zoom; one finger is left to the scroller and to the
               // blocks, which is why the pointer count is checked rather than
               // taking every scale gesture.
@@ -260,19 +267,36 @@ class _TimelinePanelState extends State<TimelinePanel> {
                   child: _tracks(),
                 ),
               ),
-            );
+              )),
+            ]);
           }),
         ),
       ]),
     );
   }
 
-  double _rowsHeight() {
-    var r = 0.0;
+  /// Every lane, in order, with where it sits. The gutter and the tracks both
+  /// read this, so a tile can never drift from the lane it names.
+  List<({double top, TimelineGroup group, TimelineItem? item})> _lanes() {
+    final out = <({double top, TimelineGroup group, TimelineItem? item})>[];
+    var y = _rulerH + _gap + _videoH + _gap;
     for (final g in widget.groups) {
-      r += g.open ? _headH + _gap + g.items.length * (_rowH + _gap) : _rowH + _gap;
+      if (!g.open) {
+        out.add((top: y, group: g, item: null));
+        y += _rowH + _gap;
+        continue;
+      }
+      for (final it in g.items) {
+        out.add((top: y, group: g, item: it));
+        y += _rowH + _gap;
+      }
     }
-    return r;
+    return out;
+  }
+
+  double _rowsHeight() {
+    final l = _lanes();
+    return l.isEmpty ? 0 : (l.last.top + _rowH + _gap) - (_rulerH + _gap + _videoH + _gap);
   }
 
   Widget _zoomBar() => SizedBox(
@@ -296,6 +320,56 @@ class _TimelinePanelState extends State<TimelinePanel> {
           child: Icon(i, size: 16, color: AppColors.inkMuted),
         ),
       );
+
+  /// One tile per lane, fixed while the time scrolls past it.
+  ///
+  /// It names the lane and, on a kind that holds more than one layer, carries
+  /// the chevron that folds them into a single row. Without it the lanes were
+  /// unlabelled strips and a layer looked like it was floating.
+  Widget _gutter() {
+    final lanes = _lanes();
+    return Stack(clipBehavior: Clip.none, children: [
+      // aligns with the video track, so the column starts where the tracks do
+      Positioned(
+        left: 4, right: 4, top: _rulerH + _gap, height: _videoH,
+        child: _gutterTile(Icons.movie_outlined, AppColors.inkMuted, null, null),
+      ),
+      for (var i = 0; i < lanes.length; i++)
+        Positioned(
+          left: 4, right: 4, top: lanes[i].top, height: _rowH,
+          child: _gutterTile(
+            lanes[i].group.icon,
+            lanes[i].group.colour,
+            // the fold control belongs to the kind, so it shows once per kind
+            i == 0 || lanes[i].group.id != lanes[i - 1].group.id
+                ? (lanes[i].group.items.length > 1 || !lanes[i].group.open)
+                : false,
+            lanes[i].group,
+          ),
+        ),
+    ]);
+  }
+
+  Widget _gutterTile(IconData icon, Color colour, bool? foldable, TimelineGroup? g) {
+    final tile = Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgAlt,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, size: 15, color: colour),
+        if (foldable == true)
+          Icon(g!.open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              size: 12, color: AppColors.inkFaint),
+      ]),
+    );
+    if (g == null || foldable != true) return tile;
+    return GestureDetector(
+      onTap: () => widget.onToggleGroup(g.id),
+      behavior: HitTestBehavior.opaque,
+      child: tile,
+    );
+  }
 
   Widget _tracks() {
     return ValueListenableBuilder<double>(
@@ -323,6 +397,20 @@ class _TimelinePanelState extends State<TimelinePanel> {
                 // the strip is a picture, not a control: let the tap reach the
                 // seek handler underneath instead of being eaten by the track
                 child: IgnorePointer(child: _videoTrack())),
+            // the bands first: a layer should sit ON a track, not float
+            for (final lane in _lanes())
+              Positioned(
+                left: _pad, top: lane.top, height: _rowH,
+                width: _scale.contentWidth(widget.duration),
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: lane.group.colour.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ),
             ..._layerRows(_rulerH + _gap + _videoH + _gap),
             if (widget.trimMode && widget.onTrim != null)
               Positioned(
@@ -486,19 +574,8 @@ class _TimelinePanelState extends State<TimelinePanel> {
 
   List<Widget> _layerRows(double top) {
     final out = <Widget>[];
-    var y = top;
-    for (final g in widget.groups) {
-      if (!g.open) {
-        out.add(_groupRow(g, y));
-        y += _rowH + _gap;
-        continue;
-      }
-      out.add(_groupHeader(g, y));
-      y += _headH + _gap;
-      for (final it in g.items) {
-        out.add(_itemRow(it, y));
-        y += _rowH + _gap;
-      }
+    for (final lane in _lanes()) {
+      out.add(lane.item == null ? _groupRow(lane.group, lane.top) : _itemRow(lane.item!, lane.top));
     }
     return out;
   }
@@ -521,23 +598,6 @@ class _TimelinePanelState extends State<TimelinePanel> {
       ),
     );
   }
-
-  Widget _groupHeader(TimelineGroup g, double y) => Positioned(
-        left: _pad, top: y, height: _headH, width: 150,
-        child: GestureDetector(
-          onTap: () => widget.onToggleGroup(g.id),
-          behavior: HitTestBehavior.opaque,
-          child: Row(children: [
-            Icon(Icons.expand_less_rounded, size: 14, color: g.colour),
-            const SizedBox(width: 3),
-            Text(g.label,
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: g.colour)),
-            const SizedBox(width: 5),
-            Text('${g.items.length}',
-                style: const TextStyle(fontFamily: kMono, fontSize: 10, color: AppColors.inkFaint)),
-          ]),
-        ),
-      );
 
   Widget _itemRow(TimelineItem it, double y) {
     final selected = widget.selected != null && identical(widget.selected, it.ref);
