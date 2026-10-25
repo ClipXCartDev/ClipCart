@@ -24,12 +24,19 @@ class ExportCancelled implements Exception {
   String toString() => 'Export cancelled';
 }
 
-/// A render that failed. [message] is the one sentence a person should read;
-/// the encoder's own output goes to the log, where it is useful, rather than
-/// into a snackbar, where it is not.
+/// A render that failed.
+///
+/// [message] is the one sentence a person should read. [diagnostic] is what
+/// actually went wrong, kept on the exception so it can be SENT rather than
+/// only printed: a render happens on the phone with FFmpeg and takes its
+/// source straight from storage, so none of it touches our server. When a
+/// client's export failed, the only record was a debugPrint in a log buffer
+/// that had long since rolled, and the person who saw it had nothing to pass
+/// on but "it failed".
 class ExportFailure implements Exception {
-  const ExportFailure(this.message);
+  const ExportFailure(this.message, [this.diagnostic = '']);
   final String message;
+  final String diagnostic;
   @override
   String toString() => message;
 }
@@ -100,12 +107,21 @@ class ExportService {
   /// The encoder's own last words, to the log where they are diagnosable.
   /// FFmpeg front-loads its output with build configuration nobody needs; the
   /// reason a render failed is always at the end.
-  static void _logTail(String log, [int lines = 30]) {
+  static String _logTail(String log, [int lines = 30]) {
     final all = log.trimRight().split('\n');
-    for (final l in all.sublist(all.length > lines ? all.length - lines : 0)) {
+    final tail = all.sublist(all.length > lines ? all.length - lines : 0);
+    for (final l in tail) {
       debugPrint('[export] $l');
     }
+    return tail.join('\n');
   }
+
+  /// What the last failed render was, for a report the user can send.
+  ///
+  /// Held on the service rather than thrown away, because the editor asks for
+  /// it after the fact — and cleared when a render succeeds, so a later report
+  /// can never carry an older failure's reason.
+  static String lastFailure = '';
 
   /// Target bitrate for the hardware encoder, which works to a bitrate rather
   /// than to a quality level the way libx264's CRF does. Chosen for clips that
@@ -392,9 +408,22 @@ class ExportService {
       throw const ExportCancelled();
     }
     if (failure != null) {
-      _logTail(failure);
-      throw const ExportFailure('Could not finish the export. Please try again.');
+      final tail = _logTail(failure);
+      final why = [
+        'Export failed',
+        'clip ${p.outEnd - p.trimStart}s at ${p.resolution.label}, ${p.fps}fps',
+        'aspect ${p.aspect.label}, ${p.videoFitContain ? 'fit' : 'fill'}, '
+            'scale ${p.videoScale.toStringAsFixed(2)}',
+        'layers: ${p.subtitles.length} text, ${p.stickers.length} sticker'
+            '${p.logoPath == null ? '' : ', logo'}',
+        'encoder: ${_hwEncode == false ? 'cpu (hardware refused)' : 'hardware'}',
+        '',
+        tail,
+      ].join('\n');
+      lastFailure = why;
+      throw ExportFailure('Could not finish the export. Please try again.', why);
     }
+    lastFailure = '';
 
     // Write a poster-frame thumbnail sidecar (same name, .jpg) so the Exports tab
     // can show what each video is — no extra plugin, just one FFmpeg still grab.

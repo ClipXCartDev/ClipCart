@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
@@ -16,6 +18,7 @@ import '../../core/theme.dart' show AppColors;
 import '../../core/ui_kit.dart' show GlassPlayButton;
 import '../../models/caption_preset.dart';
 import '../../services/caption_preset_service.dart';
+import '../../services/support_service.dart';
 import '../../models/clip.dart' as models;
 import '../../models/editor_state.dart';
 import '../../models/video_geometry.dart';
@@ -3000,6 +3003,56 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  /// Offer to send what went wrong, and send it to support if asked.
+  ///
+  /// A render runs on the phone and pulls its source straight from storage, so
+  /// a failure leaves nothing on our side at all: the last time a client's
+  /// export failed there was no record anywhere, and all they could tell us
+  /// was that it failed. This puts the encoder's own reason, the settings it
+  /// was given and the build it ran on into their support thread, where it can
+  /// be read.
+  void _offerFailureReport(String message, String diagnostic) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 8),
+      action: diagnostic.isEmpty
+          ? null
+          : SnackBarAction(
+              label: 'Send report',
+              onPressed: () => _sendFailureReport(diagnostic),
+            ),
+    ));
+  }
+
+  Future<void> _sendFailureReport(String diagnostic) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final support = context.read<SupportService>();
+    var device = '';
+    try {
+      final info = await PackageInfo.fromPlatform();
+      device = 'app ${info.version} (${info.buildNumber})';
+      if (Platform.isAndroid) {
+        final a = await DeviceInfoPlugin().androidInfo;
+        device = '$device · ${a.manufacturer} ${a.model} · Android ${a.version.release}';
+      }
+    } catch (_) {/* the encoder's reason matters more than the handset */}
+    final clip = widget.clip?.title ?? widget.title ?? 'clip';
+    try {
+      await support.send('Export failed on "$clip"\n$device\n\n$diagnostic');
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Report sent. We can see what went wrong now.'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text("Couldn't send the report. Check your connection and try again."),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
   Future<void> _export() async {
     // Quota/Pro gating only applies to catalog clips (there's a creator to pay
     // and a server-side monthly quota). A picked local file (widget.clip == null)
@@ -3113,18 +3166,16 @@ class _EditorScreenState extends State<EditorScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } on ExportFailure catch (e) {
       closeProgress();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      _offerFailureReport(e.message, e.diagnostic);
     } catch (e) {
       closeProgress();
-      // whatever this was, it is not something to read: the detail is in the log
+      // whatever this was, it is not something to read: the detail belongs in
+      // the report, which is where it can be acted on
       debugPrint('[export] $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export failed. Your edit is still here — try again.')),
-        );
-      }
+      _offerFailureReport(
+        'Export failed. Your edit is still here — try again.',
+        'Export failed before the encoder finished\n\n$e\n\n${ExportService.lastFailure}',
+      );
     } finally {
       // the original never outlives the render
       if (renderSrc != null) { try { File(renderSrc).deleteSync(); } catch (_) {} }
