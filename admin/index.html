@@ -521,9 +521,24 @@ async function vUsers(){
   try{const rows=await api('/admin/users');
     document.getElementById('t').innerHTML=table(['Name','Email','Role','Joined',''],rows.map(u=>[
       h(u.name),h(u.email),`<span class="pill ${u.role==='admin'?'ok':(u.role==='editor'?'gold':'neutral')}">${h(u.role)}</span>`,h((u.created_at||'').split('T')[0]),
-      `<button class="btn sm sec" onclick="grantPlan('${encodeURIComponent(u.id)}','${encodeURIComponent(u.email)}')">Grant plan</button>`
+      `<div class="row" style="gap:6px;justify-content:flex-end">`
+      + `<button class="btn sm sec" onclick="setRole('${encodeURIComponent(u.id)}','${encodeURIComponent(u.email)}','${h(u.role)}')">Role</button>`
+      + `<button class="btn sm sec" onclick="grantPlan('${encodeURIComponent(u.id)}','${encodeURIComponent(u.email)}')">Grant plan</button></div>`
     ]));
   }catch(e){document.getElementById('t').innerHTML='<div class="err">'+h(e.message)+'</div>';}
+}
+// Make somebody a creator, or stop them being one. Until this existed a creator
+// could only be made from a database shell, so nobody could be onboarded at all
+// -- and creators are where every clip comes from.
+async function setRole(id,email,current){
+  id=decodeURIComponent(id);email=decodeURIComponent(email);
+  const role=prompt('Role for '+email+' (customer / editor / admin):',current||'editor');
+  if(!role)return;
+  try{
+    const r=await api('/admin/users/'+id+'/role','POST',{role:role.trim().toLowerCase()});
+    alert(r.email+' is now '+r.role+'.');
+    vUsers();
+  }catch(e){alert(e.message);}
 }
 // Comp a plan to a user (support / promo / testing) -- expires their current one first.
 async function grantPlan(id,email){

@@ -289,7 +289,7 @@ function storeBtns(dark){
   </div>`;
 }
 // ---- hash router: back/forward work everywhere ----
-const ROUTES={home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount,terms:()=>vLegal('terms'),privacy:()=>vLegal('privacy')};
+const ROUTES={home:vHome,browse:vBrowse,pricing:vPricing,login:vLogin,register:vRegister,account:vAccount,creator:vCreator,terms:()=>vLegal('terms'),privacy:()=>vLegal('privacy')};
 function route(){
   const raw=location.hash.slice(2)||'home';
   const [seg,arg]=raw.split('/');
@@ -305,8 +305,12 @@ function renderNav(){
   const sun=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
   const moon=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>`;
   const tbtn=`<button class="tglt" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">${dark?sun:moon}</button>`;
+  // The studio is only a link for the accounts that can use it; everyone else
+  // would land on a "you are not a creator" page, which is not a destination.
+  const studio = (ME && (ME.role === 'editor' || ME.role === 'admin'))
+    ? ` <a onclick="go('creator')" style="font-weight:600">Studio</a> &nbsp;` : '';
   document.getElementById('navauth').innerHTML = tbtn + (ME
-    ? ` <a onclick="go('account')" style="font-weight:600">${h(ME.name)}</a> &nbsp; <button class="btn sm sec" onclick="logout()">Log out</button>`
+    ? `${studio} <a onclick="go('account')" style="font-weight:600">${h(ME.name)}</a> &nbsp; <button class="btn sm sec" onclick="logout()">Log out</button>`
     : ` <button class="btn sm sec" onclick="go('login')">Log in</button> <button class="btn sm" onclick="go('register')">Subscribe</button>`);
 }
 function logout(){TOKEN='';ME=null;localStorage.removeItem('cc_web');renderNav();go('home');}
@@ -694,6 +698,240 @@ async function doAuth(kind){
   const body=kind==='register'?{name:document.getElementById('n').value,email,password,device}:{email,password,device};
   try{const r=await api('/auth/'+kind,'POST',body);const tok=r?.tokens?.access_token||r?.access_token;if(!tok)throw new Error('Unexpected login response');TOKEN=tok;localStorage.setItem('cc_web',TOKEN);ME=r.user;renderNav();go('account');}
   catch(e){const ae=document.getElementById('ae');if(ae)ae.textContent=e.message;}
+}
+
+
+// ══════════════════════════ creator studio ═══════════════════════════════
+// The same clip a creator can build in the app, built here.
+//
+// What the app's author mode does and this cannot is lay layers out ON the
+// footage by dragging them — that is an editor, and the editor is on the
+// phone. So the pieces a creator actually brings from elsewhere are what this
+// takes: the clip, their subtitle file, their mark, their handle and their
+// call to action. The result is the same `overlays` payload either way, and a
+// creator who wants to nudge a caption can open the clip in the app.
+
+const CREATOR = {
+  base: null,        // {key, name}
+  mark: null,        // {key, name}
+  caps: [],          // caption layers from the subtitle file
+  duration: 0,       // seconds, read from the picked file
+  shortEdge: 0,      // px, so the app can rescale text to the customer's frame
+};
+
+// Every value a caption layer decides, matching SubtitleSegment's JSON keys.
+// The same defaults the server's subtitle parser uses — one look, whichever
+// way a caption got here.
+function capLayer(o){
+  return Object.assign({
+    t:'', s:0, e:3,
+    ff:null, c:0xFFFFFFFF, fs:44, dx:0.5, dy:0.82, sc:1, rot:0,
+    sw:0, scol:0xFF000000, bg:true, bgc:0x99000000, al:1, z:0, hid:false,
+    fi:0, fo:0, an:0, ls:0, lh:1.15, bo:true, it:false,
+    sh:false, shc:0xFF000000, sho:1, shb:0.5, shd:0, sha:45,
+    op:1, lk:false, k:'text', ln:0,
+  }, o);
+}
+
+function vCreator(){
+  if(!TOKEN) return go('login');
+  if(!ME || (ME.role!=='editor' && ME.role!=='admin')){
+    view(`<div class="center-box card"><h2 style="text-align:center">Creator studio</h2>
+      <p class="muted" style="text-align:center">This account is not a creator yet. Write to
+      <a class="link" href="mailto:clipxcart@gmail.com">clipxcart@gmail.com</a> and we will turn it on.</p>
+      <button class="btn sec" style="width:100%" onclick="go('browse')">Browse clips</button></div>`);
+    return;
+  }
+  view(`<div class="wrap" style="max-width:860px;margin:0 auto;padding:28px 20px 60px">
+    <h2>Creator studio</h2>
+    <p class="muted" style="margin:-6px 0 22px">Upload a clip with the layers a customer opens it already wearing — your
+      subtitles, your mark, your handle, your call to action. They restyle and export it on their phone.</p>
+    <div class="err" id="cerr" style="margin-bottom:14px"></div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 4px">1 · The clip</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:13px">An MP4. Its length and frame size are read here so your captions land in the right place.</p>
+      <input type="file" id="cbase" accept="video/mp4,video/quicktime" onchange="crPickBase(this)">
+      <div id="cbaseinfo" class="muted" style="font-size:13px;margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 4px">2 · Subtitles</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:13px">An .srt or .vtt from any transcription tool — the timings come across with it.</p>
+      <input type="file" id="csrt" accept=".srt,.vtt,.txt" onchange="crPickSrt(this)">
+      <div id="csrtinfo" class="muted" style="font-size:13px;margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 4px">3 · Your mark, handle and call to action</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:13px">All optional, and all editable by the customer afterwards.</p>
+      <label class="muted" style="font-size:13px">Mark (PNG or WebP)</label>
+      <input type="file" id="cmark" accept="image/png,image/webp" onchange="crPickMark(this)">
+      <div id="cmarkinfo" class="muted" style="font-size:13px;margin:6px 0 12px"></div>
+      <input id="chandle" placeholder="Handle, e.g. @yourpage">
+      <input id="ccta" placeholder="Call to action, e.g. Follow for more">
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <h3 style="margin:0 0 12px">4 · Details</h3>
+      <input id="ctitle" placeholder="Title">
+      <input id="cmovie" placeholder="Movie name">
+      <div class="cols3" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <input id="cgenre" placeholder="Genre">
+        <input id="clang" placeholder="Language" value="English">
+      </div>
+      <input id="ctags" placeholder="Tags, comma separated">
+      <label class="muted" style="font-size:13px">Access</label>
+      <select id="caccess"><option value="free">Free</option><option value="pro">Pro</option></select>
+    </div>
+
+    <button class="btn" style="width:100%" id="csubmit" onclick="crSubmit()">Submit for review</button>
+    <h3 style="margin:34px 0 10px">Your uploads</h3>
+    <div id="cmine" class="muted">Loading…</div>
+  </div>`);
+  crLoadMine();
+}
+
+function crErr(msg){const el=document.getElementById('cerr');if(el)el.textContent=msg||'';}
+function crSay(id,msg){const el=document.getElementById(id);if(el)el.textContent=msg;}
+
+// Presign, then PUT the bytes straight to storage. The server hands back the
+// KEY and only the key: a URL signed now would have expired long before a
+// customer opened the clip, so the key is what gets stored.
+async function crUpload(file, contentType){
+  const r = await api('/creator/upload-url','POST',{filename:file.name, content_type:contentType});
+  const put = await fetch(r.url.startsWith('http')?r.url:(API.replace('/api/v1','')+r.url),
+    {method:'PUT', headers:{'Content-Type':contentType}, body:file});
+  if(!put.ok) throw new Error('The upload did not go through ('+put.status+').');
+  return r.key;
+}
+
+// Length and frame size, read from the file in the browser. The app needs both:
+// captions past the end of the footage are dropped, and text sizes are in VIDEO
+// pixels, so the frame they were written against has to travel with them.
+function crProbe(file){
+  return new Promise(resolve=>{
+    const v=document.createElement('video');
+    v.preload='metadata';
+    v.onloadedmetadata=()=>{
+      const d=isFinite(v.duration)?v.duration:0;
+      const short=Math.min(v.videoWidth||0, v.videoHeight||0);
+      URL.revokeObjectURL(v.src);
+      resolve({duration:d, shortEdge:short});
+    };
+    v.onerror=()=>{URL.revokeObjectURL(v.src);resolve({duration:0, shortEdge:0});};
+    v.src=URL.createObjectURL(file);
+  });
+}
+
+async function crPickBase(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  crErr(''); crSay('cbaseinfo','Uploading…');
+  try{
+    const probe=await crProbe(f);
+    CREATOR.duration=probe.duration; CREATOR.shortEdge=probe.shortEdge;
+    CREATOR.base={key:await crUpload(f, f.type||'video/mp4'), name:f.name};
+    crSay('cbaseinfo', `${h(f.name)} uploaded`+(probe.duration?` · ${probe.duration.toFixed(1)}s`:'')
+      +(probe.shortEdge?` · ${probe.shortEdge}p`:''));
+  }catch(e){ CREATOR.base=null; crSay('cbaseinfo',''); crErr(e.message); }
+}
+
+async function crPickSrt(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  crErr(''); crSay('csrtinfo','Reading…');
+  try{
+    const text=await f.text();
+    const body={text}; if(CREATOR.duration>0) body.duration=CREATOR.duration;
+    const r=await api('/creator/subtitles/parse','POST',body);
+    CREATOR.caps=r.captions||[];
+    const first=CREATOR.caps[0];
+    crSay('csrtinfo', `${r.count} caption${r.count===1?'':'s'}`
+      +(first?` · first at ${first.s.toFixed(1)}s: “${first.t.slice(0,40)}”`:''));
+  }catch(e){ CREATOR.caps=[]; crSay('csrtinfo',''); crErr(e.message); }
+}
+
+async function crPickMark(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  crErr(''); crSay('cmarkinfo','Uploading…');
+  try{
+    CREATOR.mark={key:await crUpload(f, f.type||'image/png'), name:f.name};
+    crSay('cmarkinfo', h(f.name)+' uploaded');
+  }catch(e){ CREATOR.mark=null; crSay('cmarkinfo',''); crErr(e.message); }
+}
+
+// The layers as the app's editor reads them. Handle and CTA are built to the
+// same shape and placement the app's own tools use, so a clip authored here
+// and one authored there open identically.
+function crOverlays(){
+  const dur=CREATOR.duration>0?CREATOR.duration:3;
+  const subs=CREATOR.caps.map((c,i)=>Object.assign({},c,{z:i}));
+  const handle=(document.getElementById('chandle')||{}).value;
+  const cta=(document.getElementById('ccta')||{}).value;
+  let z=subs.length;
+  if(handle&&handle.trim()){
+    subs.push(capLayer({t:handle.trim(), s:0, e:dur, fs:34, dy:0.93,
+      bg:true, bgc:0x99000000, k:'handle', z:z++}));
+  }
+  if(cta&&cta.trim()){
+    // the last couple of seconds, where a call to action belongs
+    subs.push(capLayer({t:cta.trim(), s:Math.max(0,dur-2.5), e:dur, fs:40, dy:0.5,
+      bg:true, bgc:0xFF0E9E6E, an:2, k:'cta', z:z++}));
+  }
+  const ov={subs};
+  if(CREATOR.shortEdge>0) ov.authoredShort=CREATOR.shortEdge;
+  if(CREATOR.mark){ ov.logoKey=CREATOR.mark.key; ov.logoDx=0.85; ov.logoDy=0.10; ov.logoScale=1.0; }
+  return (subs.length||ov.logoKey)?ov:null;
+}
+
+async function crSubmit(){
+  crErr('');
+  const title=(document.getElementById('ctitle')||{}).value||'';
+  if(!CREATOR.base){ crErr('Upload the clip first.'); return; }
+  if(!title.trim()){ crErr('Give the clip a title.'); return; }
+  const btn=document.getElementById('csubmit');
+  btn.disabled=true; btn.textContent='Submitting…';
+  try{
+    const tags=((document.getElementById('ctags')||{}).value||'').split(',').map(t=>t.trim()).filter(Boolean);
+    await api('/creator/clips','POST',{
+      title:title.trim(),
+      movie_name:((document.getElementById('cmovie')||{}).value||'').trim()||null,
+      genre:((document.getElementById('cgenre')||{}).value||'').trim()||null,
+      language:((document.getElementById('clang')||{}).value||'English').trim(),
+      tags,
+      layers:['subtitle','handle'],
+      access:(document.getElementById('caccess')||{}).value||'free',
+      base_clip_path:CREATOR.base.key,
+      duration_sec:Math.round(CREATOR.duration)||null,
+      overlays:crOverlays(),
+    });
+    CREATOR.base=null; CREATOR.mark=null; CREATOR.caps=[]; CREATOR.duration=0; CREATOR.shortEdge=0;
+    vCreator();
+    crErr('');
+    crSay('cmine','Submitted — it is in review.');
+    crLoadMine();
+  }catch(e){ crErr(e.message); }
+  finally{ const b=document.getElementById('csubmit'); if(b){b.disabled=false;b.textContent='Submit for review';} }
+}
+
+async function crLoadMine(){
+  const el=document.getElementById('cmine'); if(!el)return;
+  try{
+    const rows=await api('/creator/clips');
+    if(!rows.length){ el.innerHTML='<p class="muted">Nothing uploaded yet.</p>'; return; }
+    el.innerHTML=rows.map(c=>{
+      const n=(c.overlays&&c.overlays.subs?c.overlays.subs.length:0);
+      const note=c.review_note?`<div class="muted" style="font-size:12px;margin-top:4px">${h(c.review_note)}</div>`:'';
+      return `<div class="card" style="padding:14px;margin-bottom:8px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="flex:1;min-width:0">
+            <b>${h(c.title)}</b>
+            <div class="muted" style="font-size:12.5px">${h(c.status)} · ${n} layer${n===1?'':'s'}${c.duration_sec?' · '+c.duration_sec+'s':''}</div>
+            ${note}
+          </div>
+          <span class="pill">${h(c.access)}</span>
+        </div></div>`;
+    }).join('');
+  }catch(e){ el.innerHTML='<div class="err">'+h(e.message)+'</div>'; }
 }
 
 let _acctab='sub';

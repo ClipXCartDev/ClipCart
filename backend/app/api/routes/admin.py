@@ -212,6 +212,45 @@ def list_users(_: User = Depends(admin_only), db: Session = Depends(get_db)) -> 
     ]
 
 
+@router.post("/users/{user_id}/role")
+def set_role(
+    user_id: uuid.UUID,
+    body: dict,
+    me: User = Depends(admin_only),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Make somebody a creator, or stop them being one.
+
+    Until this existed a creator could only be made by someone with a shell on
+    the database, which meant the people who run this could not onboard one at
+    all — and creators are where every clip comes from.
+    """
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    raw = str(body.get("role", "")).strip().lower()
+    try:
+        role = Role(raw)
+    except ValueError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "invalid_role",
+                "message": f"role must be one of {[r.value for r in Role]}",
+            },
+        )
+    if target.id == me.id:
+        # Demoting yourself is how the last admin locks everybody out of the
+        # console; there is no undo for it from inside the product.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "self_role", "message": "Change someone else's role, not your own."},
+        )
+    target.role = role
+    db.commit()
+    return {"id": str(target.id), "email": target.email, "role": target.role.value}
+
+
 @router.post("/users/{user_id}/grant")
 def grant_subscription(
     user_id: uuid.UUID,

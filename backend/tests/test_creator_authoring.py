@@ -159,3 +159,75 @@ def test_authored_captions_survive_the_round_trip(client, db):
     mine = next(c for c in back if c["id"] == clip_id)
     assert [s["t"] for s in mine["overlays"]["subs"]] == ["Hello", "Again"]
     assert mine["overlays"]["authoredShort"] == 1080
+
+
+# ---- somebody has to be able to make a creator ----------------------------
+
+def _admin(client, db, email="a-role@x.com") -> tuple[dict, str]:
+    r = client.post(API + "/auth/register", json={
+        "name": "A", "email": email, "password": "supersecret1",
+        "device": {"device_id": "d-" + email}})
+    uid = r.json()["user"]["id"]
+    u = db.get(User, uuid.UUID(uid))
+    u.role = Role.admin
+    db.commit()
+    token, _, _ = create_access_token(uid)
+    return {"Authorization": f"Bearer {token}"}, uid
+
+
+def test_an_admin_can_turn_a_customer_into_a_creator(client, db):
+    # Until this existed a creator could only be made from a database shell,
+    # so the people who run this could not onboard one at all.
+    h, _ = _admin(client, db)
+    r = client.post(API + "/auth/register", json={
+        "name": "C", "email": "c-promote@x.com", "password": "supersecret1",
+        "device": {"device_id": "d-promote"}})
+    uid = r.json()["user"]["id"]
+
+    r = client.post(f"{API}/admin/users/{uid}/role", headers=h, json={"role": "editor"})
+    assert r.status_code == 200, r.text
+    assert r.json()["role"] == "editor"
+
+    # and the promotion is what the creator endpoints actually go on
+    token, _, _ = create_access_token(uid)
+    r = client.post(f"{API}/creator/upload-url",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"filename": "c.mp4", "content_type": "video/mp4"})
+    assert r.status_code == 200
+
+
+def test_a_creator_can_be_turned_back_into_a_customer(client, db):
+    h, _ = _admin(client, db, "a-demote@x.com")
+    r = client.post(API + "/auth/register", json={
+        "name": "E", "email": "e-demote@x.com", "password": "supersecret1",
+        "device": {"device_id": "d-demote"}})
+    uid = r.json()["user"]["id"]
+    client.post(f"{API}/admin/users/{uid}/role", headers=h, json={"role": "editor"})
+    r = client.post(f"{API}/admin/users/{uid}/role", headers=h, json={"role": "customer"})
+    assert r.json()["role"] == "customer"
+
+
+def test_an_admin_cannot_demote_themselves_out_of_the_console(client, db):
+    h, uid = _admin(client, db, "a-self@x.com")
+    r = client.post(f"{API}/admin/users/{uid}/role", headers=h, json={"role": "customer"})
+    assert r.status_code == 409
+
+
+def test_a_role_that_is_not_a_role_is_refused(client, db):
+    h, _ = _admin(client, db, "a-bad-role@x.com")
+    r = client.post(API + "/auth/register", json={
+        "name": "C", "email": "c-badrole@x.com", "password": "supersecret1",
+        "device": {"device_id": "d-badrole"}})
+    uid = r.json()["user"]["id"]
+    r = client.post(f"{API}/admin/users/{uid}/role", headers=h, json={"role": "superuser"})
+    assert r.status_code == 422
+
+
+def test_a_creator_cannot_promote_anybody(client, db):
+    h = _editor(client, db, "e-noprom@x.com")
+    r = client.post(API + "/auth/register", json={
+        "name": "C", "email": "c-noprom@x.com", "password": "supersecret1",
+        "device": {"device_id": "d-noprom"}})
+    uid = r.json()["user"]["id"]
+    r = client.post(f"{API}/admin/users/{uid}/role", headers=h, json={"role": "admin"})
+    assert r.status_code == 403

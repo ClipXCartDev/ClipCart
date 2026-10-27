@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -37,6 +39,10 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
   /// The layer set that ships WITH this clip — the customer opens these in the
   /// same editor and restyles them (colour, font, wording) before exporting.
   Map<String, dynamic>? _overlays;
+  String? _markKey;          // the creator's mark, as a storage key
+  String? _markName;
+  int _srtCount = 0;         // captions brought in from a subtitle file
+  bool _importing = false;
 
   Future<void> _pickBase() async {
     final res = await FilePicker.platform.pickFiles(type: FileType.video);
@@ -48,6 +54,80 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Upload failed. Please try again.')));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  /// Captions from a subtitle file, laid onto the clip.
+  ///
+  /// This is how subtitles arrive from every transcription tool there is, and
+  /// without it the only way in was to type each caption and both its
+  /// timestamps by hand — which nobody does for a forty-caption file. Parsed
+  /// on the server so the web creator gets the same layers from the same file.
+  Future<void> _importSubtitles() async {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['srt', 'vtt', 'txt'],
+    );
+    final path = res?.files.single.path;
+    if (path == null) return;
+    setState(() => _importing = true);
+    try {
+      final text = await File(path).readAsString();
+      final caps = await context.read<CreatorService>().parseSubtitles(text);
+      setState(() {
+        // Captions join whatever the author already laid out rather than
+        // replacing it: a creator who styled a handle and a CTA first should
+        // not lose them by importing their subtitles second.
+        final existing = [...((_overlays?['subs'] as List?) ?? const [])];
+        _overlays = {...?_overlays, 'subs': [...existing, ...caps]};
+        _srtCount = caps.length;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${caps.length} caption${caps.length == 1 ? '' : 's'} added — '
+              'open Design the layers to style and position them'),
+        ));
+      }
+    } on SubtitleImportError catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Couldn't read that file. Try an .srt or .vtt.")));
+      }
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
+  }
+
+  /// The creator's own mark, drawn on every customer's copy of this clip.
+  Future<void> _pickMark() async {
+    final res = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'webp'],
+    );
+    final file = res?.files.single;
+    if (file?.path == null) return;
+    setState(() => _uploading = true);
+    try {
+      final key = await context.read<CreatorService>().uploadMark(file!.path!, file.name);
+      setState(() {
+        _markKey = key;
+        _markName = file.name;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Mark uploaded')));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('That upload did not go through. Please try again.')));
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -73,12 +153,72 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
 
   int get _overlayCount => (_overlays?['subs'] as List?)?.length ?? 0;
 
+  /// The authored layers as the server stores them: the mark as a KEY, never a
+  /// URL — the server signs a fresh one for each customer who opens the clip.
+  Map<String, dynamic>? get _overlaysPayload {
+    if (_overlays == null && _markKey == null) return null;
+    return {...?_overlays, if (_markKey != null) 'logoKey': _markKey};
+  }
+
   @override
   void dispose() {
     for (final c in [_title, _movie, _genre, _language, _category, _tags]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// One row for a file the creator attaches: same shape as the layer row
+  /// above it, so the three reads as one list rather than three designs.
+  Widget _fileRow({
+    required IconData icon,
+    required bool on,
+    required String title,
+    required String subtitle,
+    required String action,
+    required bool busy,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(R.card),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: on ? AppColors.brandTint : AppColors.surface,
+          borderRadius: BorderRadius.circular(R.card),
+          border: Border.all(color: on ? AppColors.brand : AppColors.line),
+        ),
+        child: Row(children: [
+          Icon(icon, color: on ? AppColors.brand : AppColors.mut, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.ink)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    maxLines: 2,
+                    style: const TextStyle(color: AppColors.mut, fontSize: 11.5)),
+              ],
+            ),
+          ),
+          if (busy)
+            const SizedBox(
+                width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          else
+            Text(action,
+                style: const TextStyle(
+                    color: AppColors.brand, fontWeight: FontWeight.w600, fontSize: 13)),
+        ]),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -97,7 +237,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
         'layers': _layers.toList(),
         'access': _access,
         'base_clip_path': _baseKey,
-        'overlays': _overlays,
+        'overlays': _overlaysPayload,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Submitted for review')));
@@ -191,6 +331,32 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
                 ]),
               ),
             ),
+          ),
+          const SizedBox(height: 10),
+          _fileRow(
+            icon: _srtCount > 0 ? Icons.closed_caption : Icons.closed_caption_outlined,
+            on: _srtCount > 0,
+            title: _srtCount > 0
+                ? '$_srtCount caption${_srtCount == 1 ? '' : 's'} from your file'
+                : 'Add subtitles (.srt / .vtt)',
+            subtitle: _srtCount > 0
+                ? 'Style and position them in Design the layers'
+                : 'From any transcription tool — timings come across with them',
+            action: _srtCount > 0 ? 'Replace' : 'Choose',
+            busy: _importing,
+            onTap: _importing ? null : _importSubtitles,
+          ),
+          const SizedBox(height: 10),
+          _fileRow(
+            icon: _markKey != null ? Icons.branding_watermark : Icons.branding_watermark_outlined,
+            on: _markKey != null,
+            title: _markKey == null ? 'Add your mark (optional)' : (_markName ?? 'Mark uploaded'),
+            subtitle: _markKey == null
+                ? 'A PNG that goes on every customer\'s copy of this clip'
+                : 'Place and size it in Design the layers',
+            action: _markKey == null ? 'Choose' : 'Replace',
+            busy: false,
+            onTap: _uploading ? null : _pickMark,
           ),
           const SizedBox(height: 14),
           TextField(controller: _title, decoration: const InputDecoration(labelText: 'Title')),
