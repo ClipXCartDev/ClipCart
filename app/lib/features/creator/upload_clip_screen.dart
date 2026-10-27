@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -39,6 +40,7 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
   /// The layer set that ships WITH this clip — the customer opens these in the
   /// same editor and restyles them (colour, font, wording) before exporting.
   Map<String, dynamic>? _overlays;
+  double _baseDuration = 0;  // read from the picked file, for fitting captions
   String? _markKey;          // the creator's mark, as a storage key
   String? _markName;
   int _srtCount = 0;         // captions brought in from a subtitle file
@@ -50,12 +52,63 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
     setState(() => _uploading = true);
     try {
       final key = await context.read<CreatorService>().uploadBaseClip(res.files.single.path!, res.files.single.name);
-      setState(() { _baseKey = key; _baseLocalPath = res.files.single.path; });
+      final dur = await _durationOf(res.files.single.path!);
+      setState(() {
+        _baseKey = key;
+        _baseLocalPath = res.files.single.path;
+        _baseDuration = dur;
+      });
+      // Subtitles may have been chosen first, with nothing to measure them
+      // against. A caption that starts past the end renders nowhere, which
+      // reads as the file having failed.
+      _fitCaptionsToClip();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Base clip uploaded')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Upload failed. Please try again.')));
     } finally {
       if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  /// How long the picked file actually is.
+  ///
+  /// The creator's own number is not evidence — the field is free text and the
+  /// server corrects it from the file later anyway. Captions have to be cut to
+  /// the real length or they land outside the footage.
+  Future<double> _durationOf(String path) async {
+    try {
+      final info = await FFprobeKit.getMediaInformation(path);
+      final d = info.getMediaInformation()?.getDuration();
+      return d == null ? 0 : (double.tryParse(d) ?? 0);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Keep imported captions inside the footage, and say how many went.
+  void _fitCaptionsToClip() {
+    final d = _baseDuration;
+    final subs = (_overlays?['subs'] as List?) ?? const [];
+    if (d <= 0 || subs.isEmpty) return;
+    final kept = <dynamic>[];
+    for (final raw in subs) {
+      if (raw is! Map) continue;
+      final s = (raw['s'] as num?)?.toDouble() ?? 0;
+      final e = (raw['e'] as num?)?.toDouble() ?? 0;
+      if (s >= d) continue;
+      kept.add({...raw, 'e': e > d ? d : e});
+    }
+    final dropped = subs.length - kept.length;
+    if (dropped <= 0 && kept.length == subs.length) return;
+    setState(() {
+      _overlays = {...?_overlays, 'subs': kept};
+      _srtCount = kept.length;
+    });
+    if (dropped > 0 && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$dropped caption${dropped == 1 ? '' : 's'} fell outside the clip and '
+            '${dropped == 1 ? 'was' : 'were'} removed'),
+      ));
     }
   }
 
@@ -75,7 +128,8 @@ class _UploadClipScreenState extends State<UploadClipScreen> {
     setState(() => _importing = true);
     try {
       final text = await File(path).readAsString();
-      final caps = await context.read<CreatorService>().parseSubtitles(text);
+      final caps = await context.read<CreatorService>()
+          .parseSubtitles(text, duration: _baseDuration > 0 ? _baseDuration : null);
       setState(() {
         // Captions join whatever the author already laid out rather than
         // replacing it: a creator who styled a handle and a CTA first should

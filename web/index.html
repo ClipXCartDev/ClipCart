@@ -831,9 +831,28 @@ async function crPickBase(input){
     const probe=await crProbe(f);
     CREATOR.duration=probe.duration; CREATOR.shortEdge=probe.shortEdge;
     CREATOR.base={key:await crUpload(f, f.type||'video/mp4'), name:f.name};
+    // Subtitles may have been chosen first, in which case they were read with
+    // no clip to measure against. Now there is one: a caption that starts past
+    // the end renders nowhere, which reads as the file having failed.
+    const dropped=crFitCaptions();
     crSay('cbaseinfo', `${h(f.name)} uploaded`+(probe.duration?` · ${probe.duration.toFixed(1)}s`:'')
       +(probe.shortEdge?` · ${probe.shortEdge}p`:''));
+    if(dropped) crSay('csrtinfo', `${CREATOR.caps.length} caption${CREATOR.caps.length===1?'':'s'} — `
+      +`${dropped} fell outside the clip and ${dropped===1?'was':'were'} removed`);
   }catch(e){ CREATOR.base=null; crSay('cbaseinfo',''); crErr(e.message); }
+}
+
+// Keep the captions inside the footage. Called when the clip arrives, because
+// subtitles can be chosen before there is anything to measure them against.
+function crFitCaptions(){
+  const d=CREATOR.duration;
+  if(!(d>0) || !CREATOR.caps.length) return 0;
+  const before=CREATOR.caps.length;
+  CREATOR.caps=CREATOR.caps
+    .filter(c=>c.s < d)
+    .map(c=>Object.assign({}, c, {e: Math.min(c.e, d)}))
+    .filter(c=>c.e > c.s);
+  return before - CREATOR.caps.length;
 }
 
 async function crPickSrt(input){
