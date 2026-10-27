@@ -44,6 +44,24 @@ def slugify(title: str) -> str:
     return f"{base}-{uuid.uuid4().hex[:6]}"
 
 
+def _overlays_out(clip: Clip) -> dict | None:
+    """The authored layers, with the creator's mark signed for this reader.
+
+    The key is what is stored; a presigned URL would have expired long before
+    anyone opened the clip. Signing here means the customer's app always gets a
+    link that works, and the stored value can never be a URL somebody chose.
+    """
+    if not clip.overlays:
+        return clip.overlays
+    key = clip.overlays.get("logoKey")
+    if not isinstance(key, str) or not key:
+        return clip.overlays
+    try:
+        return {**clip.overlays, "logoUrl": storage.presign_download(key, expires=_THUMB_TTL)}
+    except Exception:  # noqa: BLE001 - a mark that cannot be signed is not worth failing the clip over
+        return clip.overlays
+
+
 def clip_to_out(clip: Clip) -> ClipOut:
     return ClipOut(
         id=clip.id,
@@ -56,7 +74,7 @@ def clip_to_out(clip: Clip) -> ClipOut:
         language=clip.language,
         tags=clip.tags or [],
         layers=clip.layers or [],
-        overlays=clip.overlays,
+        overlays=_overlays_out(clip),
         duration_sec=clip.duration_sec,
         resolution=clip.resolution,
         aspect_ratio=clip.aspect_ratio,

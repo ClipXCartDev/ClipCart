@@ -68,6 +68,12 @@ class ClipCreate(BaseModel):
 
 
 class ClipUpdate(BaseModel):
+    # `overlays` and `base_clip_path` were missing, so a creator could not change
+    # their authored layers or replace the footage after creating the clip: the
+    # PUT accepted them, ignored them and answered 200. update_clip already
+    # guarded both fields — it was guarding something that could never arrive.
+    overlays: dict | None = None
+    base_clip_path: str | None = None
     title: str | None = None
     category_id: uuid.UUID | None = None
     movie_name: str | None = None
