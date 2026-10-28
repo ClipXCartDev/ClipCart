@@ -48,3 +48,6 @@ design/
 design-preview/
 qa/
 ops/server/known_hosts
+
+# scratch from ops/check_web.sh
+.server_defaults.json
